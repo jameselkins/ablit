@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Compiled catalog, built by tools/build_catalog.py
+catalog/dist/
+
+# Local settings
+*.local.toml
+
+# Editors and systems
+.DS_Store
+.idea/
+.vscode/
+.import_linter_cache/

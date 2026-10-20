@@ -1,0 +1,11 @@
+# Project referral IDs. An empty value means no paid link is configured for
+# that marketplace, and ablit does not offer the paid choice for it.
+#
+# This file is read only by ablit.referral. The planner and the backend drivers
+# cannot import that package, so they cannot read these values.
+
+[vast]
+id = ""
+
+[runpod]
+id = ""

@@ -1,0 +1,59 @@
+# Contributing
+
+Thank you for helping. The most useful contribution is a catalog entry for a model that people want to run, and the second most useful is a boot test of an entry that nobody has booted yet. This file explains both, along with the checks that every pull request has to pass.
+
+## Rules that apply to everything
+
+1. CI never rents a machine. The workflows use no secrets, ask for read-only repository permission, and make only anonymous requests to Hugging Face. A pull request that adds a step that rents anything, or that reads a secret, will be closed.
+2. Sign off every commit with `git commit -s`. The sign-off adds a "Signed-off-by" line with your name and email address, and it certifies the Developer Certificate of Origin version 1.1 at https://developercertificate.org. In short, it says that you wrote the change or have the right to submit it under this project's license.
+3. Code is licensed under Apache-2.0. Catalog entries are released under CC0-1.0, and an entry records the license of its model separately.
+4. Write every file yourself. Do not paste code or templates from another project unless its license allows it and you say where it came from.
+5. Write prose in plain, everyday words, in complete sentences, with sentence case headings.
+
+## Adding a catalog entry
+
+An entry is one YAML file at `catalog/models/<id>.yaml`. The file name must match the `id` field. Entries hold data only, and no entry may carry a shell command. All commands live in the reviewed engine templates under `engines/`.
+
+1. Pick the Hugging Face repo and copy the 40-character commit hash of the revision you want. A branch name such as `main` is refused, because a pinned revision keeps the entry reproducible. The repo must be public and not gated.
+2. Copy a seed entry that uses the same engine, and change `id`, `display_name` and the `source` block. `modification` is `none`, `abliterated`, `finetune` or `quantized`, and `license` is the license the model's own repo declares.
+3. List every file that the engine reads under `artifacts`. That includes draft models, tokenizer files and any extra source shards. Give each file a `path` and a `role`, and leave `bytes` as `null`. A file from another repo gets its own `repo` and `revision`. Do not list files that the engine does not read, and for repos that hold several builds list only the build the entry is for.
+4. Run `python3 tools/verify_entry.py --fill catalog/models/<id>.yaml`. It reads the Hugging Face API at your pinned revision and writes each file's size and SHA-256. A file stored without LFS gets its Git blob ID too, and the script downloads it to compute the SHA-256. The script rewrites the file in a fixed layout, and it keeps only the comment lines at the top.
+5. Write `staging`, which lists what happens to the files on the rented machine, in order. A `download` step brings in files, either `all` or a list of paths and roles. A `join` or `engram-extract` step names its `inputs` by path or role, gives the `output_bytes` it writes, and says with `delete_inputs_after` whether the inputs are removed when it finishes. `keeps_inputs_until_done: false` is allowed only for an extractor that is known to stream. ablit computes the peak disk from this list, and nobody writes it by hand.
+6. Fill in `profile`. It is one exact combination of engine lock, GPU arrangement, context length and concurrency, and a boot test of one profile does not approve another.
+7. Under `sources`, add the URL that supports each number in `profile`. A source can be a bare URL, or an object with `url` and `covers`, where `covers` lists the profile paths the URL supports, such as `profile.gpu.count`. A trailing `*` matches a group. Use primary sources, which means Hugging Face, the engine's own repository, or the engine's documentation. Local file paths are not allowed.
+8. Set `status: unverified` and `tests: []`. Add a `notes` list that says, in plain words, where each figure came from, which ones you derived, and that the hardware floors are not yet tested.
+9. Run the checks below, and open the pull request.
+
+### Numbers chosen by ablit
+
+Some numbers have no publisher. Examples are the context length, the number of concurrent requests, the download speed floor and the startup estimate. When no source states a figure, the entry may use a default or a figure derived by arithmetic, as long as a `notes` item says so. Cite the URL of this section in `sources` and list the profile paths under `covers`, with a `note` that says the figure is a default or a derivation. The defaults are 4096 tokens of context, one concurrent request, and a download floor of 500 Mbps. The startup estimate is a guess until a boot test measures it.
+
+## Checks that CI runs
+
+CI runs these checks on every pull request. None of them rents anything.
+
+1. The file passes `catalog/schema/v1.json`.
+2. `tools/verify_entry.py` confirms that each repo and revision exist, and that each artifact's size and hash match the Hugging Face API at `?blobs=true`. The tree API is paged at 50 entries, so it is not used.
+3. Every number in `profile` has a source.
+4. The computed peak disk is no larger than any disk figure the entry claims in `profile.storage.disk_gb_claimed`.
+5. For an entry that uses llama.cpp, the GGUF `general.architecture` is on the pinned llama.cpp build's list. The check is skipped until `engines/llamacpp/lock.yaml` lists the supported architectures.
+
+On a fork, where the network may be unavailable, run the schema part alone with `python3 tools/verify_entry.py --offline`. To check the whole repository, install the package with `cd cli && uv run --with-editable . --with pytest --with hypothesis --with respx --with import-linter pytest -q`, run `lint-imports` from the `cli` directory, run `python3 tools/verify_entry.py --offline` for every entry, and run `python3 tools/build_catalog.py`.
+
+A weekly job runs check 2 again on every entry, and it fails when an artifact has disappeared. A maintainer then sets that entry to `removed`.
+
+## Entry status
+
+| Status | Meaning |
+|---|---|
+| `unverified` | The entry passed the checks and a maintainer merged it. Nobody has booted it. `ablit up` needs `--untested` to launch it, and the quote says "Nobody has booted this entry yet. The engine may fail to start, and you pay for the time until ablit destroys the run." |
+| `boot-tested` | The `tests` list holds a record with a log from a real run of that exact profile. `ablit up --report` writes such a log on your computer with secrets removed, and you decide whether to share it. |
+| `removed` | An artifact has disappeared or the entry is withdrawn. ablit refuses to launch it. |
+
+Before it rents anything, ablit also checks that every artifact of the entry is still public at its pinned revision.
+
+## Improving the code
+
+Run the tests before you open a pull request. The five tests that enforce the rule against steering by commission are in `cli/tests/test_steering.py`, and POLICY.md explains them. A change that lets referral data reach the planner will not be accepted.
+
+Scripts in `engines/` that need a real rented machine are marked `TODO(step 3): untested`. Please keep those marks until someone has run the script on a rented machine, and please do not describe untested behavior as fact in the documentation.

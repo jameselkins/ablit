@@ -1,0 +1,33 @@
+# Engine lock for the llama.cpp server. A catalog entry points here with
+# `engine_lock: llamacpp-server-cuda`.
+name: llamacpp-server-cuda
+engine: llamacpp
+image: ghcr.io/ggml-org/llama.cpp
+tag: server-cuda
+# A digest must be pinned before first use. ablit refuses to rent with a null digest.
+digest: null
+bind: 127.0.0.1
+api_key_variable: LLAMA_API_KEY
+# TODO: list the GGUF architectures that the pinned build supports. Until this
+# list is filled in, tools/verify_entry.py skips the architecture check.
+supported_architectures: []
+variables:
+  - ABLIT_RUN_ID
+  - ABLIT_MODEL_ID
+  - ABLIT_SERVED_NAME
+  - ABLIT_PORT
+  - ABLIT_ENDPOINT_KEY        # secret, passed by environment variable only
+  - ABLIT_DATA_DIR            # default /models
+  - ABLIT_STATE_DIR           # default /ablit
+  - ABLIT_CAP_USD
+  - ABLIT_HOURLY_RATE
+  - ABLIT_TRANSFER_PER_GB
+  - ABLIT_ADVERTISED_MBPS
+  - ABLIT_GPU_COUNT
+  - ABLIT_MIN_VRAM_MB_EACH
+  - ABLIT_MIN_CC
+  - ABLIT_MIN_HOST_RAM_GB
+  - ABLIT_MIN_DISK_GB
+  - ABLIT_MIN_DOWNLOAD_MBPS
+  - ABLIT_CONTEXT_TOKENS
+  - ABLIT_RANDOM_READ_REQUIRED

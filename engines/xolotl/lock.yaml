@@ -1,0 +1,42 @@
+# Engine lock for Xolotl. A catalog entry points here with `engine_lock: xolotl-63fc34c`.
+name: xolotl-63fc34c
+engine: xolotl
+source:
+  repo: https://github.com/Indras-Mirror/Xolotl
+  commit: 63fc34c6ea839d3e78e765b3e3aa72173116d352
+  cuda: "13"
+# The image below is planned and does not exist yet. It will be built from the
+# commit above with CUDA 13 once the build's dependency licenses are checked.
+# Until then the bootstrap builds the engine on the rented machine, and the
+# build time is part of the startup estimate.
+image: null
+tag: null
+# A digest must be pinned before first use. ablit refuses to rent with a null digest.
+digest: null
+bind: 127.0.0.1
+api_key_variable: STRATA_API_KEY
+install_dir: /opt/xolotl
+# The README asks for a pinned memory arena of 60 GiB by default.
+min_memlock_kb: 62914560
+variables:
+  - ABLIT_RUN_ID
+  - ABLIT_MODEL_ID
+  - ABLIT_SERVED_NAME
+  - ABLIT_PORT
+  - ABLIT_ENDPOINT_KEY        # secret, passed by environment variable only
+  - ABLIT_DATA_DIR            # default /models
+  - ABLIT_STATE_DIR           # default /ablit
+  - ABLIT_CAP_USD
+  - ABLIT_HOURLY_RATE
+  - ABLIT_TRANSFER_PER_GB
+  - ABLIT_ADVERTISED_MBPS
+  - ABLIT_GPU_COUNT
+  - ABLIT_MIN_VRAM_MB_EACH
+  - ABLIT_MIN_CC
+  - ABLIT_MIN_HOST_RAM_GB
+  - ABLIT_MIN_DISK_GB
+  - ABLIT_MIN_DOWNLOAD_MBPS
+  - ABLIT_CONTEXT_TOKENS
+  - ABLIT_RANDOM_READ_REQUIRED
+  - ABLIT_DELETE_PARTS        # 1 to delete the weight parts after they are joined
+  - ABLIT_DELETE_ENGRAM_SOURCE # 1 to delete the Engram source shards after extraction

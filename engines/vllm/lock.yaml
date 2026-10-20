@@ -1,0 +1,31 @@
+# Engine lock for vLLM. A catalog entry points here with `engine_lock: vllm-0.31`.
+name: vllm-0.31
+engine: vllm
+image: vllm/vllm-openai
+# TODO: confirm that this tag exists on the registry before first use.
+tag: v0.31.0
+# A digest must be pinned before first use. ablit refuses to rent with a null digest.
+digest: null
+min_version: "0.31.0"
+bind: 127.0.0.1
+api_key_variable: VLLM_API_KEY
+variables:
+  - ABLIT_RUN_ID
+  - ABLIT_MODEL_ID
+  - ABLIT_SERVED_NAME
+  - ABLIT_PORT
+  - ABLIT_ENDPOINT_KEY        # secret, passed by environment variable only
+  - ABLIT_DATA_DIR            # default /models
+  - ABLIT_STATE_DIR           # default /ablit
+  - ABLIT_CAP_USD
+  - ABLIT_HOURLY_RATE
+  - ABLIT_TRANSFER_PER_GB
+  - ABLIT_ADVERTISED_MBPS
+  - ABLIT_GPU_COUNT
+  - ABLIT_MIN_VRAM_MB_EACH
+  - ABLIT_MIN_CC
+  - ABLIT_MIN_HOST_RAM_GB
+  - ABLIT_MIN_DISK_GB
+  - ABLIT_MIN_DOWNLOAD_MBPS
+  - ABLIT_CONTEXT_TOKENS
+  - ABLIT_RANDOM_READ_REQUIRED

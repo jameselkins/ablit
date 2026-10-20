@@ -1,0 +1,12 @@
+[importlinter]
+root_package = ablit
+include_external_packages = False
+
+[importlinter:contract:no-referral-in-planning]
+name = Planning and backend code must not import referral code
+type = forbidden
+source_modules =
+    ablit.select
+    ablit.backends
+forbidden_modules =
+    ablit.referral

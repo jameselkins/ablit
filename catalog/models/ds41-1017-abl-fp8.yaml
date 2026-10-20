@@ -1,0 +1,93 @@
+# Seed entry. Status is unverified. Nobody has booted this entry.
+# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Sizes and hashes were filled in by tools/verify_entry.py --fill.
+schema: 1
+id: ds41-1017-abl-fp8
+display_name: DeepSeek-V4.1-Flash 1017, abliterated FP8 (vLLM)
+source:
+  repo: mrfakename/DeepSeek-V4.1-Flash-1017-abliterated
+  revision: 517efab9ccfef7f714dbd7d679f181a86f43ccf9
+  license: mit
+  base_model: deepseek-ai/DeepSeek-V4.1-Flash-1017
+  modification: abliterated
+artifacts:
+  - {path: model-00001-of-00048.safetensors, bytes: 970533624, sha256: 13bd121075f0b68cb7e8e8021a1011d42a81a83f557a2602fd9c07d52fddb0ec, role: weight}
+  - {path: model-00002-of-00048.safetensors, bytes: 1323858272, sha256: 43616eebd88dd4f1f1b642772356fc160478d1d9d04edd240431e7d065d2eda7, role: weight}
+  - {path: model-00003-of-00048.safetensors, bytes: 7389759032, sha256: bd117c3ff115555a66d6630a2870813376aff4365149ccdfed13f1e45b9392e5, role: weight}
+  - {path: model-00004-of-00048.safetensors, bytes: 7389759032, sha256: 90e618e680a858f4005cbb4a332ca24330ccc1541d6317c6366ef277537753f0, role: weight}
+  - {path: model-00005-of-00048.safetensors, bytes: 7405953784, sha256: d7c06648b60e00bc8e4c42d3b10064b18d51b7a50f8735034861c99f58f93375, role: weight}
+  - {path: model-00006-of-00048.safetensors, bytes: 7389759032, sha256: d208d5315ad9940c18a95bbd7ad9f0a12858d0e0a79e57ab16b1000d5f16942a, role: weight}
+  - {path: model-00007-of-00048.safetensors, bytes: 7389759032, sha256: ff753efe09ed6ff1baa2376ff9878bdc6bd4a65f604acae0ab4239483025ce5f, role: weight}
+  - {path: model-00008-of-00048.safetensors, bytes: 7389759032, sha256: e2bf104946a1ffe819e3e071d18c797add7c761dc2e8e47fd04ace6fdd0b1eeb, role: weight}
+  - {path: model-00009-of-00048.safetensors, bytes: 7389759032, sha256: 51e4da52b4f82be5ccb323fc686d07eb6516df3915d50643e2332603d3c5bf58, role: weight}
+  - {path: model-00010-of-00048.safetensors, bytes: 7389759032, sha256: dbb3ba124860c1637ea18f22cd1fb89ed5c69eb6851cee3e6eedd2e2baa5d114, role: weight}
+  - {path: model-00011-of-00048.safetensors, bytes: 7405953784, sha256: 0302b1b17c383b7961c7f7a51855b1821c3ba5d7b52afb36c954e10402b79294, role: weight}
+  - {path: model-00012-of-00048.safetensors, bytes: 7389759032, sha256: 7ee2dffd15364136ebf278213e0fa262374c9614603ea38d34f3222f611d9187, role: weight}
+  - {path: model-00013-of-00048.safetensors, bytes: 7389761368, sha256: c7d1e7038d4cae69796cf7c6f67904ca4db1dd7d964590e5575efa5d47d33073, role: weight}
+  - {path: model-00014-of-00048.safetensors, bytes: 7389761368, sha256: 14946f8eafecc084f3fc7f009ac718b86dea8022db90b97f9e5eb916c0503bc7, role: weight}
+  - {path: model-00015-of-00048.safetensors, bytes: 7389761368, sha256: a7d4552c97f1bbc18c5b3622ac9ba4017b8708912d03a13e5e9853142f9c4675, role: weight}
+  - {path: model-00016-of-00048.safetensors, bytes: 7389761368, sha256: 0c2331d1f419c33efdc08a06cf1837af3ee144aa1ff24e3640a86dfcf73aec8f, role: weight}
+  - {path: model-00017-of-00048.safetensors, bytes: 7405956128, sha256: 80ee29c22fdf7dbe963051f92d7c22d051d370654e96e474ebd4fcab31f094d8, role: weight}
+  - {path: model-00018-of-00048.safetensors, bytes: 7389761368, sha256: c946617eacbe46d96c6e3a9a43bc59d0a02faefdfa57408d9f05bbb636bc2e37, role: weight}
+  - {path: model-00019-of-00048.safetensors, bytes: 7389761368, sha256: 39ec56c08683ffc2eba312bca764a3048c23113ac1ffc027fd64db4951d51cc8, role: weight}
+  - {path: model-00020-of-00048.safetensors, bytes: 7389761368, sha256: 9f3eafccf2ef89aff9ec1e60b340edbaf7103c49807e651a1a4d096ccd7b0595, role: weight}
+  - {path: model-00021-of-00048.safetensors, bytes: 7389761368, sha256: aa9c18a37382518c5e3c6ae66235e2d30c297e82a1ba1f1c12d2a907f6e4d474, role: weight}
+  - {path: model-00022-of-00048.safetensors, bytes: 7389761368, sha256: da816e93bd11f3cab0758d65b33444447e35b18786b365a6d2e282fa81d38c1e, role: weight}
+  - {path: model-00023-of-00048.safetensors, bytes: 7400713088, sha256: f06391a152492faca4697b3c88efc522fa413b72bb733e281240cadb57f56e3a, role: weight}
+  - {path: model-00024-of-00048.safetensors, bytes: 7389761368, sha256: 7df4f1852f6e8bd108c5a55058d4f0d9879e32c93fdc4662fb99de0a74d34fd6, role: weight}
+  - {path: model-00025-of-00048.safetensors, bytes: 7389761368, sha256: ba9a7a61947b6b051baaa8820b68ff937666ba77880084bceb107611ab9f66ff, role: weight}
+  - {path: model-00026-of-00048.safetensors, bytes: 7389761368, sha256: 57a43965c6cf835b7fdce2474b92b96232d0db7ba2befb4266632a4c8fb4c2d3, role: weight}
+  - {path: model-00027-of-00048.safetensors, bytes: 7395337384, sha256: 427a8237e68e7140c5a19e7af1e91d99846df2970637d633d73738306fe52ed6, role: weight}
+  - {path: model-00028-of-00048.safetensors, bytes: 7389761368, sha256: 15cd5396f54b89f82c8434185d81a679bb94e492112892a5992a300daea0b803, role: weight}
+  - {path: model-00029-of-00048.safetensors, bytes: 7389761368, sha256: 54888d8b21ab53bd1fb6f1b6cf82250cb5e35d9970b834bdb969a720613644c3, role: weight}
+  - {path: model-00030-of-00048.safetensors, bytes: 7389761368, sha256: 345be77e2796a6ef61f56b5525078c55b7e20b48708fdf59a2dae73431bb1ab0, role: weight}
+  - {path: model-00031-of-00048.safetensors, bytes: 7395337384, sha256: 0cf57ec644dfbf3e071d1a1b1eac4975cf062bd9594033e978fdfb1d611d0cc9, role: weight}
+  - {path: model-00032-of-00048.safetensors, bytes: 7389761368, sha256: da51f9b6bf75f9d45ad9321f79e48f6c5f5ddc91532512f329ce5ebc0755fb90, role: weight}
+  - {path: model-00033-of-00048.safetensors, bytes: 7389761368, sha256: a33524897e0b3eeebe5943264a9d99921386163b46a564b022e95a421086cb9e, role: weight}
+  - {path: model-00034-of-00048.safetensors, bytes: 7389761368, sha256: 1b645052250f6c191f0ec1f81b68d86580697d78b2a5aba209032cfa4d339549, role: weight}
+  - {path: model-00035-of-00048.safetensors, bytes: 7395337384, sha256: 1d6f963bb669159daddaf6b8929f6d3008105e21132704ef71d35bff3b005657, role: weight}
+  - {path: model-00036-of-00048.safetensors, bytes: 7389761368, sha256: bf69ab96c46cea9ae2938a02dbd784a2e419efd138fcd9e382e09413670bd078, role: weight}
+  - {path: model-00037-of-00048.safetensors, bytes: 7389761368, sha256: fa8d8ac041f5db83851dc8edc2ed1a7453216850ad1dd82183922fa65ffb561c, role: weight}
+  - {path: model-00038-of-00048.safetensors, bytes: 7389761368, sha256: 20dafa6204ea8ef5506d9152143ff80bf8e6f597c59ac5c2beb15f52a9a5d9ea, role: weight}
+  - {path: model-00039-of-00048.safetensors, bytes: 7395337384, sha256: ba623ea7c8d7492ffb0b31582972a87e19e4af8ac41e025b31c9a7fa27bdbb11, role: weight}
+  - {path: model-00040-of-00048.safetensors, bytes: 7389761368, sha256: cfb5cdee6be450445678ef0f5ef15c3ee93652b90e0bbbf58c502edd1477ffa8, role: weight}
+  - {path: model-00041-of-00048.safetensors, bytes: 7389761368, sha256: 9f3b22aaea6278f2b91d0608a30c5134385bacea313110fb83862f189d17ca9c, role: weight}
+  - {path: model-00042-of-00048.safetensors, bytes: 7389761368, sha256: 88b7e8cab9fdea4c7dace68007c2ec55870e3751c0f09d51ae89edff02b36c5c, role: weight}
+  - {path: model-00043-of-00048.safetensors, bytes: 1323837624, sha256: 4ae12b941c3facf8616ce62dd45bc6868076c2aeb82106f98123ea6c5bb64182, role: weight}
+  - {path: model-00044-of-00048.safetensors, bytes: 2652728736, sha256: 3e8ac315c2bcca3e83c5e6e25c5758a75c03732063a6ff0c1b0e24b9ff49f6e6, role: weight}
+  - {path: model-00045-of-00048.safetensors, bytes: 2573998176, sha256: 9c73b27c4343236790008979d5e0b565f687aa64440031b9e096fed1ab8039c5, role: weight}
+  - {path: model-00046-of-00048.safetensors, bytes: 2706402896, sha256: 1dccc19a3741972c661de734572dc7d4b899e6e99bfbdf3ae4e057c707e5b339, role: weight}
+  - {path: model-00047-of-00048.safetensors, bytes: 101535150936, sha256: 76a05106ece259be83d1bfea0dcb54f23377864ee60fd321690f35e6698a2af5, role: weight}
+  - {path: model-00048-of-00048.safetensors, bytes: 101537926640, sha256: 9dc51433e195bc78b5ad846b68643cc0351d3b174e5e4309222d3b7402c83afd, role: weight}
+  - {path: config.json, bytes: 3311, sha256: 8be45ce0476004a3f529fd896115a4a2e800a129ad2d3ec05b16050f52e21879, git_blob_id: 09917a9139b22d5bf8be52132787f435147b1020, role: config}
+  - {path: model.safetensors.index.json, bytes: 7470294, sha256: 74b0686a3d2891980d5e303251b075a3bccae2c2ff650747db2620a649b98fa8, git_blob_id: 54c85064dd92c8550471302e9ae59bedbbf96ca4, role: config}
+  - {path: tokenizer.json, bytes: 6367257, sha256: c90dfa01249db1be4245780a052ede752e1361c612ac6d08e2bdada7d599476b, git_blob_id: 6a15814dd25c934028034531da744c689f87ff21, role: tokenizer}
+  - {path: tokenizer_config.json, bytes: 801, sha256: 6ac8c8dc065ed118161d02dd532749ae3f52c243deac27872134fae2f50d8547, git_blob_id: f3dad388a2bbfd6a8605bd02754acd86d9ca5112, role: tokenizer}
+staging:
+  - {step: download, artifacts: all}
+profile:
+  engine: vllm
+  engine_lock: vllm-0.31
+  gpu: {vendor: nvidia, count: 8, vram_gb_each: 80, vram_gb_total: 614, compute_capability_min: 9.0}
+  host_ram_gb: 256
+  storage: {random_read_required: false}
+  context_tokens: 4096
+  concurrency: 1
+  port: 8000
+  startup_hours_estimate: 1.5
+  min_download_mbps: 500
+sources:
+  - {url: "https://github.com/vllm-project/recipes/blob/d2b96f40fc6c719cddd1fb043180b70e09e2ae7c/models/deepseek-ai/DeepSeek-V4.1-Flash.yaml", covers: ["profile.gpu.*", profile.host_ram_gb, profile.port, profile.startup_hours_estimate], note: "vLLM recipe for the official 1017 checkpoint. It states 614 GB as the minimum VRAM, and 8 GPUs with 80 GB each as the smallest NVIDIA node."}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.min_download_mbps], note: Defaults chosen by ablit.}
+  - https://huggingface.co/mrfakename/DeepSeek-V4.1-Flash-1017-abliterated/blob/517efab9ccfef7f714dbd7d679f181a86f43ccf9/README.md
+  - https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. They come from the vLLM recipe for the official 1017 checkpoint and from arithmetic on it.
+  - The 614 GB figure is the recipe's vram_minimum_gb. The smallest NVIDIA node the recipe lists is 8 GPUs with 80 GB each, with the Engram tables moved to host memory.
+  - The 256 GB host RAM floor is derived from the 183 GiB of Engram tables that the recipe keeps in pinned host memory, plus headroom. Nobody has measured the real minimum.
+  - Compute capability 9.0 is derived from the node types in the recipe, which are Hopper and newer. The recipe does not say that older GPUs fail.
+  - Serving this exact repo with vLLM is untested. Its config and weight index match the official 1017 model, which vLLM supports.
+  - The recipe warns that a first boot can run a long autotune, so the startup estimate is a guess.
+  - The refusal numbers on the model card were measured on a GGUF file, not on these FP8 files.

@@ -1,0 +1,72 @@
+# Seed entry. Status is unverified. Nobody has booted this entry.
+# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Sizes and hashes were filled in by tools/verify_entry.py --fill.
+schema: 1
+id: ds41-1017-xq-v3-uncensored
+display_name: DeepSeek-V4.1-Flash 1017, XQ V3 uncensored quant (Xolotl)
+source:
+  repo: IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored
+  revision: 9d3c01d86709261e51d566b02e1dda75f40d009a
+  license: mit
+  base_model: deepseek-ai/DeepSeek-V4.1-Flash-1017
+  modification: abliterated
+artifacts:
+  - {path: v3/V41-XQ-1017-v3.gguf.part-01-of-16, bytes: 10737418240, sha256: 3b909e5804f7cee17dff90d834339cc5f2745bf4082e92a54d617e0bc540e07f, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-02-of-16, bytes: 10737418240, sha256: a98d6fc580aa12ea9b796b89e2aeaa2eb4ad840d9d549a834a119a9887c4bfbe, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-03-of-16, bytes: 10737418240, sha256: fe1b44c6d753efef260a19faf047f9613da0263d6a176afe1ac4e06e1a172e08, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-04-of-16, bytes: 10737418240, sha256: b11395be1cffce5e96e24fe56e53cc13ebc246d807b4ecd8bbfedb1c5f6fbae9, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-05-of-16, bytes: 10737418240, sha256: 59d0856bda06f52d9d45a8593ee0eff1cf6bd45d81e9c6f8a7b034ef8c468118, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-06-of-16, bytes: 10737418240, sha256: 8003ba0eeb809fbc53c9781edc564d37b64e8df819614e4c4e85d4686fc939e5, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-07-of-16, bytes: 10737418240, sha256: 81e613b5dba0bb01ec28a727120e1a340fb7c4ee73e19d54d9c681041e4d1a59, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-08-of-16, bytes: 10737418240, sha256: 919e67dae0586e553c7b510fb5405b27540dbe0bb80684f0c0c5b1757d5a0e45, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-09-of-16, bytes: 10737418240, sha256: 154021ddee57736cb4ea2a91b767c3c481bdade5402e88f922b2032fac513288, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-10-of-16, bytes: 10737418240, sha256: 156732d47d6612c2cb2ab2f9b24d76896ba8c0a5d893acb2d15b8b7d2c878b7a, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-11-of-16, bytes: 10737418240, sha256: 4d5cf4f47b1eb6996f028c14bfbaff2ff09d9be1959ed28226ce741983780813, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-12-of-16, bytes: 10737418240, sha256: 11d8ef317984113eb391cc0c91b0b7a513df49bc2a61bd182a79e7816c1d2e69, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-13-of-16, bytes: 10737418240, sha256: c8eb89c431e8fc38929ff00fb27dcd44fd72c2b455141b815eef2da022f5a4ec, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-14-of-16, bytes: 10737418240, sha256: 77aa8461419c5ccd628e1e8d530e8d84a8e1695b2195cd74b6ee62a4eebd2e93, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-15-of-16, bytes: 10737418240, sha256: ad0a9e2fb29bdfbf840e9dfff4a9aed5707d2b0c550d3f5a6da5238d9f9ef032, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.part-16-of-16, bytes: 1893629952, sha256: f18cb36f58df260c4d41b4a9055f827e79814efeb893250baad35a29578baa53, role: weight}
+  - {path: v3/V41-XQ-1017-v3.gguf.experts.json, bytes: 1225787, sha256: 1668115fac6a61559ee02f172c2f64b35dcd3eca3f2fb6d6893589252e73fe99, git_blob_id: 2849250249447527d75a8197e8c83dbd4bcc5c0e, role: expert-map}
+  - {path: v3/SHA256SUMS, bytes: 1686, sha256: 0fb5396dd132bd987a587ed79d1988fb84f035bf14a7d59f06e377ca10059fc0, git_blob_id: 05ad288e2d851cd383145dd0267873191c9ebd2d, role: checksum}
+  - {path: v3/reassemble.sh, bytes: 2122, sha256: d7e892de6faa8bd681d6fbe8c2edb1aa9640f8658e83f3e62f1b246fbbac3ae7, git_blob_id: f18dca584265530a870f16c42b3511c262f50d59, role: script}
+  - {path: v3/rank-1017-v3.bin, bytes: 122880, sha256: 6b7771aabc739b636a83e7d8c0da086734c0d1328779f5942cac87239e68ec27, role: rank}
+  - {path: tokenizer/chat_template.jinja, bytes: 91, sha256: fd11177c081d8f1fe8f74302ce8d08e840bb5f07ba1cbfb93a2a1e8583c3ec5e, git_blob_id: 95ece312e7c89700c34a784a4b9a20d4d9b08132, role: tokenizer}
+  - {path: tokenizer/merges.txt, bytes: 1504833, sha256: 547bace837acea98652eef5669c9b01cee1c73ad1d2a44d6fdce9e6a81c22147, git_blob_id: 458716d3c1dc78fe1f67c15b283fb7c2a841e980, role: tokenizer}
+  - {path: tokenizer/token_type.json, bytes: 387840, sha256: 50bd0c477193145a1cd597623fe7d842e609e6b787ad49b7819cadca09a18ed6, git_blob_id: ed1dd5b95f1bae44385b1294daf0692112405c7c, role: tokenizer}
+  - {path: tokenizer/vocab.json, bytes: 2730577, sha256: 2f0bf5b31f4aa191d5d0d78291927a4f28c9ceb498a5e345b97e926c4cb99c1a, git_blob_id: a6d70cc383e225bb4b4abfede17d300bbb09b123, role: tokenizer}
+  - {path: V41-MTP-Vision-1017.Q2_K.gguf, bytes: 5661492320, sha256: 5f92242e2ebed06e6831bbcae4e35e679c9138cdf6df0c8b36e8013c99c79a34, role: draft}
+  - {repo: deepseek-ai/DeepSeek-V4.1-Flash-1017, revision: 1bae0e1088993b9b82de08f59de5be5a34e42170, path: model-00047-of-00048.safetensors, bytes: 101535150936, sha256: 76a05106ece259be83d1bfea0dcb54f23377864ee60fd321690f35e6698a2af5, role: engram-source}
+  - {repo: deepseek-ai/DeepSeek-V4.1-Flash-1017, revision: 1bae0e1088993b9b82de08f59de5be5a34e42170, path: model-00048-of-00048.safetensors, bytes: 101537926640, sha256: 9dc51433e195bc78b5ad846b68643cc0351d3b174e5e4309222d3b7402c83afd, role: engram-source}
+staging:
+  - {step: download, artifacts: all}
+  - {step: join, inputs: [weight], output_bytes: 162954903552, delete_inputs_after: true}
+  - {step: engram-extract, inputs: [engram-source], output_bytes: 202758032912, keeps_inputs_until_done: true, delete_inputs_after: true}
+profile:
+  engine: xolotl
+  engine_lock: xolotl-63fc34c
+  gpu: {vendor: nvidia, count: 1, vram_gb_each: 24, compute_capability_min: 7.5}
+  host_ram_gb: 90
+  host_ram_gb_recommended: 256
+  storage: {random_read_required: true}
+  context_tokens: 4096
+  concurrency: 1
+  port: 8150
+  startup_hours_estimate: 0.5
+  min_download_mbps: 500
+sources:
+  - {url: "https://github.com/Indras-Mirror/Xolotl/blob/63fc34c6ea839d3e78e765b3e3aa72173116d352/README.md", covers: ["profile.gpu.*", profile.host_ram_gb, profile.host_ram_gb_recommended, profile.port], note: "Author's README at the pinned engine commit. The figures come from one machine the author measured."}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The startup time is an estimate that includes building or fetching the engine.}
+  - https://huggingface.co/IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored/blob/9d3c01d86709261e51d566b02e1dda75f40d009a/README.md
+  - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. They come from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
+  - The README says 16 GB of VRAM should load but is untested, so the floor here stays at 24 GB.
+  - Peak disk comes from the staging list. It assumes the weight parts are deleted after they are joined and the Engram source shards are deleted after extraction, and that extraction needs both source shards on disk until it finishes.
+  - The size of the extracted Engram tables is taken from the pre-extracted tables in the kaushikvira repo. It is assumed to match the other builds and has not been measured for them.
+  - The engine is single-developer research code, and its speed numbers come from one machine.
+  - This entry lists only the v3/ directory, the tokenizer files, the rank file, the Q2_K draft file and the two Engram source shards. The repo also holds the other build, which is a separate entry.
+  - The repo was renamed from GSQ to XQ on 2026-10-19, and old file paths at its root now return 404. The revision is pinned because the repo changes often.
+  - The author's model card reports a regression against the September build on two of five tasks in a short agentic test, and says the cause is not isolated yet.

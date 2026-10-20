@@ -1,0 +1,56 @@
+# Seed entry. Status is unverified. Nobody has booted this entry.
+# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Sizes and hashes were filled in by tools/verify_entry.py --fill.
+schema: 1
+id: ds41-1017-gsq-agentic-strata
+display_name: DeepSeek-V4.1-Flash 1017, agentic GSQ quant, unmodified base (Xolotl)
+source:
+  repo: kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata
+  revision: 7aa29158172112fcdccb4c519eb31fdc4bb9238c
+  license: mit
+  base_model: deepseek-ai/DeepSeek-V4.1-Flash-1017
+  modification: quantized
+artifacts:
+  - {path: V41-GSQ-1017.gguf.part-00, bytes: 96636764160, sha256: 88065b84e3d30b1fd3d28f3314631755f350c9732f76118f969985b942b724b1, role: weight}
+  - {path: V41-GSQ-1017.gguf.part-01, bytes: 77722075136, sha256: b3d71cd1b3bdcfb84bb36fabc996e3243780946720b6b3b5bab94cf5c78054ea, role: weight}
+  - {path: V41-GSQ-1017.gguf.experts.json, bytes: 1226894, sha256: 9f72bdbf14130a3735e7b5d849f359908868f857ab94d5473ce2eb23011cf7b2, git_blob_id: 1664eff1b351cfcb77f6e9cce35f0b4b7905ad92, role: expert-map}
+  - {path: V41-GSQ-1017.gguf.recombine.sh, bytes: 457, sha256: 41364c84225607be8eaba0ca9c1cf2fbf94368b4e4597b5e91d303a0df90b2c4, git_blob_id: 33909c7de821efd62a7992d67e698edb9c10eb93, role: script}
+  - {path: SHA256SUMS, bytes: 848, sha256: 2fc5fde9a0079db701546c3031b1ffc89dde0c9d7b28541048673151548f87ca, git_blob_id: 5bc379b6704ad7a6d07463093dddc62eba156411, role: checksum}
+  - {path: rank.bin, bytes: 122880, sha256: e77ca111578ea18321551f9eda419d36d7456a30e4912a1fc6895f7be652c908, role: rank}
+  - {path: config.json, bytes: 3311, sha256: 8be45ce0476004a3f529fd896115a4a2e800a129ad2d3ec05b16050f52e21879, git_blob_id: 09917a9139b22d5bf8be52132787f435147b1020, role: config}
+  - {path: tokenizer/chat_template.jinja, bytes: 91, sha256: fd11177c081d8f1fe8f74302ce8d08e840bb5f07ba1cbfb93a2a1e8583c3ec5e, git_blob_id: 95ece312e7c89700c34a784a4b9a20d4d9b08132, role: tokenizer}
+  - {path: tokenizer/merges.txt, bytes: 1504833, sha256: 547bace837acea98652eef5669c9b01cee1c73ad1d2a44d6fdce9e6a81c22147, git_blob_id: 458716d3c1dc78fe1f67c15b283fb7c2a841e980, role: tokenizer}
+  - {path: tokenizer/token_type.json, bytes: 387840, sha256: 50bd0c477193145a1cd597623fe7d842e609e6b787ad49b7819cadca09a18ed6, git_blob_id: ed1dd5b95f1bae44385b1294daf0692112405c7c, role: tokenizer}
+  - {path: tokenizer/vocab.json, bytes: 4399767, sha256: 4f0a62a7b47cbb2fa1f9f90a124afa6f17d6350da891f4e6f7d9adbcac897bad, git_blob_id: 593c4e270210921a1f8be5cbba35b7554b7d31c8, role: tokenizer}
+  - {path: V41-MTP-Vision-1017.Q2_K.gguf, bytes: 5661492320, sha256: 46eb03c6bd69b8ea313ed9c3b2fd618721c044661613d9ff0845a4911454d7ec, role: draft}
+  - {path: engram-layers.1/engram-L1.safetensors, bytes: 101377628584, sha256: 5cc4ca3be6302a50597684d234dd47ae7ff7b3a5b42d386515b58f4ecd17662b, role: engram}
+  - {path: engram-layers.1/model.safetensors.index.json, bytes: 308, sha256: 3588c9f850c8f4053e6b127e20a39d9c959ca77e4b096478ffdfe87552dacc91, git_blob_id: 0f11f51e3dec27b3b6c5e7f22c993026ea4c6e1a, role: config}
+  - {path: engram-layers.14/engram-L14.safetensors, bytes: 101380404328, sha256: 35c6bb1c15139a691d530c4ea469d1983031074c1a84b4e7f7668fef2015b68b, role: engram}
+  - {path: engram-layers.14/model.safetensors.index.json, bytes: 308, sha256: 3588c9f850c8f4053e6b127e20a39d9c959ca77e4b096478ffdfe87552dacc91, git_blob_id: 0f11f51e3dec27b3b6c5e7f22c993026ea4c6e1a, role: config}
+staging:
+  - {step: download, artifacts: all}
+  - {step: join, inputs: [weight], output_bytes: 174358839296, delete_inputs_after: true}
+profile:
+  engine: xolotl
+  engine_lock: xolotl-63fc34c
+  gpu: {vendor: nvidia, count: 1, vram_gb_each: 24, compute_capability_min: 7.5}
+  host_ram_gb: 90
+  host_ram_gb_recommended: 256
+  storage: {random_read_required: true}
+  context_tokens: 4096
+  concurrency: 1
+  port: 8150
+  startup_hours_estimate: 0.5
+  min_download_mbps: 500
+sources:
+  - {url: "https://github.com/Indras-Mirror/Xolotl/blob/63fc34c6ea839d3e78e765b3e3aa72173116d352/README.md", covers: ["profile.gpu.*", profile.host_ram_gb, profile.host_ram_gb_recommended, profile.port], note: "Author's README at the pinned engine commit. The figures come from one machine the author measured."}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The startup time is an estimate that includes building or fetching the engine.}
+  - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. They come from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
+  - The model card reports its own speed only on a 72 GB GPU with a 108 GiB arena, so a 24 GB GPU with 90 GB of RAM is not tested by the author of this build.
+  - The card says this is a quantization with no fine-tuning and no abliteration. Refusal behavior is inherited from the base model.
+  - This repo holds the Engram tables already extracted, so the staging list has no extraction step.
+  - The card's 153 GiB figure is the expert budget. The joined file is larger.

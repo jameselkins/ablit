@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ablit"
+version = "0.0.0"
+description = "Find the cheapest rented GPU machine that can run a model, and start it with an OpenAI-compatible endpoint."
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "James Elkins" }]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "httpx",
+    "pyyaml",
+    "pydantic>=2",
+    "keyring",
+    "huggingface_hub",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "hypothesis",
+    "respx",
+    "import-linter",
+]
+
+[project.scripts]
+ablit = "ablit.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ablit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

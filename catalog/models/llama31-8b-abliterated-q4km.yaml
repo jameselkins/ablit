@@ -1,0 +1,39 @@
+# Seed entry. Status is unverified. Nobody has booted this entry.
+# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Sizes and hashes were filled in by tools/verify_entry.py --fill.
+schema: 1
+id: llama31-8b-abliterated-q4km
+display_name: Llama 3.1 8B Instruct abliterated, Q4_K_M GGUF (llama.cpp)
+source:
+  repo: mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF
+  revision: 9a44c6b2a6e355dfd5beea6f5d5ad47412b632da
+  license: llama3.1
+  base_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  modification: abliterated
+artifacts:
+  - {path: meta-llama-3.1-8b-instruct-abliterated.Q4_K_M.gguf, bytes: 4920734784, sha256: c4735f9efaba8eb2c30113291652e3ffe13bf940b675ed61f6be749608b4f266, role: weight}
+staging:
+  - {step: download, artifacts: all}
+profile:
+  engine: llamacpp
+  engine_lock: llamacpp-server-cuda
+  gpu: {vendor: nvidia, count: 1, vram_gb_each: 8, compute_capability_min: null}
+  host_ram_gb: 16
+  storage: {random_read_required: false}
+  context_tokens: 4096
+  concurrency: 1
+  port: 8080
+  startup_hours_estimate: 0.25
+  min_download_mbps: 500
+sources:
+  - {url: "https://huggingface.co/api/models/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF/revision/9a44c6b2a6e355dfd5beea6f5d5ad47412b632da?blobs=true", covers: [profile.gpu.count, profile.gpu.vram_gb_each], note: VRAM is derived from the 4.92 GB file plus key-value cache arithmetic for a Llama 3.1 8B model at short context. The arithmetic has not been tested.}
+  - {url: "https://github.com/ggml-org/llama.cpp/blob/dd002b91f583af0b80140f9a140dc04856bfc2e0/tools/server/README.md", covers: [profile.port], note: Default server port in the llama.cpp server README at the pinned commit.}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: No publisher states these. They are defaults or estimates chosen by ablit.}
+  - https://huggingface.co/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF/blob/9a44c6b2a6e355dfd5beea6f5d5ad47412b632da/README.md
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. They are derived from the file size and key-value cache arithmetic.
+  - This is a 2024 build. Check that the chat template inside the GGUF matches the current llama.cpp template for Llama 3.1.
+  - The model license has use restrictions and requires attribution. Read it before you redistribute anything.
+  - This entry is the planned first paid test target.

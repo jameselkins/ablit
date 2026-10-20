@@ -1,0 +1,59 @@
+# Seed entry. Status is unverified. Nobody has booted this entry.
+# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Sizes and hashes were filled in by tools/verify_entry.py --fill.
+schema: 1
+id: llama33-70b-fp8-dynamic
+display_name: Llama 3.3 70B Instruct, FP8 dynamic quant (vLLM)
+source:
+  repo: RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic
+  revision: f50dbad2c84590ca17dc51e207c34321b65ff14b
+  license: llama3.3
+  base_model: meta-llama/Llama-3.3-70B-Instruct
+  modification: quantized
+artifacts:
+  - {path: model-00001-of-00015.safetensors, bytes: 4819901056, sha256: 26553c819170dddaad40ddcb19ca9e6c59d84cd756e10b510646b760b3a4fb9c, role: weight}
+  - {path: model-00002-of-00015.safetensors, bytes: 4984010552, sha256: 70ccbc9a84eea03b88749fae8d3088027f83ef2fb4957ebd8babf7bcde9494c4, role: weight}
+  - {path: model-00003-of-00015.safetensors, bytes: 4900112736, sha256: bdcc191e6a64d0db47f2971435f2e83482fdc9fb50bb17ceebd8c2617d29c68a, role: weight}
+  - {path: model-00004-of-00015.safetensors, bytes: 4900104792, sha256: 89b9dfccba407aa0493bf9cd093c24f9906398abc8111dd4fdfdd2c2f031f9b2, role: weight}
+  - {path: model-00005-of-00015.safetensors, bytes: 4900104792, sha256: ae8fae8a41de7bb834a58041415385f74524c14c675d80747205008625231c21, role: weight}
+  - {path: model-00006-of-00015.safetensors, bytes: 4984010640, sha256: 36fcbf7a4216d390a1b92dc9f2e9349dfc5087100d89aa6fab77682f53fec178, role: weight}
+  - {path: model-00007-of-00015.safetensors, bytes: 4900112760, sha256: 4baae3a6459a67c1aba3376631d0cca747c6e32de416f2c464487ee45a418025, role: weight}
+  - {path: model-00008-of-00015.safetensors, bytes: 4900104792, sha256: 7e27734cb30d49febc50747a3a43efb9de7fb3cc7ef12b512fd230941e6ddd21, role: weight}
+  - {path: model-00009-of-00015.safetensors, bytes: 4900104792, sha256: 3cd5870c784f91a31c9b757ce250a109c438bc7524f8b3d9a4f8e4bd6eba4ece, role: weight}
+  - {path: model-00010-of-00015.safetensors, bytes: 4984010640, sha256: 4d21e7fcf1a92809d0bff7be1dcab52336cfedf0d9effc8f54862211439e7ce2, role: weight}
+  - {path: model-00011-of-00015.safetensors, bytes: 4900112760, sha256: 398592a4cbd134680fb8f88733d110ea5d3e73f85a4057a1a648b1794f96f394, role: weight}
+  - {path: model-00012-of-00015.safetensors, bytes: 4900104792, sha256: 397305cb87ab436e4bf30b4661645d7225ff4d374cc328c1d4aebae176619489, role: weight}
+  - {path: model-00013-of-00015.safetensors, bytes: 4900104792, sha256: a8a17b3cdc855b678c65c6df06885ac6bcc3620af49123e2037041c18f082f9e, role: weight}
+  - {path: model-00014-of-00015.safetensors, bytes: 4984010640, sha256: f8c1e80316ea40fd6333f9d8c7bc790851c8e4c8f7fb029e0f4cfef54ed49523, role: weight}
+  - {path: model-00015-of-00015.safetensors, bytes: 3813044168, sha256: 911fbc0804ed3a4d48c6824c92af512de48926d07ce5878e44f72300bbbb79cb, role: weight}
+  - {path: config.json, bytes: 2000, sha256: 4e40841319f71450c8b698c297be7cc89e52473ff7de904274f0add9545c78fd, git_blob_id: 6faeb7d89bb58604f2e82c84168937001a505f3e, role: config}
+  - {path: generation_config.json, bytes: 184, sha256: 89c8864a358b71da10de929109451fc9ad6a6facfda6bf09918ea54c8dd64bf4, git_blob_id: 0497cbb61179aa588915b4a56df71500e0abbc41, role: config}
+  - {path: model.safetensors.index.json, bytes: 108504, sha256: fcde01c04860007d9a522fbb4f9c161be84e26395e1b49847a7ea32b97bdfa24, git_blob_id: 73cfb109ff1638a2b2a3cc2c359a00b5a1c2fc30, role: config}
+  - {path: special_tokens_map.json, bytes: 454, sha256: 94e708c3f5e64acf85bbe5ad01467a1248faadb73e83b41793087ecced586e8f, git_blob_id: 3c1d04911c269b925af977a3151c9704e990e4d0, role: tokenizer}
+  - {path: tokenizer.json, bytes: 17210019, sha256: 384a7e7c676f7be2e5d2e8449c508be9b00e5b18c5b3c39ebc626e96b3f4b988, role: tokenizer}
+  - {path: tokenizer_config.json, bytes: 55425, sha256: 5c756ad6048c884974a331963ae3c3e1624b548a11174dadda02a69041c87352, git_blob_id: 41cd8d1ca52c3fc5feaf8445ca922b27f8e8ea8b, role: tokenizer}
+staging:
+  - {step: download, artifacts: all}
+profile:
+  engine: vllm
+  engine_lock: vllm-0.31
+  gpu: {vendor: nvidia, count: 2, vram_gb_each: 48, vram_gb_total: 96, compute_capability_min: 8.9}
+  host_ram_gb: 64
+  storage: {random_read_required: false}
+  context_tokens: 4096
+  concurrency: 1
+  port: 8000
+  startup_hours_estimate: 0.5
+  min_download_mbps: 500
+sources:
+  - {url: "https://github.com/vllm-project/vllm/blob/3897f95cf17619137536d2a7d325d9c2f39dc38f/docs/features/quantization/README.md", covers: [profile.gpu.compute_capability_min], note: "vLLM's quantization table. FP8 weights and activations run natively on Ada and Hopper, and older GPUs fall back to weight-only FP8."}
+  - {url: "https://huggingface.co/RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic/blob/f50dbad2c84590ca17dc51e207c34321b65ff14b/config.json", covers: [profile.gpu.count, profile.gpu.vram_gb_each, profile.gpu.vram_gb_total], note: VRAM is derived from the weight size plus key-value cache arithmetic on this config. The arithmetic has not been tested.}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.port, profile.startup_hours_estimate, profile.min_download_mbps], note: "No publisher states these. They are defaults or estimates chosen by ablit, and the port is vLLM's default."}
+  - https://huggingface.co/RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic/blob/f50dbad2c84590ca17dc51e207c34321b65ff14b/README.md
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. They are derived from the weight size and key-value cache arithmetic, not from a publisher statement.
+  - The model card's example uses one GPU. That cannot hold the weights plus a key-value cache on one 80 GB GPU at vLLM's default memory setting, so this entry uses two GPUs.
+  - Compute capability 8.9 is the conservative choice for native FP8. Ampere GPUs may work through weight-only FP8, and that is untested here.
+  - The model license has use restrictions and requires attribution. Read it before you redistribute anything.
