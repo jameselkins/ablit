@@ -13,6 +13,13 @@ import live_plan
 from market_fixtures import RUNPOD_URL, VAST_URL, FakeRunPod, FakeVast, runpod_type, vast_row
 
 
+@pytest.fixture(autouse=True)
+def _outside_ci(monkeypatch, request):
+    """Clear CI variables so each test checks one rule. The CI test sets its own."""
+    for name in live_plan.CI_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+
+
 def test_refuses_to_write_inside_the_repository(repo_root: Path, capsys):
     for target in (repo_root / "out", repo_root / "cli" / "tests" / "out", repo_root):
         assert live_plan.cli([str(target)]) == 2
