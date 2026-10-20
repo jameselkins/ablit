@@ -78,12 +78,12 @@ def test_commands_without_code_exit_2_and_say_so(capsys, argv):
     assert "not implemented yet" in err
 
 
-def test_plan_resolves_the_model_then_says_it_is_not_implemented(capsys):
+def test_plan_refuses_spot_until_a_round_trip_has_been_tested(capsys):
     code, out, err = run(capsys, "plan", "llama31-8b-abliterated-q4km", "--hours", "2", "--spot", "--trust", "verified",
                          "--min-download", "300", "--min-reliability", "0.9", "--region", "us", "--max-price-hr", "4",
                          "--backends", "vast,runpod", "--endpoint", "public", "--json")
     assert code == 2
-    assert "not implemented yet" in err
+    assert "--spot is disabled" in err
 
 
 def test_plan_for_a_model_outside_the_catalog_exits_3(capsys):

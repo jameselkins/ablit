@@ -1,14 +1,16 @@
 """Command-line entry point.
 
 Every command and flag from the specification is parsed here. The catalog
-commands work today. The other commands print "not implemented yet" to stderr
-and exit with code 2, because the code they need is not written.
+commands and `plan` work today. The other commands print "not implemented yet"
+to stderr and exit with code 2, because the code they need is not written.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Sequence
 
@@ -22,9 +24,14 @@ from ablit.catalog import (
     load_entry_file,
     resolve,
 )
+from ablit.backends import Backend, default_backends
 from ablit.catalog.models import Entry
 from ablit.catalog.staging import StagingError, compute_staging
 from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
+from ablit.plan import UnknownBackend, report_json, run_plan
+from ablit.plan_text import render
+from ablit.select import PlanOptions
+from ablit.select.request import request_from_entry
 
 CONTRIBUTING_URL = "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md"
 
@@ -74,7 +81,12 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--no-referral", action="store_true",
                        help="turn off all referral links, and save the setting")
 
-    plan = sub.add_parser("plan", help="show the cheapest qualifying offer. Rents nothing.")
+    plan = sub.add_parser(
+        "plan",
+        help="show the cheapest qualifying offer. Rents nothing.",
+        description="Search each marketplace, filter and rank the offers, and print the chosen offer and "
+                    "the next four with their full cost. Exits with code 3 when no offer qualifies.",
+    )
     _add_selection_flags(plan)
 
     up = sub.add_parser(
@@ -249,7 +261,71 @@ def _cmd_catalog_validate(args: argparse.Namespace) -> int:
     return exitcodes.OK
 
 
-def _cmd_selection(args: argparse.Namespace, command: str) -> int:
+def _plan_options(args: argparse.Namespace) -> PlanOptions | str:
+    """Build the planner options from the flags, or return a message describing a bad flag."""
+    if args.spot:
+        return "--spot is disabled until a spot round trip has been tested"
+    if not args.hours > 0:
+        return "--hours must be above zero"
+    for flag, value in (("--min-download", args.min_download), ("--max-price-hr", args.max_price_hr),
+                        ("--max-spend", args.max_spend)):
+        if value is not None and not value > 0:
+            return f"{flag} must be above zero"
+    if args.min_reliability is not None and not 0 <= args.min_reliability <= 1:
+        return "--min-reliability must be between 0 and 1"
+    return PlanOptions(
+        hours=args.hours,
+        spot=False,
+        trust=args.trust,
+        min_reliability=args.min_reliability,
+        region=args.region.upper() if args.region else None,
+        max_price_hr=args.max_price_hr,
+        min_download_mbps=args.min_download,
+    )
+
+
+def _cmd_plan(
+    args: argparse.Namespace,
+    entry: Entry,
+    backends: Mapping[str, Backend] | None,
+    environ: Mapping[str, str] | None,
+) -> int:
+    opts = _plan_options(args)
+    if isinstance(opts, str):
+        print(f"ablit plan: {opts}", file=sys.stderr)
+        return exitcodes.USAGE
+    try:
+        req = request_from_entry(entry)
+    except StagingError as error:
+        print(f"ablit plan: {entry.id} cannot be planned yet. {error}", file=sys.stderr)
+        return exitcodes.USAGE
+    owned = backends is None
+    available = default_backends() if backends is None else backends
+    try:
+        report = run_plan(entry, req, opts, available, wanted=args.backends, max_spend=args.max_spend,
+                          environ=environ)
+    except UnknownBackend as error:
+        print(f"ablit plan: {error}", file=sys.stderr)
+        return exitcodes.USAGE
+    finally:
+        if owned:
+            for backend in available.values():
+                close = getattr(backend, "close", None)
+                if close is not None:
+                    close()
+    if args.json:
+        print(json.dumps(report_json(report), indent=2))
+    else:
+        print(render(report), end="")
+    return exitcodes.OK if report.ranked else exitcodes.NOT_SUPPORTED
+
+
+def _cmd_selection(
+    args: argparse.Namespace,
+    command: str,
+    backends: Mapping[str, Backend] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> int:
     result = _load(args.catalog)
     if result is None:
         return exitcodes.USAGE
@@ -275,10 +351,18 @@ def _cmd_selection(args: argparse.Namespace, command: str) -> int:
         if entry.status == "unverified" and not args.untested:
             print(f"ablit up: {entry.id} is unverified. Pass --untested to run it anyway.", file=sys.stderr)
             return exitcodes.USAGE
+    if command == "plan":
+        return _cmd_plan(args, entry, backends, environ)
     return _not_implemented(command)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    backends: Mapping[str, Backend] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> int:
+    """Run the command line. Tests pass `backends` to control the HTTP calls and `environ` to set keys."""
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -295,7 +379,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.parse_args(["catalog", "--help"])
         return exitcodes.USAGE
     if args.command in ("plan", "up"):
-        return _cmd_selection(args, args.command)
+        return _cmd_selection(args, args.command, backends, environ)
     return _not_implemented(args.command)
 
 

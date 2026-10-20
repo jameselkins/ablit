@@ -4,11 +4,11 @@ ablit is a command-line tool, still being built, for people who want to run a la
 
 Project status: planning complete, no command rents anything yet.
 
-The catalog commands work today, and so do the offer filtering, cost model, search rule, watchdog logic and secret filter that the other commands will use. The commands that rent, monitor and destroy machines print "not implemented yet" and exit with code 2. Every hardware floor in the catalog is labeled as not yet tested, because nobody has booted any of the seed entries.
+The catalog commands and `ablit plan` work today, and so do the offer filtering, cost model, search rule, watchdog logic and secret filter that the other commands will use. `ablit plan` reads live offers from Vast and RunPod with anonymous, read-only searches, and it rents nothing. The commands that rent, monitor and destroy machines print "not implemented yet" and exit with code 2. Every hardware floor in the catalog is labeled as not yet tested, because nobody has booted any of the seed entries.
 
 ## What ablit does
 
-ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. The marketplace drivers that fetch real offers are not written yet. A paid launch will need a terminal, because you must type `rent` to confirm the quote, and there is no `--yes` flag.
+ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. The marketplace drivers can search for offers today, and they cannot rent a machine yet. A paid launch will need a terminal, because you must type `rent` to confirm the quote, and there is no `--yes` flag.
 
 ## What ablit does not do
 
@@ -79,7 +79,7 @@ With `--endpoint public`, ablit uses the port that the marketplace maps to the m
 | Command | What it does |
 |---|---|
 | `ablit setup [backend]` | First-run account flow. Not written yet. |
-| `ablit plan <model>` | Shows the chosen offer and the next four. Rents nothing. Not written yet. |
+| `ablit plan <model>` | Shows the chosen offer and the next four, the totals for 1 hour, 24 hours, 7 days and `--hours`, and why other offers or backends were dropped. Rents nothing. Exits with code 3 when no offer qualifies. |
 | `ablit up <model>` | Plans, asks you to type `rent`, then rents, bootstraps and prints the endpoint. Not written yet. |
 | `ablit status [run]` | Run state, resource IDs, spend against the cap. Not written yet. |
 | `ablit logs [run]` | Logs from the machine with secrets removed. Not written yet. |

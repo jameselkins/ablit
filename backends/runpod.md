@@ -1,6 +1,6 @@
 # RunPod driver notes
 
-These notes describe what the RunPod driver will send and read. Nothing has been sent to RunPod yet, and the driver in `cli/ablit/backends/runpod.py` is a stub. Searching comes first, and renting follows only after a round-trip test. Each detail below is a plan to confirm against a live response.
+These notes describe what the RunPod driver sends and reads. The search code in `cli/ablit/backends/runpod.py` was checked on 2026-10-20 with anonymous, read-only GraphQL queries, and the renting code is not written yet. Renting follows only after a round-trip test.
 
 ## Search
 
@@ -8,19 +8,24 @@ RunPod uses GraphQL. The driver asks for GPU types with their lowest price for t
 
 ```
 gpuTypes {
-  lowestPrice(input: {gpuCount: <n>, minMemoryInGb: <n>, ...}) {
+  id displayName memoryInGb
+  lowestPrice(input: {gpuCount: <n>, minMemoryInGb: <n>}) {
     uninterruptablePrice
     stockStatus
-    ...
+    minMemory
   }
 }
 ```
 
-1. Leave `secureCloud` out of the input to see community prices as well. `--trust verified` keeps only Secure Cloud.
+The endpoint is `https://api.runpod.io/graphql`. Anonymous queries work, and the driver sends `Authorization: Bearer` only when `RUNPOD_API_KEY` is set. The server does not allow introspection, so the field names come from live queries. The input type rejects fields it does not know.
+
+1. Leave `secureCloud` out of the input to see community prices as well. The driver sends a second query with `secureCloud: true` for Secure Cloud prices. `--trust verified` keeps only the Secure Cloud offers. When both queries give the same price for a GPU type, the driver keeps only the Secure Cloud offer.
 2. `uninterruptablePrice` is the hourly total for all GPUs, so it is not multiplied by the GPU count again.
-3. An offer counts as available only when `stockStatus` is not null.
+3. An offer counts as available only when `stockStatus` is not null. A GPU type with no price for the requested count and RAM is not an offer. `minMemory` is the RAM that comes with the price, and the planner uses it as the host RAM.
 4. RunPod reports no download speed per host. The planner keeps these offers, labels them "speed not advertised, measured after boot", and ranks them as if they ran exactly at the speed floor.
-5. The hourly price used for ranking is `uninterruptablePrice` for all GPUs plus the volume disk. Transfer is counted as zero.
+5. The hourly price used for ranking is `uninterruptablePrice` for all GPUs plus the volume disk, at $0.10 per GB per month divided by 730 hours (source: https://docs.runpod.io/pods/pricing, checked 2026-10-20). Transfer is counted as zero.
+6. RunPod gives one price per GPU type and count, so the search is complete for what RunPod exposes.
+7. RunPod reports no compute capability, so `cli/ablit/backends/runpod_gpus.py` maps each known GPU type to the value on NVIDIA's lists (https://developer.nvidia.com/cuda-gpus and https://developer.nvidia.com/cuda-legacy-gpus, read 2026-10-20). A type that is not in the table keeps no capability, and the planner's engine floor removes it with the reason "compute capability unknown" when the entry sets a minimum.
 
 ## Renting
 

@@ -16,6 +16,9 @@ class Offer:
     Prices are US dollars. `hourly_all_in` includes the disk the run needs,
     and `sticker_hourly` is the GPU-only price shown separately in the quote.
     `download_mbps` is None when the marketplace does not advertise a speed.
+    `disk_gb` is the free disk the host offers, and `allocated_disk_gb` is the
+    disk the price already includes, which is None when a driver does not know it.
+    `gpu_fraction` is below 1 when the host shares each GPU with other renters.
     """
 
     backend: str
@@ -39,6 +42,8 @@ class Offer:
     verified: bool = False
     reliability: float | None = None
     region: str | None = None
+    allocated_disk_gb: float | None = None
+    gpu_fraction: float = 1.0
 
 
 @dataclass(frozen=True)

@@ -211,11 +211,12 @@ total(H)   = hourly_all_in * (D + S + H)
 
 Vast returns at most 64 rows per query, so the first 64 rows by hourly price can miss the lowest total. Use this rule:
 
-1. Query with all filters on the server, ordered by `dph_total` ascending.
-2. Compute `total(H)` for each row, and keep the lowest.
-3. No unseen offer can cost less than `last_dph * (H + S)`, where `last_dph` is the last row's `dph_total`.
-4. If the lowest total is at or below that bound, stop.
-5. Otherwise query again with `dph_total > last_dph`. If Vast rejects that filter, or after 10 pages, stop and label the result "cheapest of the N offers checked".
+1. Query with all filters on the server, ordered by the GPU-only price `dph_base` ascending. Vast applies a `dph_total` filter to the GPU-only price, not to the all-in price, so paging on `dph_total` would skip offers. Paging therefore uses `dph_base`.
+2. Read rows into a buffer. A row is final once its all-in price `dph_total` is below the `dph_base` of the last row read, because every unread row has a GPU-only price at least that high and an all-in price at least as high. Hand final rows to the planner in all-in order.
+3. Compute `total(H)` for each row handed over, and keep the lowest.
+4. No unseen offer can cost less than `last_all_in * (H + S)`, where `last_all_in` is the all-in price of the last row handed over.
+5. If the lowest total is at or below that bound, stop.
+6. Otherwise query again with `dph_base >= last_base` and drop rows already seen. If Vast refuses that query, returns rows below the cursor, or returns a full page at one GPU-only price, or after 10 queries, stop and label the result "cheapest of the N offers checked".
 
 If a backend fails or times out, the output names it and says the comparison didn't include it.
 

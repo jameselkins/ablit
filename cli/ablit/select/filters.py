@@ -23,13 +23,15 @@ def engine_floor(req: HardwareRequest) -> Check:
             return f"GPU vendor is not {req.gpu_vendor}"
         if offer.gpu_count != req.gpu_count:
             return f"needs exactly {req.gpu_count} GPUs"
+        if offer.gpu_fraction != 1.0:
+            return "GPU is shared with other renters"
         if offer.gpu_vram_gb_each < req.vram_gb_each:
             return "not enough VRAM per GPU"
         if req.vram_gb_total is not None and offer.gpu_vram_gb_each * offer.gpu_count < req.vram_gb_total:
             return "not enough VRAM in total"
         if req.compute_capability_min is not None:
             if offer.compute_capability is None:
-                return "compute capability not reported"
+                return "compute capability unknown"
             if offer.compute_capability < req.compute_capability_min:
                 return "compute capability too low"
         if offer.host_ram_gb < req.host_ram_gb:

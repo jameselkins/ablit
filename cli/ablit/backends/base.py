@@ -6,10 +6,12 @@ refuse response shapes and units they do not recognize.
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from ablit.select.types import HardwareRequest, Offer
+from ablit.select.types import HardwareRequest, Offer, PlanOptions
 
 
 @dataclass(frozen=True)
@@ -32,7 +34,11 @@ class Creds:
 
 @dataclass(frozen=True)
 class OfferSearch:
-    """Offers from one backend, and whether the search saw all of them."""
+    """Every offer one backend returned, and whether the search saw all of them.
+
+    `offers` holds each row the driver read, before the filter chain. The
+    planner runs the chain on them so that it can count what each step removed.
+    """
 
     backend: str
     offers: list[Offer]
@@ -103,12 +109,27 @@ class WatchdogCred:
     token: str = field(repr=False)
 
 
+# Environment variables that hold a marketplace key until the keyring code is written.
+ENV_KEY_NAMES = {"vast": "VAST_API_KEY", "runpod": "RUNPOD_API_KEY"}
+
+
+def creds_from_env(backend: str, environ: Mapping[str, str] | None = None) -> Creds | None:
+    """Return the key set in the environment for a backend, or None when there is none."""
+    name = ENV_KEY_NAMES.get(backend)
+    if name is None:
+        return None
+    value = (os.environ if environ is None else environ).get(name, "").strip()
+    return Creds(api_key=value) if value else None
+
+
 class Backend(Protocol):
     name: str
 
     def capabilities(self) -> Capabilities: ...
 
-    def search(self, req: HardwareRequest, creds: Creds | None) -> OfferSearch: ...
+    def search(
+        self, req: HardwareRequest, creds: Creds | None, opts: PlanOptions | None = None
+    ) -> OfferSearch: ...
 
     def requote(self, offer: Offer, creds: Creds) -> Offer | None: ...
 
@@ -133,7 +154,9 @@ class UnwrittenBackend:
     def capabilities(self) -> Capabilities:
         return Capabilities()
 
-    def search(self, req: HardwareRequest, creds: Creds | None) -> OfferSearch:
+    def search(
+        self, req: HardwareRequest, creds: Creds | None, opts: PlanOptions | None = None
+    ) -> OfferSearch:
         raise NotImplementedError(f"{self.name}: search is not written yet")
 
     def requote(self, offer: Offer, creds: Creds) -> Offer | None:
