@@ -22,8 +22,9 @@ ALLOC = Allocation(RUN, "vast", ["7201"], 1.0)
 
 
 def instance(instance_id=7201, label="ablit-" + RUN, **overrides):
-    return dict(id=instance_id, label=label, actual_status="running", ssh_host="ssh.example.invalid",
-                ssh_port=2201, host_id=7301, dph_total=1.0, volume_info=[], **overrides)
+    row = dict(id=instance_id, label=label, actual_status="running", ssh_host="ssh.example.invalid",
+               ssh_port=2201, host_id=7301, dph_total=1.0, volume_info=[])
+    return {**row, **overrides}
 
 
 def page(rows, next_token=None):
@@ -224,3 +225,11 @@ def test_reads_retry_after_a_rate_limit_and_creates_do_not():
         with pytest.raises(RequestRejected):
             driver._request("PUT", "/api/v0/asks/1/", Creds("invented-account-key"), body={})
         assert put.call_count == 1
+
+
+def test_an_instance_vast_gave_up_on_is_reported_as_stopped(driver):
+    alloc = Allocation(RUN, "vast", ["7201"], 1.0)
+    with respx.mock as router:
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([
+            instance(actual_status="loading", intended_status="stopped")]))
+        assert driver.observe(alloc, Creds("invented-account-key")).state == "stopped_by_marketplace"

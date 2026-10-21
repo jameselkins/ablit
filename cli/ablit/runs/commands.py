@@ -119,7 +119,9 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 # "running". A new instance with no status yet is "starting", and the
                 # bootstrap deadline below still destroys a run that never gets ready.
                 # https://docs.vast.ai/api-reference/instances/show-instances
-                if record["marketplace_state"] in ("exited", "unknown", "offline", "absent"):
+                if record["marketplace_state"] in ("exited", "unknown", "offline", "absent", "stopped_by_marketplace"):
+                    if record["marketplace_state"] == "stopped_by_marketplace" and record.get("host_id"):
+                        store.deny(record["host_id"], "Vast stopped the instance before it ran")
                     code = down(store, record, driver, creds)
                     return code or 6
                 if record.get("failure"):

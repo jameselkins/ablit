@@ -555,7 +555,7 @@ class VastBackend(UnwrittenBackend):
     def instances(self, creds: Creds) -> list[dict]:
         """Read all pages. No filtered page can prove that billing has stopped."""
         out, seen = [], set()
-        params = {"limit": 25, "select_cols": '["id","label","actual_status","ssh_host","ssh_port","host_id","dph_total","volume_info"]'}
+        params = {"limit": 25, "select_cols": '["id","label","actual_status","intended_status","ssh_host","ssh_port","host_id","dph_total","volume_info"]'}
         while True:
             # https://docs.vast.ai/api-reference/instances/show-instances
             data = self._success(self._request("GET", "/api/v1/instances/", creds, params=params))
@@ -632,6 +632,11 @@ class VastBackend(UnwrittenBackend):
             raise ResponseNotRecognized("vast: expected exactly one instance")
         row = rows[0]
         status = fields.text(row, "actual_status", backend="vast", nullable=True)
+        # ablit always asks for "running". When Vast itself gives up on starting
+        # an instance, for example after a failed image pull, it sets the
+        # intended status to "stopped" and the instance never starts.
+        if row.get("intended_status") is not None and fields.text(row, "intended_status", backend="vast") == "stopped":
+            status = "stopped_by_marketplace"
         rate = fields.number(row, "dph_total", backend="vast", minimum=0)
         host = row.get("ssh_host")
         port = row.get("ssh_port")

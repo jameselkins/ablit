@@ -328,3 +328,19 @@ def test_a_refused_watchdog_key_cleans_up_without_a_lost_key_warning(monkeypatch
         assert destroy.call_count == 1
     record = RunStore().all()[0]
     assert record["state"] == "billing_stopped_confirmed" and record["pending_cleanup"] == []
+
+
+def test_a_run_vast_stopped_is_destroyed_and_its_host_denied(monkeypatch):
+    store = RunStore()
+    r = saved_run(store)
+    r["host_id"] = "7301"
+    store.save(r)
+    from ablit.backends import Creds
+    def refreshed(store, record, driver, creds):
+        record.update(marketplace_state="stopped_by_marketplace", spend_estimate_usd=0.0)
+        store.save(record)
+    monkeypatch.setattr(commands, "refresh", refreshed)
+    downs = []
+    monkeypatch.setattr(commands, "down", lambda *args: downs.append(1) or 0)
+    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 6
+    assert downs == [1] and "7301" in store.denied_hosts()
