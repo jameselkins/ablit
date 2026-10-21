@@ -250,8 +250,13 @@ def build_body(
         body["cuda_max_good"] = {"gte": req.cuda_version_min}
     if req.vram_gb_total is not None:
         body["gpu_total_ram"] = {"gte": _mb_from_gb(req.vram_gb_total)}
-    if req.compute_capability_min is not None:
-        body["compute_cap"] = {"gte": int(round(req.compute_capability_min * 100))}
+    # The search can only bound the capability from below. The exact set of
+    # generations in the engine image is checked on the offers that come back.
+    floors = [req.compute_capability_min] if req.compute_capability_min is not None else []
+    if req.cuda_architectures:
+        floors.append(min(req.cuda_architectures) / 10)
+    if floors:
+        body["compute_cap"] = {"gte": int(round(max(floors) * 100))}
     if opts.trust == "verified":
         body["verified"] = {"eq": True}
     if opts.min_reliability is not None:

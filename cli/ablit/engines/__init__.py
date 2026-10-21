@@ -59,11 +59,30 @@ def check_artifacts(entry) -> None:
                     raise ValueError("Every artifact needs a SHA-256 before launch.")
 
 
+# Engines that a paid launch can start. Each one has its own bootstrap.sh and
+# health.sh under engines/<name>/, and all of them share engines/lib.
+LAUNCHABLE_ENGINES = ("llamacpp", "xolotl")
+
+
+def _staging_flags(entry) -> dict:
+    """Say, from the staging plan, which downloaded inputs the plan deletes."""
+    flags = {"ABLIT_DELETE_PARTS": 0, "ABLIT_DELETE_ENGRAM_SOURCE": 0}
+    for step in entry.staging:
+        if step.step == "join" and step.delete_inputs_after:
+            flags["ABLIT_DELETE_PARTS"] = 1
+        if step.step == "engram-extract" and step.delete_inputs_after:
+            flags["ABLIT_DELETE_ENGRAM_SOURCE"] = 1
+    return flags
+
+
 def bundle(entry, record: dict) -> bytes:
     """Build a tar archive with no endpoint or marketplace credentials."""
     root = repo_root()
     p = entry.profile
     offer = record["offer"]
+    if p.engine not in LAUNCHABLE_ENGINES:
+        raise ValueError(f"A paid launch has no bootstrap for the {p.engine} engine.")
+    lock = engine_lock(entry)
     values = {
         "ABLIT_RUN_ID": record["run_id"], "ABLIT_MODEL_ID": entry.id,
         "ABLIT_SERVED_NAME": entry.id, "ABLIT_PORT": p.port,
@@ -72,7 +91,7 @@ def bundle(entry, record: dict) -> bytes:
         "ABLIT_ADVERTISED_MBPS": offer["download_mbps"],
         "ABLIT_GPU_COUNT": p.gpu.count, "ABLIT_MIN_VRAM_MB_EACH": p.gpu.vram_gb_each * 1e9 / 2**20,
         "ABLIT_MIN_HOST_RAM_GB": p.host_ram_gb,
-        "ABLIT_MIN_DISK_GB": compute_staging(entry).peak_gb,
+        "ABLIT_MIN_DISK_GB": compute_staging(entry).peak_gb + float(lock.get("disk_margin_gb", 0.0)),
         "ABLIT_MIN_DOWNLOAD_MBPS": record["min_download_mbps"],
         "ABLIT_CONTEXT_TOKENS": p.context_tokens,
         "ABLIT_RANDOM_READ_REQUIRED": int(p.storage.random_read_required),
@@ -80,6 +99,16 @@ def bundle(entry, record: dict) -> bytes:
     }
     if p.gpu.compute_capability_min is not None:
         values["ABLIT_MIN_CC"] = p.gpu.compute_capability_min
+    # The box repeats the checks that the offer search already made, because a
+    # wrong GPU generation or an old driver fails late and costs rented minutes.
+    if lock.get("cuda_architectures"):
+        values["ABLIT_CUDA_ARCHITECTURES"] = " ".join(str(n) for n in lock["cuda_architectures"])
+    if lock.get("min_driver_major"):
+        values["ABLIT_MIN_DRIVER_MAJOR"] = lock["min_driver_major"]
+    if p.engine == "xolotl":
+        values.update(_staging_flags(entry))
+        if lock.get("min_memlock_kb"):
+            values["ABLIT_MIN_MEMLOCK_KB"] = lock["min_memlock_kb"]
     lines = []
     for artifact in entry.artifacts:
         path = PurePosixPath(artifact.path)
@@ -91,8 +120,9 @@ def bundle(entry, record: dict) -> bytes:
     files = {"env": "".join(f"{k}={shlex.quote(str(v))}\n" for k, v in values.items()).encode(),
              "artifacts.tsv": "".join(lines).encode()}
     for name in ("bootstrap.sh", "health.sh"):
-        files[f"engine/{name}"] = (root / "engines" / "llamacpp" / name).read_bytes()
+        files[f"engine/{name}"] = (root / "engines" / p.engine / name).read_bytes()
     files["engine/common.sh"] = (root / "engines" / "lib" / "common.sh").read_bytes()
+    files["engine/fetch.py"] = (root / "engines" / "lib" / "fetch.py").read_bytes()
     files["ablit_watchdog.py"] = (root / "cli" / "ablit" / "watchdog" / "ablit_watchdog.py").read_bytes()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode="w") as archive:

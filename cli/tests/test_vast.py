@@ -134,6 +134,23 @@ def test_request_body_carries_every_user_filter_and_the_total_vram():
     assert "compute_cap" not in body
 
 
+def test_the_search_bounds_the_cuda_version_and_the_gpu_generation_from_below():
+    req = HardwareRequest(
+        gpu_vendor="nvidia", gpu_count=1, vram_gb_each=24, host_ram_gb=90, disk_gb=393.7, download_gb=370.0,
+        startup_hours=0.3, min_download_mbps=1000, cuda_version_min=13.0, cuda_architectures=(120, 86, 89),
+    )
+    body = build_body(req, OPTS)
+    # The Vast field cuda_max_good is the highest CUDA version the host driver supports.
+    assert body["cuda_max_good"] == {"gte": 13.0}
+    # The smallest generation in the image sets the floor, as compute capability times 100.
+    assert body["compute_cap"] == {"gte": 860}
+    assert body["inet_down"] == {"gte": 1000}
+    # A larger floor from the entry wins over the image floor.
+    stricter = HardwareRequest(**{**req.__dict__, "compute_capability_min": 8.9})
+    assert build_body(stricter, OPTS)["compute_cap"] == {"gte": 890}
+    assert "cuda_max_good" not in build_body(HardwareRequest(**{**req.__dict__, "cuda_version_min": None}), OPTS)
+
+
 def test_key_is_sent_only_when_one_is_configured():
     fake = FakeVast([vast_row(9001)])
     backend, router = backend_for(fake)

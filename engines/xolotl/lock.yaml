@@ -5,14 +5,47 @@ source:
   repo: https://github.com/Indras-Mirror/Xolotl
   commit: 63fc34c6ea839d3e78e765b3e3aa72173116d352
   cuda: "13"
-# The image below is planned and does not exist yet. It will be built from the
-# commit above with CUDA 13 once the build's dependency licenses are checked.
-# Until then the bootstrap builds the engine on the rented machine, and the
-# build time is part of the startup estimate.
-image: null
-tag: null
-# A digest must be pinned before first use. ablit refuses to rent with a null digest.
-digest: null
+# The image is built from the commit above by .github/workflows/xolotl-image.yml
+# and holds the compiled engine, the server and their Python packages. It holds
+# no model weights. The tag is the short commit. Vast pulls the image without
+# credentials, so the package on ghcr.io must be public before a rental.
+image: ghcr.io/jameselkins/ablit-xolotl
+tag: 63fc34c
+# The digest of the pushed image. ablit refuses to rent with a null digest, so a
+# digest must be pinned before first use, and a new build needs a new digest here.
+digest: sha256:5c675f44f1c4860bdea0db95803fd3de9f4015be42c649172b89c7a040a6b204
+# The CUDA 13 base image sets NVIDIA_REQUIRE_CUDA, so the host driver must support
+# CUDA 13. Vast reports the highest CUDA version a host supports in the offer
+# field cuda_max_good, and the search sends cuda_max_good >= this value.
+# https://docs.vast.ai/api-reference/search/search-offers
+# CUDA 13.0 belongs to the R580 driver branch, and later CUDA 13 releases run on
+# drivers 580 or newer.
+# https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html
+cuda_version_min: 13.0
+# The same requirement as a driver major version, which the box checks again with
+# nvidia-smi before it downloads anything.
+min_driver_major: 580
+# GPU generations that this image build holds code for, as the compute
+# capability times ten: 86 is RTX 30 and A10, 89 is RTX 40 and L4, 120 is RTX 50
+# (built as 120a). An offer with any other generation is filtered out, because the
+# engine would not start on it. Widen the list only together with the image build.
+cuda_architectures: [86, 89, 120]
+# Allowance for the extracted image and Docker's work area while it pulls. The
+# image README estimates 5.1 GB on disk at most, and twice that is allowed
+# because the compressed and the extracted layers sit on disk together.
+# Not measured until the first build.
+image_gb: 11.0
+# The join appends one weight part at a time and deletes it afterward, so the disk
+# can hold one part more than the staging plan counts. The largest part is
+# 10.74 GB. The margin is added to the staging peak.
+disk_margin_gb: 11.0
+# Room for the fallback that copies the Engram tables out of the two source files
+# when the engine cannot read them in place. The copy is about the size of the
+# two files (203.1 GB), so this is that size plus a few GB. The disk is rented for
+# the whole run, so the room is asked for at the start, and it costs a few cents
+# an hour. Set it to 0 to drop the fallback room and accept a failed run when the
+# engine cannot open the files in place.
+extract_disk_gb: 210.0
 bind: 127.0.0.1
 api_key_variable: STRATA_API_KEY
 install_dir: /opt/xolotl
@@ -36,7 +69,19 @@ variables:
   - ABLIT_MIN_HOST_RAM_GB
   - ABLIT_MIN_DISK_GB
   - ABLIT_MIN_DOWNLOAD_MBPS
+  - ABLIT_MIN_MEMLOCK_KB
+  - ABLIT_MIN_DRIVER_MAJOR
+  - ABLIT_CUDA_ARCHITECTURES  # compute capability times ten, space separated
   - ABLIT_CONTEXT_TOKENS
   - ABLIT_RANDOM_READ_REQUIRED
-  - ABLIT_DELETE_PARTS        # 1 to delete the weight parts after they are joined
-  - ABLIT_DELETE_ENGRAM_SOURCE # 1 to delete the Engram source shards after extraction
+  - ABLIT_DELETE_PARTS        # 1 to delete each weight part after it is joined
+  - ABLIT_DELETE_ENGRAM_SOURCE # 1 to delete the Engram source files after extraction
+  - ABLIT_ENGRAM_MODE         # direct (default) reads the official shards in place, extract copies the tables
+  - ABLIT_DOWNLOAD_FILES      # files downloaded at once, see engines/lib/fetch.py
+  - ABLIT_DOWNLOAD_RANGES     # parallel ranges for one file
+  - ABLIT_DOWNLOAD_CONNECTIONS
+  - ABLIT_DOWNLOAD_SPLIT_BYTES
+  - ABLIT_DOWNLOAD_CHUNK_BYTES
+  - ABLIT_DOWNLOAD_RETRIES
+  - ABLIT_DOWNLOAD_BACKOFF_SECONDS
+  - ABLIT_DOWNLOAD_STALL_SECONDS

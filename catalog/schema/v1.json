@@ -90,7 +90,7 @@
         "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
         "git_blob_id": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
         "role": {
-          "enum": ["weight", "draft", "tokenizer", "config", "rank", "expert-map", "checksum", "script", "engram-source", "engram"]
+          "enum": ["weight", "draft", "tokenizer", "config", "rank", "expert-map", "checksum", "script", "engram-source", "engram-index", "engram"]
         }
       }
     },

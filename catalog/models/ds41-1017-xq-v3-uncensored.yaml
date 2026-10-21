@@ -36,12 +36,12 @@ artifacts:
   - {path: tokenizer/token_type.json, bytes: 387840, sha256: 50bd0c477193145a1cd597623fe7d842e609e6b787ad49b7819cadca09a18ed6, git_blob_id: ed1dd5b95f1bae44385b1294daf0692112405c7c, role: tokenizer}
   - {path: tokenizer/vocab.json, bytes: 2730577, sha256: 2f0bf5b31f4aa191d5d0d78291927a4f28c9ceb498a5e345b97e926c4cb99c1a, git_blob_id: a6d70cc383e225bb4b4abfede17d300bbb09b123, role: tokenizer}
   - {path: V41-MTP-Vision-1017.Q2_K.gguf, bytes: 5661492320, sha256: 5f92242e2ebed06e6831bbcae4e35e679c9138cdf6df0c8b36e8013c99c79a34, role: draft}
+  - {repo: deepseek-ai/DeepSeek-V4.1-Flash-1017, revision: 1bae0e1088993b9b82de08f59de5be5a34e42170, path: model.safetensors.index.json, bytes: 7470294, sha256: 74b0686a3d2891980d5e303251b075a3bccae2c2ff650747db2620a649b98fa8, git_blob_id: 54c85064dd92c8550471302e9ae59bedbbf96ca4, role: engram-index}
   - {repo: deepseek-ai/DeepSeek-V4.1-Flash-1017, revision: 1bae0e1088993b9b82de08f59de5be5a34e42170, path: model-00047-of-00048.safetensors, bytes: 101535150936, sha256: 76a05106ece259be83d1bfea0dcb54f23377864ee60fd321690f35e6698a2af5, role: engram-source}
   - {repo: deepseek-ai/DeepSeek-V4.1-Flash-1017, revision: 1bae0e1088993b9b82de08f59de5be5a34e42170, path: model-00048-of-00048.safetensors, bytes: 101537926640, sha256: 9dc51433e195bc78b5ad846b68643cc0351d3b174e5e4309222d3b7402c83afd, role: engram-source}
 staging:
   - {step: download, artifacts: all}
-  - {step: join, inputs: [weight], output_bytes: 162954903552, delete_inputs_after: true}
-  - {step: engram-extract, inputs: [engram-source], output_bytes: 202758032912, keeps_inputs_until_done: true, delete_inputs_after: true}
+  - {step: join, inputs: [weight], output_bytes: 162954903552, keeps_inputs_until_done: false, delete_inputs_after: true}
 profile:
   engine: xolotl
   engine_lock: xolotl-63fc34c
@@ -52,11 +52,11 @@ profile:
   context_tokens: 4096
   concurrency: 1
   port: 8150
-  startup_hours_estimate: 0.5
-  min_download_mbps: 500
+  startup_hours_estimate: 0.3
+  min_download_mbps: 1000
 sources:
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/63fc34c6ea839d3e78e765b3e3aa72173116d352/README.md", covers: ["profile.gpu.*", profile.host_ram_gb, profile.host_ram_gb_recommended, profile.port], note: "Author's README at the pinned engine commit. The figures come from one machine the author measured."}
-  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The startup time is an estimate that includes building or fetching the engine.}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate.}
   - https://huggingface.co/IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored/blob/9d3c01d86709261e51d566b02e1dda75f40d009a/README.md
   - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
 tests: []
@@ -64,9 +64,13 @@ status: unverified
 notes:
   - Hardware floors are not yet tested. They come from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
   - The README says 16 GB of VRAM should load but is untested, so the floor here stays at 24 GB.
-  - Peak disk comes from the staging list. It assumes the weight parts are deleted after they are joined and the Engram source shards are deleted after extraction, and that extraction needs both source shards on disk until it finishes.
-  - The size of the extracted Engram tables is taken from the pre-extracted tables in the kaushikvira repo. It is assumed to match the other builds and has not been measured for them.
+  - Peak disk comes from the staging list. It assumes the weight parts are deleted as they are joined, and the join step says it streams, because the bootstrap appends one part at a time. The bootstrap adds a margin of one weight part (10.7 GB) to the disk it asks for, because the join appends a part before it deletes it.
+  - The staging list has no Engram extraction step. At the pinned engine commit, Ds41Engram::open reads model.safetensors.index.json and the two FP8 shards from the folder given to --engram, so the 203 GB copy that extract_engram.py makes should not be needed. This is read from the engine source and is untested on a rented machine. If the engine cannot open the files, the bootstrap extracts the tables and starts the engine again, and that needs about 203 GB more disk than the staging list counts. The disk request already includes 210 GB for it (extract_disk_gb in the engine lock), which costs a few cents an hour and avoids a second rental if the engine cannot open the files in place.
+  - The index file model.safetensors.index.json is listed because the engine and extract_engram.py both read it. It is the same file (SHA-256 74b0686a, 7,470,294 bytes) in the September and 1017 official repos and in the dealignai checkpoint.
+  - The download floor is 1000 Mbps. At 500 Mbps the 372 GB download alone takes about 100 minutes, and at 1000 Mbps it takes about 50 minutes.
+  - The startup estimate is 0.3 hours after the download ends. It is 0.25 hours (the startup figure of the boot-tested llama.cpp entry, which covers the image pull, the container start and the health check) plus 92 seconds for the engine load (the longest time the model cards report) plus 60 seconds for the last join and checksum after the final byte. The total is 0.292 hours, rounded up. It has not been measured for this image.
   - The engine is single-developer research code, and its speed numbers come from one machine.
-  - This entry lists only the v3/ directory, the tokenizer files, the rank file, the Q2_K draft file and the two Engram source shards. The repo also holds a V2 build, which the catalog left out because the author reports V3 as slightly better on agentic tasks.
+  - The kaushikvira repo holds pre-extracted Engram tables for the 1017 refresh. They look identical to what extract_engram.py makes from the official 1017 shards. The file headers, the file sizes and the index file match exactly, and 602 sampled 1 MiB blocks per tensor were byte for byte equal. That is not a full hash comparison. The entry keeps the official shards, because reading them in place makes the tables a second 203 GB download that saves no extraction, and because the tables come from a third party.
+  - This entry lists only the v3/ directory, the tokenizer files, the rank file, the Q2_K draft file, the Engram index and the two Engram source shards. The repo also holds a V2 build, which the catalog left out because the author reports V3 as slightly better on agentic tasks.
   - The repo was renamed from GSQ to XQ on 2026-10-19, and old file paths at its root now return 404. The revision is pinned because the repo changes often.
   - The author's model card reports a regression against the September build on two of five tasks in a short agentic test, and says the cause is not isolated yet.
