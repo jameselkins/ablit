@@ -115,7 +115,7 @@ The config file is JSON, written by the bootstrap script. The keys that matter a
 
 - The NVIDIA driver on the host must be version 580 or newer. The runtime base sets `NVIDIA_REQUIRE_CUDA`, so the container runtime refuses to start on an older driver, except in the compatibility cases that NVIDIA lists. ablit should filter offers by driver or CUDA version before it rents.
 - The GPU needs compute capability 7.5 or higher and must be one of the generations in the next table.
-- The engine pins a memory arena of 60 GiB by default, as `min_memlock_kb` in `lock.yaml` records. The container needs a locked-memory limit at least that large, or the config needs a smaller `--arena-gib`.
+- The engine pins a memory arena of 60 GiB by default, as `min_memlock_kb` in `lock.yaml` records. It pins with `cudaHostRegister`, and when that is refused it pins slices, then locks pages with `mlock`, then runs unpinned with slower copies (`src/core/pinned.cu` at the pinned commit). The bootstrap logs a warning when `ulimit -l` is below the arena size and does not stop. Vast containers have an 8 MiB limit and accept no `--ulimit` option.
 
 ## GPU architectures
 

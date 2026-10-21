@@ -214,12 +214,15 @@ ablit_check_hardware() {
     || ablit_fail "host_ram" "usable memory is $mem_bytes bytes, the profile needs ${ABLIT_MIN_HOST_RAM_GB} GB"
 
   # Locked-memory limit. The engine template sets ABLIT_MIN_MEMLOCK_KB when it pins memory.
+  # A low limit is logged, not fatal. Vast containers accept no --ulimit option
+  # (https://docs.vast.ai/guides/instances/docker-environment.md), and the engines
+  # pin with cudaHostRegister and fall back to smaller or unpinned buffers when
+  # pinning is refused, which is slower but runs.
   if [ -n "${ABLIT_MIN_MEMLOCK_KB:-}" ]; then
     local memlock
     memlock="$(ulimit -l)"
-    if [ "$memlock" != "unlimited" ]; then
-      ablit_ge "$memlock" "$ABLIT_MIN_MEMLOCK_KB" \
-        || ablit_fail "memlock" "ulimit -l is $memlock KB, the engine needs $ABLIT_MIN_MEMLOCK_KB KB"
+    if [ "$memlock" != "unlimited" ] && ! ablit_ge "$memlock" "$ABLIT_MIN_MEMLOCK_KB"; then
+      ablit_log "warning: ulimit -l is $memlock KB and the engine asks for $ABLIT_MIN_MEMLOCK_KB KB, so pinning may fall back"
     fi
   fi
 
