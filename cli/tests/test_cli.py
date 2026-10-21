@@ -21,8 +21,8 @@ def test_catalog_list_shows_every_entry_and_its_status(capsys):
     assert code == 0, err
     for entry_id in ("ds41-1017-abl-fp8", "ds41-1017-xq-v3-uncensored", "llama31-8b-abliterated-q4km"):
         assert entry_id in out
-    assert out.count("unverified") == 4
-    assert out.count("boot-tested") == 1
+    assert out.count("unverified") == 3
+    assert out.count("boot-tested") == 2
 
 
 def test_catalog_show_explains_one_entry(capsys):

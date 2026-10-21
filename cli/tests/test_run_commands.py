@@ -71,7 +71,7 @@ def test_null_digest_is_refused_before_search(monkeypatch):
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 5
 
 
-XOLOTL = "ds41-september-gsq-uncensored"
+XOLOTL = "ds41-1017-xq-v3-uncensored"  # an unverified Xolotl entry
 
 
 def xolotl_launch(monkeypatch, rows, budget="50", extra=()):
