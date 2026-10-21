@@ -147,7 +147,9 @@ def test_backend_notes_exist_and_describe_the_requests(repo_root: Path):
     runpod = (repo_root / "backends" / "runpod.md").read_text(encoding="utf-8")
     assert "podFindAndDeployOnDemand" in runpod and "terminateAfter" in runpod and "uninterruptablePrice" in runpod
     clore = (repo_root / "backends" / "clore.md").read_text(encoding="utf-8")
-    assert "not in v1" in clore.lower() and "per minute" in clore.lower() and "per day" in clore.lower()
+    text = clore.lower()
+    assert "untested on a rented machine" in text and "per minute" in text and "per day" in text
+    assert "https://docs.clore.ai/" in clore and "gaps in the documentation" in text
 
 
 def test_readme_covers_the_required_sections(repo_root: Path):

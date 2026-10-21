@@ -31,9 +31,9 @@ ablit runs no service, holds no money and relays no inference traffic. It never 
 | `--hours N` | 1 | Session length used to rank offers. It doesn't stop the run. |
 | `--spot` | off | Allows interruptible offers, after a warning. Disabled until a spot round trip has been tested. |
 | `--min-download MBPS` | the entry's value, or 500 | Floor on download speed |
-| `--trust any\|verified` | `any` | `verified` keeps only Vast verified hosts and RunPod Secure Cloud. `any` shows the status without filtering. |
+| `--trust any\|verified` | `any` | `verified` keeps only Vast verified hosts and RunPod Secure Cloud. Clore has no verification, so `verified` drops every Clore offer. `any` shows the status without filtering. |
 | `--min-reliability`, `--region`, `--max-price-hr` | none | Optional user filters |
-| `--backends vast,runpod` | all enabled backends with keys | Limits the search. Output lists the backends left out and why. |
+| `--backends vast,runpod,clore` | all enabled backends with keys | Limits the search. Output lists the backends left out and why. |
 | `--variant ID` | none | Picks a build when a repo has several |
 | `--endpoint tunnel\|public` | `tunnel` | See "Endpoint" |
 | `--untested` | off | Required to run `up` on an `unverified` entry |
@@ -187,7 +187,7 @@ The planner records how many offers each step removed.
 1. Engine floor: GPU vendor, count, VRAM per GPU and in total, compute capability, host RAM and OS. The quote shows the GPU model.
 2. Disk floor: free disk at least the staging peak plus the engine image. On Vast, send `disk_space >= N` and `allocated_storage = N` so the price includes the disk.
 3. Download speed floor: Vast's per-host `inet_down` must meet the floor. RunPod reports no per-host speed, so its offers are kept, labeled "speed not advertised, measured after boot", and ranked as if they ran exactly at the floor.
-4. Rental type and availability: on demand unless `--spot`, Vast `rentable = true`, RunPod `stockStatus` not null, and remaining rental duration at least the startup estimate plus `--hours`.
+4. Rental type and availability: on demand unless `--spot`, Vast `rentable = true`, RunPod `stockStatus` not null, Clore `rented = false` with every GPU free (ablit rents whole Clore servers only), and remaining rental duration at least the startup estimate plus `--hours`. For Clore the duration is the host's `mrl`, in hours.
 5. User filters, only when set.
 6. Rank by total cost with the search rule below.
 
@@ -204,7 +204,7 @@ total(H)   = hourly_all_in * (D + S + H)
            + fixed_fees
 ```
 
-`hourly_all_in` is Vast `dph_total` at the needed `allocated_storage`, or RunPod `uninterruptablePrice` for all GPUs plus volume disk. `bandwidth_cost_per_gb` is Vast's `inet_down_cost`, and zero for RunPod. The quote shows `D` and `S` on separate lines and labels `S` an estimate.
+`hourly_all_in` is Vast `dph_total` at the needed `allocated_storage`, or RunPod `uninterruptablePrice` for all GPUs plus volume disk, or Clore's USD price per day for the whole server divided by 24 and raised by the renter fee of 5%. Clore's one-time order fee of $0.10 goes in `fixed_fees`. `bandwidth_cost_per_gb` is Vast's `inet_down_cost`, and zero for RunPod and Clore. The quote shows `D` and `S` on separate lines and labels `S` an estimate.
 
 ### Search rule
 
@@ -234,7 +234,7 @@ The ranked list is a function only of the offers, the catalog profile and the us
 ### Spend cap
 
 1. Watchdog on the box. The bootstrap starts `ablit-watchdog`, a single Python file with no dependencies, before any download. Every 30 seconds it computes spend from the start time, the rate locked at rent time, and the bytes received times the per-GB price. It destroys its instance when spend plus a reserve reaches the cap. The reserve is 2 minutes of the hourly rate plus 2 minutes of transfer at the advertised speed. It also destroys the instance if no bytes arrive for 10 minutes during the download.
-2. Watchdog credential. On Vast, create an API key whose `api.instance.destroy` permission is limited to the one instance ID. On RunPod, test whether the pod's own `RUNPOD_API_KEY` can delete the pod. Never put the user's full account key on the box. If a backend gives no limited credential, the watchdog stops only the engine, and the quote says the cap on that backend relies on the local check.
+2. Watchdog credential. On Vast, create an API key whose `api.instance.destroy` permission is limited to the one instance ID. On RunPod, test whether the pod's own `RUNPOD_API_KEY` can delete the pod. Never put the user's full account key on the box. If a backend gives no limited credential, the watchdog stops only the engine, and the quote says the cap on that backend relies on the local check. Clore documents no limited key (its keys give full access to the account), so the Clore driver returns none, and a Clore run is capped only by the local check and by the host's rental length limit, which can be up to 3000 hours.
 3. Local check. While `up`, `status --watch` or `tunnel` runs, the CLI computes spend from marketplace figures, and it destroys the run if the watchdog's heartbeat is more than 3 minutes old.
 4. Marketplace deadline. On RunPod, set `terminateAfter` on the deploy request to the time the cap would be reached. Mention it in the quote only after a test shows that RunPod enforces it and deletes the volume.
 
@@ -262,7 +262,7 @@ Drivers are modules inside the package, with no plugin discovery. `OfferSearch` 
 |---|---|---|
 | Vast | Search and rent | `POST https://console.vast.ai/api/v0/bundles/`. `gpu_name` uses spaces, `gpu_ram` and `cpu_ram` are in MB, `disk_space` is in GB, `compute_cap` is multiplied by 100. Send `rentable: {eq: true}`, `type`, `allocated_storage`, and `order: [["dph_total","asc"]]`. Send the user's key when there is one. |
 | RunPod | Search, and rent after its round-trip test | GraphQL `gpuTypes { lowestPrice(input: {gpuCount, minMemoryInGb, ...}) }`. Leave `secureCloud` out for community prices. `uninterruptablePrice` is the total for all GPUs. Rent with `podFindAndDeployOnDemand` and `terminateAfter`, then check the allocated RAM, disk and rate against the quote. |
-| Clore | Not in v1 | Bills per minute, with prices per day for the whole machine. Left for a later release. |
+| Clore | Search, and a rental lifecycle that is untested on a rented machine. `ablit up` still supports Vast only. | `GET https://api.clore.ai/v1/marketplace` lists every server with no filters, and works without a key although the docs say it needs one. Prices are USD per day for the whole server, and ablit reads only the `USD-Blockchain` price. The renter pays 5% on top (half of the 10% base fee), plus a $0.10 order fee that Clore charges only when the order lasts more than 10 minutes. Billing is per minute. The key goes in a header named `auth`, at most 1 request per second. Create with `POST create_order`, find the order again in `GET my_orders` (the create call returns no label), stop it with `POST cancel_order`. See `backends/clore.md` for each call and its doc page. |
 
 ## Engine templates
 
@@ -319,7 +319,7 @@ Commissions never affect which machine ablit picks. To hide paid links, run
   Sign up (no referral): https://cloud.vast.ai/
 ```
 
-The RunPod block uses the same wording with RunPod's terms: 3% of Pod spend and 5% of Serverless spend, paid to the maintainer in RunPod credits for 6 months, and the new account must sign up with Google sign-in. Both blocks end with the `--no-referral` hint. Before each release, check the rates on the program pages and update the date in the README.
+The RunPod block uses the same wording with RunPod's terms: 3% of Pod spend and 5% of Serverless spend, paid to the maintainer in RunPod credits for 6 months, and the new account must sign up with Google sign-in. The Clore block uses Clore's terms from its referral program page: a share of the fees Clore charges the new account, 15% as standard and 50% during a promotion that Clore calls limited-time and gives no end date for, paid by Clore from its own fee. That is about 0.7% and 2.4% of spend at the 5% renter fee. The page says nothing about how long a referral lasts, and the block says so. The Clore ID is empty until the maintainer has a Clore account, so only the direct signup and skip choices appear for now. All blocks end with the `--no-referral` hint. Before each release, check the rates on the program pages and update the date in the README.
 
 Rules:
 
@@ -336,7 +336,7 @@ ablit/
   cli.py          # commands and flags
   catalog/        # load, validate, resolve, pre-rent availability check
   select/         # filter chain, cost model, search rule (no referral imports)
-  backends/       # vast.py, runpod.py
+  backends/       # vast.py, runpod.py, clore.py
   engines/        # render templates from engines/<name>/
   runs/           # run files, locks, lifecycle, deny list, tunnel
   referral/       # ids.toml, disclosure strings, setup flow
@@ -364,4 +364,4 @@ Every step that rents a machine needs the maintainer's approval of a specific am
 
 ## Left out of v1
 
-Clore renting, launching GGUF files outside the catalog, SkyPilot and dstack export, third-party driver plugins, automatic re-planning, TLS on the public endpoint, any hosted price data or price history, telemetry, multi-node serving, engines other than vLLM, llama.cpp and Xolotl, and a web UI.
+Paid Clore launches from `ablit up` (the Clore driver can search, and its rental calls are untested on a rented machine), launching GGUF files outside the catalog, SkyPilot and dstack export, third-party driver plugins, automatic re-planning, TLS on the public endpoint, any hosted price data or price history, telemetry, multi-node serving, engines other than vLLM, llama.cpp and Xolotl, and a web UI.

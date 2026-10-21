@@ -56,9 +56,12 @@ def isolated_run_state(tmp_path, monkeypatch):
     monkeypatch.setattr("ablit.runs.store.state_dir", lambda: tmp_path / "state")
     monkeypatch.delenv("VAST_API_KEY", raising=False)
     monkeypatch.delenv("RUNPOD_API_KEY", raising=False)
+    monkeypatch.delenv("CLORE_API_KEY", raising=False)
     monkeypatch.delenv("ABLIT_FAULT", raising=False)
     from ablit.backends.vast import VastBackend
     monkeypatch.setattr(VastBackend, "inventory_interval", 0)
+    from ablit.backends.clore import CloreBackend
+    monkeypatch.setattr(CloreBackend, "request_interval", 0)
     credentials.SESSION.clear()
     yield backend
     credentials.SESSION.clear()

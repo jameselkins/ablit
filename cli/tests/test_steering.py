@@ -129,6 +129,7 @@ def _mixed_offers() -> list[Offer]:
     for i in range(30):
         offers.append(make_offer(f"v{i:02d}", "vast", 1.0 + (i % 7) * 0.13, bandwidth_cost_per_gb=0.001 * (i % 3)))
         offers.append(make_offer(f"r{i:02d}", "runpod", 1.1 + (i % 5) * 0.11, download_mbps=None))
+        offers.append(make_offer(f"c{i:02d}", "clore", 1.15 + (i % 6) * 0.09, fixed_fees=0.10, download_mbps=None))
         offers.append(make_offer(f"x{i:02d}", "other", 1.2 + (i % 4) * 0.07))
     offers.append(make_offer("bad", "vast", 0.1, gpu_vram_gb_each=8))
     return offers
@@ -136,15 +137,16 @@ def _mixed_offers() -> list[Offer]:
 
 def test_same_plan_with_ids_set_unset_and_shuffled():
     offers = _mixed_offers()
-    no_ids = referral.load_ids('[vast]\nid = ""\n[runpod]\nid = ""\n')
-    all_ids = referral.load_ids('[vast]\nid = "VASTID1"\n[runpod]\nid = "RUNPODID1"\n')
+    no_ids = referral.load_ids('[vast]\nid = ""\n[runpod]\nid = ""\n[clore]\nid = ""\n')
+    all_ids = referral.load_ids('[vast]\nid = "VASTID1"\n[runpod]\nid = "RUNPODID1"\n[clore]\nid = "CLOREID1"\n')
     assert referral.disclosure("vast", all_ids) and referral.disclosure("vast", no_ids) is None
+    assert referral.disclosure("clore", all_ids) and referral.disclosure("clore", no_ids) is None
 
     baseline = rank_offers(offers, REQ, OPTS)
     with_ids = rank_offers(offers, REQ, OPTS)  # the planner cannot see the IDs, so this must match
 
-    paying = [o for o in offers if o.backend in ("vast", "runpod")]
-    others = [o for o in offers if o.backend not in ("vast", "runpod")]
+    paying = [o for o in offers if o.backend in ("vast", "runpod", "clore")]
+    others = [o for o in offers if o.backend not in ("vast", "runpod", "clore")]
     for seed in range(5):
         shuffled_paying = paying[:]
         random.Random(seed).shuffle(shuffled_paying)
@@ -221,12 +223,12 @@ def needle_sets(draw):
     step = draw(st.integers(1, 5))
     high_transfer = draw(st.sampled_from([0.05, 0.1, 0.5]))
     offers = [
-        make_offer(f"cheap-{i:03d}", draw(st.sampled_from(["vast", "runpod"])), (start + i * step) / 100.0,
+        make_offer(f"cheap-{i:03d}", draw(st.sampled_from(["vast", "runpod", "clore"])), (start + i * step) / 100.0,
                    bandwidth_cost_per_gb=high_transfer)
         for i in range(count)
     ]
     needle_cents = start + count * step + draw(st.integers(1, 200))
-    offers.append(make_offer("needle", draw(st.sampled_from(["vast", "runpod", "other"])), needle_cents / 100.0,
+    offers.append(make_offer("needle", draw(st.sampled_from(["vast", "runpod", "clore", "other"])), needle_cents / 100.0,
                              bandwidth_cost_per_gb=0.0))
     return offers
 
@@ -258,11 +260,12 @@ def test_the_first_page_alone_would_have_missed_the_needle():
 # --- test 4: a cheaper backend without a referral program wins -------------
 
 def test_cheaper_backend_without_a_program_beats_a_paying_one():
-    ids = referral.load_ids('[vast]\nid = "VASTID1"\n[runpod]\nid = "RUNPODID1"\n')
-    assert ids["vast"] and ids["runpod"]
+    ids = referral.load_ids('[vast]\nid = "VASTID1"\n[runpod]\nid = "RUNPODID1"\n[clore]\nid = "CLOREID1"\n')
+    assert ids["vast"] and ids["runpod"] and ids["clore"]
     offers = [
         make_offer("pay-1", "vast", 1.50),
         make_offer("pay-2", "runpod", 1.40),
+        make_offer("pay-3", "clore", 1.35),
         make_offer("free-1", "no-program-market", 1.30),
     ]
     ranked = rank_offers(offers, REQ, OPTS).ranked
@@ -273,11 +276,16 @@ def test_cheaper_backend_without_a_program_beats_a_paying_one():
         make_offer("free-1", "no-program-market", 1.30),
     ]
     assert rank_offers(offers, REQ, OPTS).ranked[0].offer.backend == "vast"
+    offers = [
+        make_offer("pay-3", "clore", 1.10),
+        make_offer("free-1", "no-program-market", 1.30),
+    ]
+    assert rank_offers(offers, REQ, OPTS).ranked[0].offer.backend == "clore"
 
 
 # --- test 5: ties break on backend, then offer ID --------------------------
 
-@given(st.lists(st.tuples(st.sampled_from(["vast", "runpod", "alpha", "zeta"]), st.text("abc123", min_size=1, max_size=4)),
+@given(st.lists(st.tuples(st.sampled_from(["vast", "runpod", "clore", "alpha", "zeta"]), st.text("abc123", min_size=1, max_size=4)),
                 min_size=2, max_size=20, unique=True))
 @settings(max_examples=100, deadline=None)
 def test_ties_break_on_backend_then_offer_id(pairs):
