@@ -203,6 +203,14 @@ def _disk_request_gb(disk_gb: float) -> int:
     return int(math.ceil(disk_gb - 1e-9))
 
 
+def retry_delay(response: httpx.Response, attempt: int) -> float:
+    """Seconds to wait before a retry. Honor Retry-After when Vast sends seconds."""
+    value = response.headers.get("Retry-After", "")
+    if value.isdigit():
+        return min(float(value), 60.0)
+    return min(2.0 * 2 ** attempt, 30.0)
+
+
 def build_body(
     req: HardwareRequest,
     opts: PlanOptions,
@@ -343,6 +351,7 @@ class _BundleStream:
 class VastBackend(UnwrittenBackend):
     name = "vast"
     inventory_interval = 1.1
+    _sleep = staticmethod(time.sleep)
 
     def __init__(self, client: httpx.Client | None = None, url: str = BUNDLES_URL, *, store=None) -> None:
         self._client = client
@@ -491,9 +500,17 @@ class VastBackend(UnwrittenBackend):
         # and redirects are refused rather than followed.
         if not path.endswith("/"):
             raise ValueError("Vast API paths must end with a slash.")
-        response = self._client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
-                                        headers={"Authorization": f"Bearer {creds.api_key}"},
-                                        json=body, params=params)
+        # Reads and deletes are safe to repeat, so they wait and retry when Vast
+        # rate-limits (429) or has a server error. Creates are never resent.
+        attempts = 5 if method in ("GET", "DELETE") else 1
+        for attempt in range(attempts):
+            response = self._client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
+                                            headers={"Authorization": f"Bearer {creds.api_key}"},
+                                            json=body, params=params)
+            if response.status_code != 429 and response.status_code < 500:
+                break
+            if attempt + 1 < attempts:
+                self._sleep(retry_delay(response, attempt))
         if response.status_code == 404 and missing_ok:
             return None
         if response.status_code == 400 and missing_error:

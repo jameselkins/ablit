@@ -33,6 +33,7 @@ from ablit.watchdog.ablit_watchdog import Config, reserve
 # https://docs.vast.ai/guides/instances/connect/overview
 # The inspected server image already contains the bootstrap tools.
 ONSTART = "umask 077; mkdir -p /ablit/logs /ablit/stages"
+POLL_SECONDS = 10
 
 
 def minimum_cap(offer, req, floor) -> float:
@@ -182,7 +183,9 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     endpoint(record)
                 if tunnel is not None and tunnel.poll() is not None:
                     raise RunError("The tunnel closed. Billing continues. Re-run tunnel or down.")
-            time.sleep(2)
+            # Each pass lists the account's instances, so poll slowly enough
+            # to stay under Vast's rate limit.
+            time.sleep(POLL_SECONDS)
     except KeyboardInterrupt:
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
         return 0
@@ -356,7 +359,7 @@ def existing(args, driver, environ, store):
                     print(json.dumps(view, indent=2), flush=True)
             if not args.watch or code or all(r["state"] == "billing_stopped_confirmed" for r in output):
                 return code
-            time.sleep(2)
+            time.sleep(POLL_SECONDS)
     record = records[0]
     if args.command == "down":
         try:

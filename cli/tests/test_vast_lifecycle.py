@@ -207,3 +207,20 @@ def test_every_vast_path_ends_with_a_slash_and_redirects_are_refused():
         router.get(ROOT + "/api/v1/instances/").respond(301, headers={"Location": ROOT + "/elsewhere/"})
         with pytest.raises(RequestRejected):
             driver.test_credentials(Creds("invented-account-key"))
+
+
+def test_reads_retry_after_a_rate_limit_and_creates_do_not():
+    from ablit.backends.errors import RequestRejected
+    driver = VastBackend(httpx.Client())
+    waits = []
+    driver._sleep = waits.append
+    with respx.mock as router:
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=[
+            httpx.Response(429, headers={"Retry-After": "3"}), httpx.Response(503),
+            httpx.Response(200, json={"success": True, "instances": [], "next_token": None})])
+        put = router.put(ROOT + "/api/v0/asks/1/").respond(429)
+        driver.test_credentials(Creds("invented-account-key"))
+        assert waits == [3.0, 4.0]
+        with pytest.raises(RequestRejected):
+            driver._request("PUT", "/api/v0/asks/1/", Creds("invented-account-key"), body={})
+        assert put.call_count == 1
