@@ -120,7 +120,7 @@ def test_destroy_uses_only_the_scoped_key_and_instance(tmp_path, monkeypatch):
     monkeypatch.setattr(wd.urllib.request, "urlopen", urlopen)
     wd.destroy_instance("invented reason", str(config))
     assert calls[0].method == "DELETE"
-    assert calls[0].full_url == "https://console.vast.ai/api/v0/instances/7701"
+    assert calls[0].full_url == "https://console.vast.ai/api/v0/instances/7701/"
     assert calls[0].headers["Authorization"] == "Bearer invented-scoped-key"
     assert calls[0].data is None
 

@@ -37,10 +37,10 @@ def launch_environment(monkeypatch):
 
 def launch_routes(router):
     router.post(VAST_URL).mock(side_effect=FakeVast([vast_row(7101, host_id=7301)]))
-    router.post(ROOT + "/api/v0/ssh").respond(200, json={"success": True, "key": {"id": 7501}})
-    create = router.put(ROOT + "/api/v0/asks/7101").respond(200, json={"success": True, "new_contract": 7201})
-    router.get(ROOT + "/api/v1/instances").mock(return_value=page([instance()]))
-    scoped = router.post(ROOT + "/api/v0/auth/apikeys").respond(200, json={"id": 7401, "key": "invented-scoped-token"})
+    router.post(ROOT + "/api/v0/ssh/").respond(200, json={"success": True, "key": {"id": 7501}})
+    create = router.put(ROOT + "/api/v0/asks/7101/").respond(200, json={"success": True, "new_contract": 7201})
+    router.get(ROOT + "/api/v1/instances/").mock(return_value=page([instance()]))
+    scoped = router.post(ROOT + "/api/v0/auth/apikeys/").respond(200, json={"id": 7401, "key": "invented-scoped-token"})
     return create, scoped
 
 
@@ -81,7 +81,7 @@ def test_typed_rent_creates_and_saves_only_nonsecret_records(monkeypatch):
         def listing(request):
             record = RunStore().all()[0]
             return page([instance(label="ablit-" + record["run_id"])])
-        router.get(ROOT + "/api/v1/instances").mock(side_effect=listing)
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=listing)
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 0
         record = RunStore().all()[0]
         assert create.call_count == scoped.call_count == 1
@@ -102,7 +102,7 @@ def test_second_run_requires_another_and_creating_run_recovers(monkeypatch):
         def listing(request):
             return page([instance(label="ablit-" + r["run_id"], instance_id=int(r["resource_ids"][0]) if r["resource_ids"] else 7201 + i)
                          for i, r in enumerate(RunStore().all())])
-        router.get(ROOT + "/api/v1/instances").mock(side_effect=listing)
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=listing)
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 0
         # A CLI restart resumes a creating record and never creates again.
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 0
@@ -165,7 +165,7 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
     store.save(r)
     monkeypatch.setattr(SSH, "probe", lambda self: {})
     with respx.mock as router:
-        router.get(ROOT + "/api/v1/instances").mock(return_value=page([instance()]))
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([instance()]))
         assert main(["status", r["run_id"], "--json"], environ={}) == 0
         output = capsys.readouterr().out
         assert "invented-account-key" not in output and "invented-endpoint-key" not in output
@@ -242,9 +242,9 @@ def test_up_observes_watchdog_decision_and_absence_before_exit_8(monkeypatch):
         store.save(record)
     monkeypatch.setattr(commands, "refresh", refreshed)
     with respx.mock as router:
-        router.get(ROOT + "/api/v1/instances").mock(return_value=page([]))
-        router.delete(ROOT + "/api/v0/instances/7201").respond(404)
-        router.delete(ROOT + "/api/v0/auth/apikeys/7401").respond(200, json="Successfully Deleted API Key")
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
+        router.delete(ROOT + "/api/v0/instances/7201/").respond(404)
+        router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
         assert commands.monitor(store, r, VastBackend(httpx.Client()), Creds("invented-account-key"), want_ready=True) == 8
     assert store.load(r["run_id"])["state"] == "billing_stopped_confirmed"
 
@@ -260,9 +260,9 @@ def test_watchdog_key_failure_cleans_up_the_paid_instance(monkeypatch):
             count.append(1)
             r = RunStore().all()[0]
             return page([instance(label="ablit-" + r["run_id"])]) if len(count) < 3 else page([])
-        router.get(ROOT + "/api/v1/instances").mock(side_effect=listing)
-        destroy = router.delete(ROOT + "/api/v0/instances/7201").respond(200, json={"success": True})
-        router.delete(ROOT + "/api/v0/ssh/7501").respond(200, json={"success": True})
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=listing)
+        destroy = router.delete(ROOT + "/api/v0/instances/7201/").respond(200, json={"success": True})
+        router.delete(ROOT + "/api/v0/ssh/7501/").respond(200, json={"success": True})
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 7
         assert destroy.call_count == 1
     assert "watchdog key response was lost" in " ".join(RunStore().all()[0]["pending_cleanup"])
@@ -287,7 +287,7 @@ def test_reliability_and_speed_drift_keep_the_confirmation(monkeypatch):
             httpx.Response(200, json={"offers": [vast_row(7101, host_id=7301, reliability=0.98, inet_down=1150.0)]})])
         def listing(request):
             return page([instance(label="ablit-" + RunStore().all()[0]["run_id"])])
-        router.get(ROOT + "/api/v1/instances").mock(side_effect=listing)
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=listing)
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 0
         assert create.call_count == 1
 

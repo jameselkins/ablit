@@ -422,7 +422,15 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
         print(f"ablit: {error}", file=sys.stderr)
         return exitcodes.USAGE
     except (BackendError, httpx.HTTPError, OSError, ValueError) as error:
-        print(f"ablit: {type(error).__name__}. Check status and run down for pending cleanup.", file=sys.stderr)
+        print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
+        # Only mention cleanup when a run could still be billing.
+        try:
+            active = [r for r in RunStore().all() if r["state"] != "billing_stopped_confirmed"]
+        except (RunError, OSError, ValueError):
+            active = [None]
+        if not active:
+            return 1
+        print("ablit: a run may still be billing. Check `ablit status --all` and run `ablit down <run>`.", file=sys.stderr)
         return exitcodes.CLEANUP_PENDING
     except (EOFError, KeyboardInterrupt):
         print("Billing continues for existing rentals. Use `ablit status --all` and `ablit down <run>`.", file=sys.stderr)

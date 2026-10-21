@@ -9,6 +9,7 @@ import keyring
 from keyring.errors import KeyringError, PasswordDeleteError
 
 from ablit.backends.base import Creds, creds_from_env
+from ablit.backends.errors import CredentialsRejected
 
 
 class CredentialError(Exception):
@@ -79,7 +80,12 @@ def setup_vast(driver, store, no_referral: bool, environ=None) -> int:
     key = getpass.getpass("Vast API key (hidden): ").strip()
     if not key:
         raise CredentialError("No key was entered.")
-    driver.test_credentials(Creds(key))
+    try:
+        driver.test_credentials(Creds(key))
+    except CredentialsRejected:
+        raise
+    except Exception as error:
+        raise CredentialError(f"The key test failed before Vast accepted or refused the key: {error}") from error
     if input("Save in the OS keyring? [y/N, N keeps it only in this process] ").strip().lower() in ("y", "yes"):
         secret_set("accounts/vast", key)
         print("Saved the Vast key in the OS keyring.")

@@ -97,9 +97,9 @@ def test_down_partial_failure_and_retry_preserve_state_and_resources(tmp_path, c
     r = record(store)
     driver = VastBackend(httpx.Client(), store=store)
     with respx.mock(assert_all_called=False) as router:
-        listing = router.get(ROOT + "/api/v1/instances").mock(return_value=page([instance()]))
-        destroy = router.delete(ROOT + "/api/v0/instances/7201").respond(503, json={"success": False})
-        revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401").respond(200, json="Successfully Deleted API Key")
+        listing = router.get(ROOT + "/api/v1/instances/").mock(return_value=page([instance()]))
+        destroy = router.delete(ROOT + "/api/v0/instances/7201/").respond(503, json={"success": False})
+        revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
         assert down(store, r, driver, KEY) == 7
         saved = store.load(RUN)
         assert saved["state"] == "termination_requested"
@@ -125,9 +125,9 @@ def test_cleanup_moves_through_all_states_and_retries_key_failure(tmp_path, monk
         save(data)
     monkeypatch.setattr(store, "save", observe_save)
     with respx.mock as router:
-        router.get(ROOT + "/api/v1/instances").mock(return_value=page([]))
-        router.delete(ROOT + "/api/v0/instances/7201").respond(404)
-        revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401").respond(503)
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
+        router.delete(ROOT + "/api/v0/instances/7201/").respond(404)
+        revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(503)
         assert down(store, r, driver, KEY) == 7
         assert r["state"] == "resources_terminated"
         revoke.respond(200, json="Successfully Deleted API Key")
@@ -142,8 +142,8 @@ def test_down_recovers_lost_create_by_label(tmp_path):
     r = record(store, resource_ids=[], state="creating", watchdog_key_sent=False, watchdog_key_id=None)
     driver = VastBackend(httpx.Client(), store=store)
     with respx.mock as router:
-        router.get(ROOT + "/api/v1/instances").mock(side_effect=[page([instance()]), page([])])
-        destroy = router.delete(ROOT + "/api/v0/instances/7201").respond(200, json={"success": True})
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=[page([instance()]), page([])])
+        destroy = router.delete(ROOT + "/api/v0/instances/7201/").respond(200, json={"success": True})
         assert down(store, r, driver, KEY) == 0
         assert destroy.call_count == 1
         assert store.load(RUN)["resource_ids"] == ["7201"]
@@ -153,7 +153,7 @@ def test_empty_list_cannot_clear_an_ambiguous_create(tmp_path):
     store = RunStore(tmp_path)
     r = record(store, resource_ids=[], state="creating", watchdog_key_sent=False, watchdog_key_id=None)
     with respx.mock as router:
-        router.get(ROOT + "/api/v1/instances").mock(return_value=page([]))
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
         assert down(store, r, VastBackend(httpx.Client()), KEY) == 7
     assert store.load(RUN)["state"] != "billing_stopped_confirmed"
 
@@ -172,8 +172,8 @@ def test_no_key_revocation_when_billing_check_times_out(tmp_path):
     r = record(store)
     driver = VastBackend(httpx.Client(), store=store)
     with respx.mock(assert_all_called=False) as router:
-        listing = router.get(ROOT + "/api/v1/instances").mock(side_effect=[page([instance()]), httpx.ReadTimeout("invented")])
-        router.delete(ROOT + "/api/v0/instances/7201").respond(200, json={"success": True})
-        revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401").respond(200, json="Successfully Deleted API Key")
+        listing = router.get(ROOT + "/api/v1/instances/").mock(side_effect=[page([instance()]), httpx.ReadTimeout("invented")])
+        router.delete(ROOT + "/api/v0/instances/7201/").respond(200, json={"success": True})
+        revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
         assert down(store, r, driver, KEY) == 7
         assert revoke.call_count == 0

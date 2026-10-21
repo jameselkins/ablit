@@ -480,13 +480,18 @@ class VastBackend(UnwrittenBackend):
         """Send one request without retrying a mutation or echoing an error body."""
         if self._client is None:
             self._client = httpx.Client(timeout=30)
-        if method == "GET" and path == "/api/v1/instances":
+        if method == "GET" and path == "/api/v1/instances/":
             if self._inventory_at is not None:
                 pause = self.inventory_interval - (time.monotonic() - self._inventory_at)
                 if pause > 0:
                     time.sleep(pause)
             self._inventory_at = time.monotonic()
-        response = self._client.request(method, "https://console.vast.ai" + path,
+        # Vast answers a path without its trailing slash with a 301 redirect, and
+        # a redirected DELETE or PUT is not resent. Every path ends with a slash,
+        # and redirects are refused rather than followed.
+        if not path.endswith("/"):
+            raise ValueError("Vast API paths must end with a slash.")
+        response = self._client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
                                         headers={"Authorization": f"Bearer {creds.api_key}"},
                                         json=body, params=params)
         if response.status_code == 404 and missing_ok:
@@ -500,6 +505,8 @@ class VastBackend(UnwrittenBackend):
                 return None
         if response.status_code in (401, 403):
             raise CredentialsRejected("vast", response.status_code, "the API key or its permissions were refused")
+        if response.is_redirect:
+            raise RequestRejected("vast", response.status_code, "the API redirected the request; ablit does not follow it")
         if not response.is_success:
             raise RequestRejected("vast", response.status_code, "the request failed; check the Vast console")
         try:
@@ -525,7 +532,7 @@ class VastBackend(UnwrittenBackend):
 
     def test_credentials(self, creds: Creds) -> None:
         # https://docs.vast.ai/api-reference/instances/show-instances
-        self._success(self._request("GET", "/api/v1/instances", creds,
+        self._success(self._request("GET", "/api/v1/instances/", creds,
                                     params={"limit": 1, "select_cols": '["id"]'}))
 
     def instances(self, creds: Creds) -> list[dict]:
@@ -534,7 +541,7 @@ class VastBackend(UnwrittenBackend):
         params = {"limit": 25, "select_cols": '["id","label","actual_status","ssh_host","ssh_port","host_id","dph_total","volume_info"]'}
         while True:
             # https://docs.vast.ai/api-reference/instances/show-instances
-            data = self._success(self._request("GET", "/api/v1/instances", creds, params=params))
+            data = self._success(self._request("GET", "/api/v1/instances/", creds, params=params))
             if not isinstance(data.get("instances"), list) or "next_token" not in data:
                 raise ResponseNotRecognized("vast: missing instances or pagination cursor")
             for row in data["instances"]:
@@ -587,7 +594,7 @@ class VastBackend(UnwrittenBackend):
             # The operation schema specifies PUT; its shared introduction says POST.
             # https://docs.vast.ai/api-reference/instances/create-instance
             try:
-                data = self._success(self._request("PUT", f"/api/v0/asks/{int(offer.offer_id)}", creds, body=body))
+                data = self._success(self._request("PUT", f"/api/v0/asks/{int(offer.offer_id)}/", creds, body=body))
             except RequestRejected as error:
                 if error.status in (400, 401, 403, 404, 410):
                     record["create_rejected"] = True
@@ -626,7 +633,7 @@ class VastBackend(UnwrittenBackend):
         terminated = []
         for instance in inv.resource_ids:
             # https://docs.vast.ai/api-reference/instances/destroy-instance
-            data = self._request("DELETE", f"/api/v0/instances/{int(instance)}", creds, missing_ok=True)
+            data = self._request("DELETE", f"/api/v0/instances/{int(instance)}/", creds, missing_ok=True)
             if data is not None:
                 self._success(data)
             terminated.append(instance)
@@ -646,7 +653,7 @@ class VastBackend(UnwrittenBackend):
         permissions = {"api": {"instance_write": {"api.instance.destroy": {"constraints": {"id": {"eq": instance}}}}}}
         # https://docs.vast.ai/api-reference/accounts/create-api-key
         # https://docs.vast.ai/cli/permissions
-        data = self._object(self._request("POST", "/api/v0/auth/apikeys", creds,
+        data = self._object(self._request("POST", "/api/v0/auth/apikeys/", creds,
                                          body={"name": self.label(alloc.run_id), "permissions": permissions}))
         key_id = str(fields.integer(data, "id", backend="vast", minimum=1))
         token = fields.text(data, "key", backend="vast")
@@ -655,18 +662,18 @@ class VastBackend(UnwrittenBackend):
 
     def delete_watchdog_key(self, key_id: str, creds: Creds) -> None:
         # https://docs.vast.ai/api-reference/accounts/delete-api-key
-        data = self._request("DELETE", f"/api/v0/auth/apikeys/{int(key_id)}", creds, missing_ok=True)
+        data = self._request("DELETE", f"/api/v0/auth/apikeys/{int(key_id)}/", creds, missing_ok=True)
         if data is not None and data != "Successfully Deleted API Key":
             raise ResponseNotRecognized("vast: unknown API key deletion response")
 
     def register_ssh_key(self, public_key: str, creds: Creds) -> str:
         # https://docs.vast.ai/api-reference/accounts/create-ssh-key
-        data = self._success(self._request("POST", "/api/v0/ssh", creds, body={"ssh_key": public_key}))
+        data = self._success(self._request("POST", "/api/v0/ssh/", creds, body={"ssh_key": public_key}))
         key = self._object(data.get("key"))
         return str(fields.integer(key, "id", backend="vast", minimum=1))
 
     def delete_ssh_key(self, key_id: str, creds: Creds) -> None:
         # https://docs.vast.ai/api-reference/accounts/delete-ssh-key
-        data = self._request("DELETE", f"/api/v0/ssh/{int(key_id)}", creds, missing_error="no_ssh_key")
+        data = self._request("DELETE", f"/api/v0/ssh/{int(key_id)}/", creds, missing_error="no_ssh_key")
         if data is not None:
             self._success(data)

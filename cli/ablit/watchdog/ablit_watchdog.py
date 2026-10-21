@@ -150,7 +150,7 @@ def destroy_instance(reason: str, config_path: str = RUN_FILE) -> None:
         token = handle.read().strip()
     # https://docs.vast.ai/api-reference/instances/destroy-instance
     request = urllib.request.Request(
-        f"https://console.vast.ai/api/v0/instances/{instance}", method="DELETE",
+        f"https://console.vast.ai/api/v0/instances/{instance}/", method="DELETE",
         headers={"Authorization": f"Bearer {token}"},
     )
     try:

@@ -91,6 +91,7 @@ State lives in the platform's user state directory. There is no database and no 
 | Code | Meaning |
 |---|---|
 | 0 | Success |
+| 1 | Unexpected error while no run is billing |
 | 2 | Usage error, including a paid `up` without a terminal |
 | 3 | Model not supported, or no offer qualified |
 | 4 | Missing or rejected credentials |

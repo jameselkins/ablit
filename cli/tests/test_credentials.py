@@ -31,7 +31,7 @@ def test_setup_reads_hidden_key_and_tests_with_one_read_only_call(monkeypatch, c
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
     monkeypatch.setattr(keys.getpass, "getpass", lambda prompt: "invented-setup-key")
     with respx.mock as router:
-        route = router.get(ROOT + "/api/v1/instances").mock(return_value=page([]))
+        route = router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
         assert main(["setup", "vast"], environ={}) == 0
         assert route.call_count == 1
         assert route.calls[0].request.method == "GET"
@@ -45,7 +45,7 @@ def test_setup_session_choice_never_saves_the_key(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
     monkeypatch.setattr(keys.getpass, "getpass", lambda prompt: "invented-session-key")
     with respx.mock as router:
-        router.get(ROOT + "/api/v1/instances").mock(return_value=page([]))
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
         keys.setup_vast(VastBackend(httpx.Client()), RunStore(), False, {})
     assert keys.secret_get("accounts/vast") is None
     assert keys.SESSION["vast"] == "invented-session-key"
