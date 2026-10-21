@@ -4,7 +4,7 @@ ablit is a command-line tool that finds the cheapest rented GPU machine that can
 
 It is for people who want to run an open-weight language model, such as an abliterated model (a model edited to remove its refusals), on a rented GPU without comparing marketplaces and engine settings by hand. ablit runs on your computer, so your marketplace key stays with you, and it runs no service, holds no money and relays no inference traffic.
 
-Status: alpha. Two catalog entries are boot-tested on Vast: `llama31-8b-abliterated-q4km` on llama.cpp and `ds41-september-gsq-uncensored` on Xolotl. The other entries have been planned but never booted, and RunPod can be searched but not rented yet. The Status section below lists exactly what has been tested.
+Status: alpha. Two catalog entries are boot-tested on Vast: `llama31-8b-abliterated-q4km` on llama.cpp and `ds41-september-gsq-uncensored` on Xolotl. The other entries have been planned but never booted. RunPod can be searched and rented, and RunPod renting has not been tested on a rented machine. The Status section below lists exactly what has been tested.
 
 ## Quickstart
 
@@ -65,7 +65,7 @@ All paid tests so far ran on Vast.
 - Tested on a rented machine: the September Xolotl entry did the same on a 98 GB GPU. It downloaded 372 GB at 4.1 to 4.8 Gbps, was ready 17 minutes after the rental started, and generated about 47 tokens per second. The 24 GB GPU floor is not tested yet.
 - Tested in separate paid runs: the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost.
 - Not tested on a rented machine: vLLM, the 1017 Xolotl entry, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM entries.
-- RunPod: search works, and renting is not available. Clore: search and renting are being added and are untested.
+- RunPod: search works, and renting was added but has not been tested on a rented machine. Clore: search works, and its renting code is untested and not connected to `ablit up`.
 - Both tested entries are marked `boot-tested` in the catalog, with their records in `catalog/boot-tests/`.
 
 ## Install
@@ -80,21 +80,21 @@ uv tool install ablit
 
 Run `ablit setup vast` to enter a key with hidden input and test it with one read-only request. You can then save the key in the OS keyring for later commands, or keep it for the current process only, which ends when setup exits. For a shell session, you can set `VAST_API_KEY` yourself with hidden input, and an environment key takes priority over the keyring.
 
-Setup asks whether you already have an account. If you don't, it shows the disclosure in the Paid links section and offers "Sign up with the paid link", "Sign up directly" and "Skip". It prints links and never opens a browser. RunPod account setup is deferred.
+Setup asks whether you already have an account. If you don't, it shows the disclosure in the Paid links section and offers "Sign up with the paid link", "Sign up directly" and "Skip". It prints links and never opens a browser. `ablit setup runpod` works the same way for RunPod, with `RUNPOD_API_KEY` as the environment key. ablit has no referral ID for RunPod, so setup offers only the plain sign-up link and skip.
 
 ## The endpoint
 
 By default, the engine on the rented machine listens on `127.0.0.1` only, and ablit opens an SSH port forward that checks the host key and picks a free local port. ablit then prints a local URL, the name of the keyring entry that holds the endpoint key, and a sample `curl` command. Closing the tunnel does not stop billing, so run `ablit down` to stop the run.
 
-Paid launches accept only `--endpoint tunnel`, and public endpoints are deferred. The endpoint key is a random 32-byte value that ablit passes to the engine through an environment variable. OpenSSH saves the first host key for each run and checks it on later connections, and Vast does not document a separate authenticated host fingerprint, so first contact uses trust on first use.
+Paid launches accept only `--endpoint tunnel`, and public endpoints are deferred. The endpoint key is a random 32-byte value that ablit passes to the engine through an environment variable. OpenSSH saves the first host key for each run and checks it on later connections, and neither Vast nor RunPod documents a separate authenticated host fingerprint, so first contact uses trust on first use.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `ablit setup [backend]` | Vast account setup with hidden input and OS keyring storage. |
+| `ablit setup [backend]` | Vast, RunPod or Clore key setup with hidden input and OS keyring storage. |
 | `ablit plan <model>` | Shows the chosen offer and the next four, the totals for 1 hour, 24 hours, 7 days and `--hours`, and why other offers or backends were dropped. Rents nothing. Exits with code 3 when no offer qualifies. |
-| `ablit up <model>` | Plans, asks you to type `rent` (or takes `--yes`), then rents a llama.cpp or Xolotl entry on Vast and keeps its tunnel open. |
+| `ablit up <model>` | Plans, asks you to type `rent` (or takes `--yes`), then rents a llama.cpp or Xolotl entry on Vast or RunPod (`--backends runpod` for RunPod only) and keeps its tunnel open. |
 | `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. Supports `--all`, `--json`, `--show-key` and `--watch`. |
 | `ablit logs [run]` | Logs from the machine with known secrets removed. Supports `--stage` and `-f`. |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel and runs the local cap check. |
@@ -115,7 +115,7 @@ A runtime, or engine, is the server program that loads the model on the rented m
 
 Xolotl boot test result: on 2026-10-21 the September entry ran on one RTX PRO 6000 (98 GB) on Vast. It downloaded 372 GB in about 11 minutes, read the Engram tables in place, and answered at about 47 tokens per second end to end. The record is in `catalog/boot-tests/`.
 
-`ablit plan` works for every entry, whatever its runtime. `ablit up` works today for llama.cpp and Xolotl entries on Vast.
+`ablit plan` works for every entry, whatever its runtime. `ablit up` is built for llama.cpp and Xolotl entries on Vast and RunPod. Both tested entries ran on Vast, and nothing has run on RunPod yet.
 
 ## Catalog
 

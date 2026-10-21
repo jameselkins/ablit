@@ -9,6 +9,18 @@ run `ablit down` or the rental ends. Check `ablit status` if you leave a run
 unattended.
 """
 
+# Added to the spend cap notice when the chosen offer is on a marketplace that has no key limited
+# to one machine. The machine then cannot be trusted to destroy itself, so the check that runs on
+# this computer carries the cap. Source: backends/runpod.md.
+LOCAL_CAP_NOTES = {
+    "runpod": (
+        "On RunPod, ablit cannot create a key that is limited to one machine, so the machine does not "
+        "get one. The cap on this machine relies on the check that runs on this computer. The machine "
+        "also tries to destroy itself with the key RunPod puts in it, and that has not been tested. "
+        "Keep in your RunPod account only an amount you are willing to spend."
+    ),
+}
+
 SPOT_WARNING = """\
 An interruptible machine can be taken away at any time. Your endpoint will stop
 without notice, downloaded files may be lost, and on Vast a paused machine's

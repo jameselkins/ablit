@@ -17,7 +17,7 @@ These commands spend nothing:
 
 `ablit up` rents a machine and costs money. In a terminal it asks the user to type `rent`. An agent passes `--yes` to approve the quote without the prompt.
 
-`ablit up` rents on Vast only. The Clore driver searches and has rental calls, but they are untested on a rented machine, and `up` does not use them yet. `ablit setup clore` saves a Clore key for when it does.
+`ablit up` rents on Vast and RunPod. With no `--backends`, it searches Vast, and also RunPod when `RUNPOD_API_KEY` or a saved RunPod key exists, and it rents where the chosen offer is. Pass `--backends runpod` to rent on RunPod only. RunPod renting is untested on a rented machine. When the chosen offer is on RunPod, the quote adds a note that the spend cap relies on the check that runs on this computer, so tell the user before they rent. The Clore driver searches and has rental calls, but they are untested, and `up` does not use them yet. `ablit setup runpod` and `ablit setup clore` save a key.
 
 Every paid `up` needs `--max-spend <USD>`, and the watchdog destroys the run when spend reaches it. `--yes` skips only the prompt. ablit still refuses a cap too small to cover setup and ten minutes of use (exit 5), and it cancels if the price changes between the quote and the rental (exit 5). Add `--untested` for an entry whose status is `unverified`.
 

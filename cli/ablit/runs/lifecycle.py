@@ -18,6 +18,8 @@ from ablit.watchdog.ablit_watchdog import Config, reserve
 
 CONSOLE = "https://cloud.vast.ai/instances/"
 KEYS = "https://cloud.vast.ai/manage-keys/"
+CONSOLES = {"vast": CONSOLE, "runpod": "https://console.runpod.io/pods"}
+DISPLAY = {"vast": "Vast", "runpod": "RunPod"}
 
 
 def reason(error: Exception) -> str:
@@ -27,7 +29,7 @@ def reason(error: Exception) -> str:
 
 
 def allocation(record: dict) -> Allocation:
-    return Allocation(record["run_id"], "vast", record.get("resource_ids", []),
+    return Allocation(record["run_id"], record.get("backend", "vast"), record.get("resource_ids", []),
                       record["offer"]["hourly_all_in"], record.get("ssh_host"), record.get("ssh_port"),
                       record.get("host_id"))
 
@@ -122,10 +124,13 @@ def local_stop_needed(record: dict, now: float) -> bool:
     if record["marketplace_state"] == "absent":
         return False
     last = record.get("heartbeat", {}).get("at", record["started_at"])
+    # A backend with no scoped on-box key (RunPod) cannot rely on the watchdog to stop the run,
+    # so the local check runs whatever the heartbeat age is.
+    stale = now - last > 180 or bool(record.get("local_cap_primary"))
     cfg = Config(record["started_at"], record["offer"]["hourly_all_in"],
                  record["offer"]["bandwidth_cost_per_gb"], record["cap_usd"],
-                 record["offer"]["download_mbps"])
-    return now - last > 180 and record["spend_estimate_usd"] + reserve(cfg) >= record["cap_usd"]
+                 record["offer"]["download_mbps"] or record.get("min_download_mbps", 0))
+    return stale and record["spend_estimate_usd"] + reserve(cfg) >= record["cap_usd"]
 
 
 def down(store, record: dict, driver, creds) -> int:
@@ -145,10 +150,11 @@ def down(store, record: dict, driver, creds) -> int:
         store.save(record)
     except (BackendError, httpx.HTTPError) as error:
         errors.append(f"Instance reconciliation is unconfirmed ({reason(error)}).")
-    inventory = Inventory(run_id, "vast", record.get("resource_ids", []))
+    backend = record.get("backend", "vast")
+    inventory = Inventory(run_id, backend, record.get("resource_ids", []))
     for resource in inventory.resource_ids:
         try:
-            driver.destroy(Inventory(run_id, "vast", [resource]), creds)
+            driver.destroy(Inventory(run_id, backend, [resource]), creds)
         except (BackendError, httpx.HTTPError) as error:
             errors.append(f"Destroy of instance {resource} is unconfirmed ({reason(error)}).")
     if not errors:
@@ -159,11 +165,14 @@ def down(store, record: dict, driver, creds) -> int:
         record["last_marketplace_check"] = evidence.checked_at
         record["still_billable"] = evidence.still_billable
         if evidence.still_billable:
-            errors.append("Instances are still in the user's instance list.")
+            errors.append("Instances are still in the user's instance list." if backend == "vast"
+                          else "Pods are still in the user's pod list.")
         elif not record.get("resource_ids") and record.get("create_sent") and not record.get("create_rejected"):
             # An empty list after an ambiguous create does not prove that an
             # accepted create cannot appear later. Vast documents no upper bound.
-            errors.append("Create was sent but no ID has been recovered. Check the run label in the console.")
+            errors.append("Create was sent but no ID has been recovered. Check the run label in the console."
+                          if backend == "vast" else
+                          f"Create was sent but no ID has been recovered. Check for a pod named ablit-{run_id} in the console.")
         else:
             record["state"] = "resources_terminated"
             billing_clear = True
@@ -202,13 +211,13 @@ def down(store, record: dict, driver, creds) -> int:
         record["state"] = "billing_stopped_confirmed"
     store.save(record)
     if errors:
-        print(f"{run_id}: {record['state']}. Cleanup pending. Check {CONSOLE}")
+        print(f"{run_id}: {record['state']}. Cleanup pending. Check {CONSOLES.get(backend, CONSOLE)}")
         for error in errors:
             print(error)
         return 7
     print(f"{run_id}: billing_stopped_confirmed. Billing stopped.")
     if "final_cost_usd" in record:
-        print(f"Final cost reported by Vast: ${record['final_cost_usd']:.4f}")
+        print(f"Final cost reported by {DISPLAY.get(backend, backend)}: ${record['final_cost_usd']:.4f}")
     return 0
 
 

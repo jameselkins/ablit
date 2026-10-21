@@ -22,6 +22,10 @@ class RunError(Exception):
     """A run cannot be selected or changed safely."""
 
 
+class RunBusy(RunError):
+    """The run lock is held by another command. Nothing is wrong with the run."""
+
+
 def state_dir() -> Path:
     """Follow XDG on Unix and Application Support on macOS."""
     if sys.platform == "darwin":
@@ -103,7 +107,7 @@ class RunStore:
                     break
                 except BlockingIOError as error:
                     if time.monotonic() >= deadline:
-                        raise RunError(f"Run {run_id} is busy in another command.") from error
+                        raise RunBusy(f"Run {run_id} is busy in another command.") from error
                     time.sleep(0.2)
             yield
         finally:

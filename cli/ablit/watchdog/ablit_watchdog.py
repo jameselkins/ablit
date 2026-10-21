@@ -10,7 +10,8 @@ The reserve is 2 minutes of the hourly rate plus 2 minutes of transfer at the
 advertised speed.
 
 The decision logic is plain functions over numbers, so tests can run it without
-a clock or a network. The destroy call uses only the scoped credential.
+a clock or a network. On Vast the destroy call uses only the scoped credential. On RunPod it
+tries the pod's own key, which RunPod documents as pod-scoped and does not describe further.
 """
 
 from __future__ import annotations
@@ -144,6 +145,9 @@ def destroy_instance(reason: str, config_path: str = RUN_FILE) -> None:
     """Delete this instance with the single-instance key, without printing it."""
     with open(config_path, encoding="utf-8") as handle:
         data = json.load(handle)
+    if data.get("backend") == "runpod":
+        destroy_runpod_pod(data["instance_id"])
+        return
     instance = data["instance_id"]
     if isinstance(instance, bool) or not isinstance(instance, int) or instance <= 0:
         raise ValueError("Invalid instance ID")
@@ -163,6 +167,48 @@ def destroy_instance(reason: str, config_path: str = RUN_FILE) -> None:
         raise RuntimeError(f"Vast destroy returned HTTP {error.code}") from None
     if not isinstance(result, dict) or result.get("success") is not True:
         raise RuntimeError("Vast did not confirm destroy")
+
+
+def pod_key() -> str:
+    """Find the key RunPod puts in the pod's environment as RUNPOD_API_KEY.
+
+    An SSH session does not inherit the container environment, so the file for
+    process 1 is read as well. RunPod calls the key pod-scoped and does not say
+    what it may do, so a refusal is expected to be possible.
+    https://docs.runpod.io/pods/templates/environment-variables
+    """
+    token = os.environ.get("RUNPOD_API_KEY", "")
+    if not token:
+        try:
+            with open("/proc/1/environ", "rb") as handle:
+                for item in handle.read().split(b"\0"):
+                    if item.startswith(b"RUNPOD_API_KEY="):
+                        token = item.split(b"=", 1)[1].decode("utf-8", "replace")
+        except OSError:
+            pass
+    if not token.strip():
+        raise RuntimeError("No RunPod pod key is available on this machine")
+    return token.strip()
+
+
+def destroy_runpod_pod(pod_id: str) -> None:
+    """Terminate this pod with RunPod's own pod key. Untested on a rented pod."""
+    import re
+
+    if not isinstance(pod_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", pod_id):
+        raise ValueError("Invalid pod ID")
+    # https://api.runpod.io/v2/openapi.json (deletePod). 204 means deleted.
+    request = urllib.request.Request(
+        f"https://api.runpod.io/v2/pods/{pod_id}", method="DELETE",
+        headers={"Authorization": f"Bearer {pod_key()}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20):
+            return
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return
+        raise RuntimeError(f"RunPod destroy returned HTTP {error.code}") from None
 
 
 def write_heartbeat(path: str, data: dict) -> None:

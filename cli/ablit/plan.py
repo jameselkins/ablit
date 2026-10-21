@@ -20,7 +20,7 @@ from ablit.backends.base import Backend, creds_from_env
 from ablit.backends.errors import BackendError, CredentialsRejected
 from ablit.catalog.loader import repo_root
 from ablit.catalog.models import Entry
-from ablit.notices import SPEND_CAP_NOTICE, UNTESTED_NOTICE, spend_cap_notice
+from ablit.notices import LOCAL_CAP_NOTES, SPEND_CAP_NOTICE, UNTESTED_NOTICE, spend_cap_notice
 from ablit.select import (
     HardwareRequest,
     PlanOptions,
@@ -354,5 +354,8 @@ def report_json(report: PlanReport) -> dict[str, Any]:
 
 def cap_notice(report: PlanReport) -> str:
     if report.max_spend is not None:
-        return spend_cap_notice(report.max_spend)
-    return SPEND_CAP_NOTICE.replace("$<cap>", "your --max-spend cap")
+        text = spend_cap_notice(report.max_spend)
+    else:
+        text = SPEND_CAP_NOTICE.replace("$<cap>", "your --max-spend cap")
+    note = LOCAL_CAP_NOTES.get(report.ranked[0].offer.backend) if report.ranked else None
+    return text + "\n" + note + "\n" if note else text

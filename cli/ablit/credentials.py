@@ -58,6 +58,7 @@ def credentials(backend: str, environ: Mapping[str, str] | None = None) -> Creds
 _SETUP = {
     "vast": {"display": "Vast.ai", "short": "Vast", "direct": "https://cloud.vast.ai/"},
     "clore": {"display": "Clore.ai", "short": "Clore", "direct": "https://clore.ai/"},
+    "runpod": {"display": "RunPod", "short": "RunPod", "direct": "https://www.runpod.io/"},
 }
 
 
@@ -114,3 +115,8 @@ def setup_vast(driver, store, no_referral: bool, environ=None) -> int:
 def setup_clore(driver, store, no_referral: bool, environ=None) -> int:
     """Same flow as Vast. The key test is one read-only call to the wallets endpoint."""
     return _setup("clore", driver, store, no_referral, environ)
+
+
+def setup_runpod(driver, store, no_referral: bool, environ=None) -> int:
+    """Same flow as Vast. The key test is one read-only call that lists pods, and it has no referral ID."""
+    return _setup("runpod", driver, store, no_referral, environ)

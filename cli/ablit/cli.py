@@ -69,13 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ablit",
         description="Find the cheapest rented GPU machine that can run a model, "
                     "show the full cost, and start it on your own marketplace account.",
-        epilog="Paid launches support the llama.cpp and Xolotl entries on Vast. Other entries can be planned.",
+        epilog="Paid launches support the llama.cpp and Xolotl entries on Vast and RunPod. Other entries can be planned.",
     )
     parser.add_argument("--version", action="version", version=f"ablit {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     setup = sub.add_parser("setup", help="first-run account flow")
-    setup.add_argument("backend", nargs="?", help="a marketplace: vast or clore")
+    setup.add_argument("backend", nargs="?", help="a marketplace: vast, runpod or clore")
     setup.add_argument("--no-referral", action="store_true",
                        help="turn off all referral links, and save the setting")
 
@@ -363,7 +363,7 @@ def _cmd_selection(
         return exitcodes.USAGE
     available = default_backends() if backends is None else backends
     try:
-        return up(args, entry, opts, available["vast"], environ, RunStore())
+        return up(args, entry, opts, available["vast"], environ, RunStore(), drivers=dict(available))
     finally:
         if backends is None:
             for backend in available.values():
@@ -394,20 +394,22 @@ def _main(
         return exitcodes.USAGE
     if args.command in ("plan", "up"):
         return _cmd_selection(args, args.command, backends, environ)
-    from ablit.credentials import setup_clore, setup_vast
+    from ablit.credentials import setup_clore, setup_runpod, setup_vast
     from ablit.runs.commands import existing
     available = default_backends() if backends is None else backends
     try:
         if args.command == "setup":
-            if args.backend not in (None, "vast", "clore"):
+            if args.backend not in (None, "vast", "clore", "runpod"):
                 return _not_implemented("setup " + args.backend)
             if not sys.stdin.isatty():
                 print("ablit setup needs a terminal.", file=sys.stderr)
                 return 2
             if args.backend == "clore":
                 return setup_clore(available["clore"], RunStore(), args.no_referral, environ)
+            if args.backend == "runpod":
+                return setup_runpod(available["runpod"], RunStore(), args.no_referral, environ)
             return setup_vast(available["vast"], RunStore(), args.no_referral, environ)
-        return existing(args, available["vast"], environ, RunStore())
+        return existing(args, available["vast"], environ, RunStore(), drivers=dict(available))
     finally:
         if backends is None:
             for backend in available.values():
@@ -424,7 +426,7 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
         print(f"ablit: {error}", file=sys.stderr)
         return exitcodes.CREDENTIALS
     except WorkloadRejected:
-        print("ablit: Vast rejected the workload. Run down to confirm cleanup.", file=sys.stderr)
+        print("ablit: the marketplace rejected the workload. Run down to confirm cleanup.", file=sys.stderr)
         return exitcodes.WORKLOAD_REJECTED
     except RunError as error:
         print(f"ablit: {error}", file=sys.stderr)
