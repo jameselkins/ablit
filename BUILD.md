@@ -124,8 +124,7 @@ artifacts:                         # every file the profile reads
   - {path: ..., bytes: ..., git_blob_id: ..., role: tokenizer}   # small files with no LFS hash
 staging:                           # order of steps, used to compute peak disk
   - {step: download, artifacts: all}
-  - {step: join, inputs: [...], output_bytes: ...}
-  - {step: engram-extract, inputs: [...], output_bytes: ..., keeps_inputs_until_done: true}
+  - {step: join, inputs: [weight], output_bytes: ..., keeps_inputs_until_done: false, delete_inputs_after: true}
 profile:
   engine: xolotl
   engine_lock: xolotl-63fc34c
@@ -136,8 +135,8 @@ profile:
   context_tokens: 4096
   concurrency: 1
   port: 8150
-  startup_hours_estimate: 0.5
-  min_download_mbps: 500
+  startup_hours_estimate: 0.3
+  min_download_mbps: 1000
 sources: [url, ...]
 tests: []
 status: unverified                 # unverified | boot-tested | removed
@@ -147,7 +146,7 @@ Rules for the schema:
 
 1. `artifacts` lists every file the engine reads, including draft models and tokenizer files.
 2. Large files carry the Hugging Face LFS SHA-256. Small files without an LFS record carry the Git blob ID, and `verify_entry.py` downloads them at the pinned revision to compute a SHA-256.
-3. Peak disk is computed from `staging`, never written by hand. Until a streaming Engram extractor is proven, the Xolotl staging keeps both Engram source shards on disk during extraction.
+3. Peak disk is computed from `staging`, never written by hand. The Xolotl staging has no Engram extraction step, because the engine reads the two official Engram shards in place (see "Xolotl download and overlap" below). Its `join` step says `keeps_inputs_until_done: false`, because the bootstrap appends one weight part at a time and deletes it, so the peak is the whole download and not twice the weights. The engine lock adds a margin of one weight part on top of the peak (`disk_margin_gb`), and room for the fallback Engram extraction (`extract_disk_gb`, 210 GB), which costs a few cents an hour.
 4. `profile` is one exact combination of engine lock, GPU arrangement, context length and concurrency. A test of one profile doesn't approve another.
 
 ### Status and launch rules
@@ -173,8 +172,8 @@ A weekly job re-runs check 2. When an artifact has disappeared, it opens a pull 
 | ID | Engine | Floors | Notes |
 |---|---|---|---|
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs, 614 GB VRAM in total, 256 GB host RAM, disk from staging | Floors derived from the vLLM recipe, not yet tested |
-| `ds41-september-gsq-uncensored` | Xolotl | One 24 GB NVIDIA GPU, 90 GB host RAM (256 GB recommended), disk from staging | Floors from the Xolotl README, not yet tested. Best agentic scores among the single-GPU builds, by the author's own tests. |
-| `ds41-1017-xq-v3-uncensored` | Xolotl | Same | Best 1017 build by the author's own scores. V2 was removed on 2026-10-21. |
+| `ds41-september-gsq-uncensored` | Xolotl | One 24 GB NVIDIA GPU of compute capability 8.6, 8.9 or 12.0, a driver of version 580 or newer, 90 GB host RAM (256 GB recommended), a 1000 Mbps download floor, disk from staging (about 604 GB asked for, of which 372 GB is the staging peak) | Floors from the Xolotl README, not yet tested. Untested on a rented machine. Best agentic scores among the single-GPU builds, by the author's own tests. |
+| `ds41-1017-xq-v3-uncensored` | Xolotl | Same | Best 1017 build by the author's own scores. Untested on a rented machine. V2 was removed on 2026-10-21. |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | 70B-class vLLM build |
 | `llama31-8b-abliterated-q4km` | llama.cpp | From its sources | First paid test target |
 
@@ -184,8 +183,8 @@ A weekly job re-runs check 2. When an artifact has disappeared, it opens a pull 
 
 The planner records how many offers each step removed.
 
-1. Engine floor: GPU vendor, count, VRAM per GPU and in total, compute capability, host RAM and OS. The quote shows the GPU model.
-2. Disk floor: free disk at least the staging peak plus the engine image. On Vast, send `disk_space >= N` and `allocated_storage = N` so the price includes the disk.
+1. Engine floor: GPU vendor, count, VRAM per GPU and in total, compute capability, host RAM and OS. When the engine lock lists `cuda_architectures`, the compute capability must be one of the listed generations, because the image holds code for those and no others. On Vast, the search also sends `cuda_max_good >= cuda_version_min` (the highest CUDA version the host driver supports). The quote shows the GPU model.
+2. Disk floor: free disk at least the staging peak plus the engine image plus the lock's `disk_margin_gb` and `extract_disk_gb`. On Vast, send `disk_space >= N` and `allocated_storage = N` so the price includes the disk.
 3. Download speed floor: Vast's per-host `inet_down` must meet the floor. RunPod reports no per-host speed, so its offers are kept, labeled "speed not advertised, measured after boot", and ranked as if they ran exactly at the floor.
 4. Rental type and availability: on demand unless `--spot`, Vast `rentable = true`, RunPod `stockStatus` not null, and remaining rental duration at least the startup estimate plus `--hours`.
 5. User filters, only when set.
@@ -205,6 +204,17 @@ total(H)   = hourly_all_in * (D + S + H)
 ```
 
 `hourly_all_in` is Vast `dph_total` at the needed `allocated_storage`, or RunPod `uninterruptablePrice` for all GPUs plus volume disk. `bandwidth_cost_per_gb` is Vast's `inet_down_cost`, and zero for RunPod. The quote shows `D` and `S` on separate lines and labels `S` an estimate.
+
+`S` counts only the time after the last downloaded byte, because `D` already counts the download. The Xolotl entries use `S = 0.3` hours, and the figure comes from this sum.
+
+```
+image pull, container start and health check   0.25 hours   the startup estimate of the boot-tested llama.cpp entry
+engine load                                     92 seconds    the longest load time on the model cards
+last join and checksum after the final byte     60 seconds    an allowance, because the join runs during the download
+total                                           0.292 hours   rounded up to 0.3
+```
+
+None of the three terms has been measured on the Xolotl image. The first boot test replaces them with a measured figure.
 
 ### Search rule
 
@@ -273,20 +283,48 @@ Bootstrap stages, each writing a marker under `/ablit/stages/` so a restart skip
 1. Start the watchdog and write `/ablit/run.json`.
 2. Check GPU count, VRAM and compute capability (`nvidia-smi`), the container memory limit (cgroup `memory.max` and `/proc/meminfo`), the locked-memory limit (`ulimit -l`), and free disk on the data path (`df`). Fail with exit code 6 if any is below the profile.
 3. For profiles with `random_read_required`, run a bounded random-read test on a scratch file. Report the result. Set a pass threshold only after a measured passing box.
-4. Measure download speed over the first 2 minutes of the largest file. Below 90% of the floor, fail, destroy the run, and add the host to the local deny list. Never pick a replacement host automatically.
-5. Download only the listed artifacts at the pinned revision, resuming with range requests and checking that the server honored the range. Check size and hash before renaming each file into place. Keep all state on the data path.
-6. Run the staging steps with a checkpoint after each, and delete an input only after its output is verified.
+4. Measure download speed with the real download client. The Xolotl bootstrap runs it for 45 seconds on the first files of the real list and keeps those bytes. The measure is the larger of the average rate and the rate over the last 10 seconds, and it must reach 90% of the floor. Below that, fail, destroy the run, and add the host to the local deny list. Never pick a replacement host automatically.
+5. Download only the listed artifacts at the pinned revision with `engines/lib/fetch.py`, which resumes each range, checks that the server honored the range, and hashes while it downloads. A file is renamed into place only after its size and SHA-256 match, and a mismatch fails the run. Keep all state on the data path.
+6. Run the staging steps with a checkpoint after each, and delete an input only after its output is verified. For the Xolotl entries, the join and the Engram work start during stage 5 and finish in stage 6.
+
+Progress goes to `/ablit/progress/download.json`, `join.json` and `extract.json`, each holding `bytes_done`, `bytes_total`, `mbps`, `files_done`, `files_total` and a time. The status probe reads them, `ablit status` shows them in the run record, and `ablit up` prints a line each time a step passes another ten percent. The CLI keeps only the known steps and numeric fields, and a malformed file is dropped.
 7. Render the engine config with the real port and paths, and start the engine on `127.0.0.1` with a random 32-byte key passed by environment variable.
 8. Health check: `GET /v1/models`, one chat completion with `max_tokens: 1`, one streamed completion, and a check that requests with no key or a wrong key are refused.
 9. Write `/ablit/ready.json`.
 
 A redaction filter removes the endpoint key and marketplace keys from logs, run files and `--report` output. Tests use fake secrets to check it.
 
+### Xolotl download and overlap
+
+The Xolotl bootstrap exists to keep the rented machine busy from the first minute, because the 372 GB download is most of the bill. None of it has run on a rented machine yet, so every figure below is a design value and not a measurement.
+
+The download client is `engines/lib/fetch.py`, which uses only the Python standard library, so it also runs in the llama.cpp image. It works as follows.
+
+1. A file of 512 MiB or more is cut into chunks of 256 MiB. Each chunk is one HTTP range request, and the client rejects any answer that is not 206 Partial Content, so a server that ignores the range cannot write wrong bytes.
+2. Two large files download at once, with up to 16 chunks of each in flight, which is 32 connections. Small files download 8 at a time with one range each. The values are the settings `ABLIT_DOWNLOAD_FILES`, `ABLIT_DOWNLOAD_RANGES`, `ABLIT_DOWNLOAD_CHUNK_BYTES` and `ABLIT_DOWNLOAD_SPLIT_BYTES`.
+3. A failed chunk is retried with growing waits, and it resumes from the bytes already written. A chunk that makes no progress for the stall time is dropped and retried.
+4. One thread per file hashes the finished beginning of the file while the later chunks still download, so a file needs no second read. The file is renamed into place only when its size and SHA-256 match the catalog, and a mismatch fails the run with the reason `hash_mismatch`.
+5. The state of each part is kept next to it, so a restart resumes at the chunk level and never repeats a verified file.
+
+The order of work for the default mode (`ABLIT_ENGRAM_MODE=direct`) is as follows.
+
+1. The speed check in stage 4 runs the real client with the real connections on the first weight parts for 45 seconds, and the bytes it downloads are kept.
+2. Stage 5 downloads the small files, which are the index, tokenizer, rank, config, expert map, checksum and script files.
+3. The weight parts and the draft model download next, continuing where the speed check stopped. A join worker started before the download appends each part to `joined/model.gguf` as soon as the part is verified, then deletes it, so the join finishes a few seconds after the last part.
+4. The two Engram source files download last. They need no work after they are verified, so the end of the download has only the hash of the final chunks behind it.
+5. The engine starts when every file is verified and joined. It reads the two official Engram files in place.
+
+With `ABLIT_ENGRAM_MODE=extract`, the two Engram source files come first, and an extraction worker starts as soon as both are verified. It runs `extract_engram.py` while the weight parts download, and it needs about 203 GB of extra disk, which the disk request already includes. The extraction also runs as an automatic fallback when the engine exits at start with an Engram open error in direct mode.
+
+Direct mode reads the Xolotl source at the pinned commit. `Ds41Engram::open` takes the folder that holds `model.safetensors.index.json` and the shards, and the upstream Windows notes say the shards are read in place. It is not run on Linux, so the default may fall back to extraction on the first boot test.
+
+The pre-extracted Engram tables in `kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata` are not used. Their headers, sizes and index match a regeneration from the official 1017 shards, and 602 sampled 1 MiB blocks per tensor were identical, but the check was not a hash of all 203 GB. The September shards differ from the 1017 shards in every sampled block, so the September entry cannot use them. Direct mode already removes the copy, so the tables would add a third party to the trust path and save nothing.
+
 | Engine | Image | Notes |
 |---|---|---|
 | vLLM | `vllm/vllm-openai`, pinned digest, version 0.31.0 or later | FP8 profile: the DeepSeek V4.1 recipe flags, including `--engram-config '{"cpu_offload":true}'`, `--tensor-parallel-size 8` and `VLLM_ENGINE_READY_TIMEOUT_S=3600`. The planner requires exactly 8 GPUs for it. Key via the `VLLM_API_KEY` environment variable. |
 | llama.cpp | `ghcr.io/ggml-org/llama.cpp` server CUDA image, pinned digest | `llama-server -m <file> --host 127.0.0.1 --port <port> --ctx-size 4096 --n-gpu-layers 99`, key via `LLAMA_API_KEY` |
-| Xolotl | Built from Xolotl commit `63fc34c` with CUDA 13 and published on GHCR, once the build's dependency licenses are checked. Otherwise built on the box, with the build time in the startup estimate. | Key via the `STRATA_API_KEY` environment variable. The template renders its own config with `/opt/xolotl` and `/models` paths, including the Q2_K draft file. |
+| Xolotl | `ghcr.io/jameselkins/ablit-xolotl`, tag `63fc34c` (the Xolotl commit), built with CUDA 13 for compute capability 8.6, 8.9 and 12.0 by `.github/workflows/xolotl-image.yml`, pinned by digest in `engines/xolotl/lock.yaml`. The image holds no model files and no compiler, so nothing is built on the rented machine. The package must be public before a rental, because Vast pulls without credentials. | Key via the `STRATA_API_KEY` environment variable. The template renders its own config with `/opt/xolotl` and `/models` paths, including the Q2_K draft file, and starts `serve_ds41.py` with the `strata` engine. The paths sit in one block at the top of `engines/xolotl/bootstrap.sh`. Untested on a rented machine. |
 
 ## Endpoint
 

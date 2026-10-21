@@ -50,7 +50,7 @@ stage_ready()   { ablit_write_ready; }
 main() {
   trap 'ablit_fail command_failed "A bootstrap command failed."' ERR
   # A process can be gone after a container restart even when its stage finished.
-  if [ ! -f "$ABLIT_STATE_DIR/engine.pid" ] || ! kill -0 "$(cat "$ABLIT_STATE_DIR/engine.pid")" 2>/dev/null; then
+  if [ ! -f "$ABLIT_STATE_DIR/engine.pid" ] || ! ablit_pid_alive "$(cat "$ABLIT_STATE_DIR/engine.pid")"; then
     rm -f "$ABLIT_STATE_DIR/stages/07-engine.done" "$ABLIT_STATE_DIR/stages/08-health.done" \
       "$ABLIT_STATE_DIR/stages/09-ready.done" "$ABLIT_STATE_DIR/ready.json"
   fi

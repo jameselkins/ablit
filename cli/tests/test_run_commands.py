@@ -71,6 +71,95 @@ def test_null_digest_is_refused_before_search(monkeypatch):
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 5
 
 
+XOLOTL = "ds41-september-gsq-uncensored"
+
+
+def xolotl_launch(monkeypatch, rows, budget="50", extra=()):
+    """Run `up` for a Xolotl entry against invented offers and return the exit code and the create calls."""
+    launch_environment(monkeypatch)
+    monkeypatch.setattr("builtins.input", lambda prompt: "rent")
+    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    with respx.mock(assert_all_called=False) as router:
+        create, scoped = launch_routes(router)
+        fake = FakeVast(rows)
+        router.post(VAST_URL).mock(side_effect=fake)
+        router.get(ROOT + "/api/v1/instances/").mock(
+            side_effect=lambda request: page([instance(label="ablit-" + RunStore().all()[0]["run_id"])]))
+        code = main(["up", XOLOTL, "--untested", "--max-spend", budget, *extra], environ={})
+        return code, create, fake
+
+
+def test_up_accepts_a_xolotl_entry_and_rents_with_the_pinned_image_and_enough_disk(monkeypatch):
+    code, create, fake = xolotl_launch(monkeypatch, [vast_row(7101, host_id=7301, cuda_max_good=13.0)])
+    assert code == 0 and create.call_count == 1
+    body = json.loads(create.calls[0].request.content)
+    lock = commands.engines.engine_lock(resolve(load_catalog().entries, XOLOTL))
+    assert body["image"] == f"{lock['image']}@{lock['digest']}"
+    # The staging peak, the image, the join margin and the room for the fallback extraction all have to fit.
+    assert body["disk"] >= 604 and body["runtype"] == "ssh"
+    search = fake.bodies[0]
+    assert search["cuda_max_good"] == {"gte": 13.0}
+    assert search["compute_cap"] == {"gte": 860}
+    assert search["inet_down"] == {"gte": 1000} and search["cpu_ram"] == {"gte": 90000}
+    record = RunStore().all()[0]
+    assert record["entry"]["id"] == XOLOTL and record["image"].endswith(lock["digest"])
+
+
+def test_up_refuses_a_xolotl_lock_without_a_pinned_digest(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    real = commands.engines.engine_lock
+    monkeypatch.setattr(commands.engines, "engine_lock", lambda e: {**real(e), "digest": None})
+    monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("cannot ask rent without a digest"))
+    with respx.mock(assert_all_called=False) as router:
+        router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search without a digest"))
+        assert main(["up", XOLOTL, "--untested", "--max-spend", "50"], environ={}) == 5
+    assert "no valid pinned digest" in capsys.readouterr().out
+    assert RunStore().all() == []
+
+
+def test_up_still_applies_the_cap_check_and_yes_to_a_xolotl_entry(monkeypatch, capsys):
+    code, create, fake = xolotl_launch(monkeypatch, [vast_row(7101, host_id=7301)], budget="0.01")
+    assert code == 5 and create.call_count == 0
+    assert "Smallest cap" in capsys.readouterr().out
+    assert RunStore().all() == []
+
+
+def test_up_refuses_the_unverified_xolotl_entry_without_untested(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    with respx.mock(assert_all_called=False) as router:
+        router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search without --untested"))
+        assert main(["up", XOLOTL, "--max-spend", "50"], environ={}) == 2
+    assert "Pass --untested to run it anyway." in capsys.readouterr().err
+    assert RunStore().all() == []
+
+
+def test_up_rejects_a_host_with_a_gpu_generation_the_image_does_not_hold(monkeypatch, capsys):
+    # Compute capability 8.0 is an A100, which is not in the image build.
+    code, create, fake = xolotl_launch(monkeypatch, [vast_row(7101, host_id=7301, compute_cap=800)])
+    assert code == 3 and create.call_count == 0
+    assert "GPU generation is not in the engine image" in capsys.readouterr().out
+
+
+def test_up_still_refuses_an_engine_that_cannot_launch_yet(monkeypatch):
+    launch_environment(monkeypatch)
+    with respx.mock(assert_all_called=False) as router:
+        router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search for an engine that cannot launch"))
+        with pytest.raises(commands.RunError, match="llama.cpp and Xolotl entries on Vast"):
+            commands._up(SimpleNamespace(endpoint="tunnel", backends=None),
+                         resolve(load_catalog().entries, "ds41-1017-abl-fp8"), None, None, {}, None)
+
+
+def test_progress_lines_report_each_ten_percent_once():
+    shown = {}
+    record = {"progress": {"download": {"bytes_done": 55e9, "bytes_total": 100e9, "mbps": 940.4},
+                           "join": {"bytes_done": 0, "bytes_total": 0}}}
+    first = commands.progress_lines(record, shown)
+    assert first == ["download 50 percent, 55.0 of 100.0 GB, 940 Mbps"]
+    assert commands.progress_lines(record, shown) == []
+    record["progress"]["download"]["bytes_done"] = 100e9
+    assert commands.progress_lines(record, shown) == ["download 100 percent, 100.0 of 100.0 GB, 940 Mbps"]
+
+
 def test_typed_rent_creates_and_saves_only_nonsecret_records(monkeypatch):
     launch_environment(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
@@ -206,6 +295,48 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
     assert main(["logs", r["run_id"], "--stage", "watchdog"], environ={}) == 0
     output = capsys.readouterr().out
     assert output.count("[redacted]") == 2
+
+
+def test_status_shows_the_cleaned_remote_progress(monkeypatch, capsys):
+    store = RunStore()
+    r = saved_run(store)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    remote = {"download": {"bytes_done": 5, "bytes_total": 10, "mbps": 941.5, "files_done": 1, "files_total": 4,
+                           "at": 1.0, "extra": "dropped"},
+              "join": {"bytes_done": -1, "bytes_total": 10},
+              "extract": {"bytes_done": "7", "bytes_total": 10},
+              "unknown": {"bytes_done": 1, "bytes_total": 2}}
+    monkeypatch.setattr(SSH, "probe", lambda self: {"progress": remote})
+    with respx.mock as router:
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([instance()]))
+        assert main(["status", r["run_id"], "--json"], environ={}) == 0
+    view = json.loads(capsys.readouterr().out)["runs"][0]
+    assert view["progress"] == {"download": {"bytes_done": 5, "bytes_total": 10, "mbps": 941.5,
+                                              "files_done": 1, "files_total": 4, "at": 1.0}}
+
+
+def test_clean_progress_drops_everything_it_does_not_know():
+    from ablit.runs.lifecycle import clean_progress
+    assert clean_progress(None) == {} and clean_progress([]) == {} and clean_progress({"download": 3}) == {}
+    assert clean_progress({"download": {"bytes_done": float("nan"), "bytes_total": 5}}) == {}
+    assert clean_progress({"join": {"bytes_done": True, "bytes_total": 5}}) == {}
+    assert clean_progress({"join": {"bytes_done": 1, "bytes_total": 5, "mbps": float("inf")}}) == {
+        "join": {"bytes_done": 1, "bytes_total": 5}}
+
+
+def test_the_remote_probe_reads_every_progress_file_and_skips_a_broken_one(tmp_path):
+    import subprocess
+    from ablit.runs.ssh import PROBE
+    (tmp_path / "progress").mkdir()
+    (tmp_path / "progress" / "download.json").write_text('{"bytes_done": 5, "bytes_total": 10}')
+    (tmp_path / "progress" / "join.json").write_text('{"bytes_done": ')
+    (tmp_path / "stages").mkdir()
+    (tmp_path / "stages" / "04-speed.done").write_text("")
+    script = PROBE.replace("/ablit/", str(tmp_path) + "/")
+    result = subprocess.run([sys.executable, "-I", "-c", script], capture_output=True, text=True, check=True)
+    probe = json.loads(result.stdout)
+    assert probe["progress"] == {"download": {"bytes_done": 5, "bytes_total": 10}}
+    assert probe["stages"] == ["04-speed.done"]
 
 
 def test_status_reports_exit_8_from_saved_watchdog_evidence(monkeypatch, capsys):

@@ -42,6 +42,30 @@ def run_redactor(record: dict, creds) -> Redactor:
     return Redactor(s for s in secrets if s and len(s) >= 6)
 
 
+PROGRESS_STEPS = ("download", "join", "extract")
+PROGRESS_FIELDS = ("bytes_done", "bytes_total", "mbps", "files_done", "files_total", "at")
+
+
+def clean_progress(value) -> dict:
+    """Keep only the known steps and numeric fields of the remote progress files.
+
+    A malformed file is dropped, because progress is for display and must never
+    stop a run.
+    """
+    if not isinstance(value, dict):
+        return {}
+    clean = {}
+    for name in PROGRESS_STEPS:
+        item = value.get(name)
+        if not isinstance(item, dict):
+            continue
+        row = {k: item[k] for k in PROGRESS_FIELDS
+               if type(item.get(k)) in (int, float) and math.isfinite(item[k]) and item[k] >= 0}
+        if "bytes_done" in row and "bytes_total" in row:
+            clean[name] = row
+    return clean
+
+
 def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
     """Read marketplace state and copy only known non-secret remote fields."""
     observation = driver.observe(allocation(record), creds)
@@ -73,6 +97,7 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
             if not isinstance(stages, list) or any(s not in expected for s in stages):
                 raise RunError("The stage list contains unknown markers.")
             record["stages"] = stages
+            record["progress"] = clean_progress(probe.get("progress"))
             if "failed" in probe:
                 failed = probe["failed"]
                 reason = str(failed.get("reason", "unknown"))

@@ -106,11 +106,17 @@ def render(report: PlanReport) -> str:
         f"{_count(req.gpu_count, req.gpu_vendor + ' GPU')} with at least {req.vram_gb_each:g} GB VRAM each"
         + (f" and {req.vram_gb_total:g} GB in total" if req.vram_gb_total else ""),
     ]
-    if req.compute_capability_min is not None:
+    if req.cuda_architectures:
+        generations = [f"{n / 10:.1f}" for n in sorted(req.cuda_architectures)]
+        listed = ", ".join(generations[:-1]) + (" or " if len(generations) > 1 else "") + generations[-1]
+        needs.append(f"compute capability {listed} (the engine image holds code only for these generations)")
+    elif req.compute_capability_min is not None:
         needs.append(f"compute capability {req.compute_capability_min:g} or higher")
+    if req.cuda_version_min is not None:
+        needs.append(f"a driver that supports CUDA {req.cuda_version_min:.1f} or newer")
     needs.append(f"at least {req.host_ram_gb:g} GB host RAM")
     needs.append(
-        f"at least {req.disk_gb:,.1f} GB free disk (the staging peak plus the engine image allowance)"
+        f"at least {req.disk_gb:,.1f} GB free disk (the staging peak plus the allowances in the engine lock)"
     )
     needs.append(f"download of {req.download_gb:,.1f} GB at a speed floor of {_floor(report):g} Mbps")
     lines.append("What the machine needs")

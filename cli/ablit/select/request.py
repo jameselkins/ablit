@@ -21,6 +21,14 @@ def request_from_entry(entry: Entry, image_gb: float | None = None) -> HardwareR
         image_gb = lock.get("image_gb", 0.0)
     report = compute_staging(entry)
     gpu = entry.profile.gpu
+    architectures = lock.get("cuda_architectures")
+    # The staging peak is the most disk the plan holds at once. A join that
+    # appends one input at a time can hold one more input than the plan counts, so
+    # the lock may add a margin, in GB.
+    margin = float(lock.get("disk_margin_gb", 0.0))
+    # Room for work that the staging list does not count, such as the fallback copy
+    # of the Engram tables, which the lock asks for in the same way.
+    extra = float(lock.get("extract_disk_gb", 0.0))
     return HardwareRequest(
         gpu_vendor=gpu.vendor,
         gpu_count=gpu.count,
@@ -28,10 +36,11 @@ def request_from_entry(entry: Entry, image_gb: float | None = None) -> HardwareR
         vram_gb_total=gpu.vram_gb_total,
         compute_capability_min=gpu.compute_capability_min,
         host_ram_gb=entry.profile.host_ram_gb,
-        disk_gb=report.peak_gb + image_gb,
+        disk_gb=report.peak_gb + image_gb + margin + extra,
         download_gb=report.download_gb,
         image_gb=image_gb,
         cuda_version_min=lock.get("cuda_version_min"),
+        cuda_architectures=tuple(int(a) for a in architectures) if architectures else None,
         startup_hours=entry.profile.startup_hours_estimate,
         min_download_mbps=entry.profile.min_download_mbps,
     )

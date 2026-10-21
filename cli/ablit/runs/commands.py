@@ -120,6 +120,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     failures = 0
     first = True
     running_since = None
+    shown: dict = {}
     try:
         while True:
             # Each pass lists the account's instances, so poll slowly enough to
@@ -206,6 +207,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 if current != stage:
                     print(f"{run_id}: stages {', '.join(current) or 'waiting for bootstrap'}", flush=True)
                     stage = current
+                for line in progress_lines(record, shown):
+                    print(f"{run_id}: {line}", flush=True)
                 if want_ready and record.get("ready") and tunnel is None:
                     tunnel, port = SSH(store, record).open_tunnel(record["entry"]["profile"]["port"])
                     key = secret_get(run_id)
@@ -241,16 +244,34 @@ def monitor(store, record, driver, creds, *, want_ready=False):
             tunnel.wait()
 
 
+def progress_lines(record: dict, shown: dict) -> list[str]:
+    """Return one line for each step whose progress passed the next ten percent."""
+    lines = []
+    for name, item in sorted(record.get("progress", {}).items()):
+        total = item.get("bytes_total") or 0
+        if total <= 0:
+            continue
+        step = int(min(item["bytes_done"], total) * 10 / total)
+        if step == shown.get(name):
+            continue
+        shown[name] = step
+        text = f"{name} {step * 10} percent, {item['bytes_done'] / 1e9:.1f} of {total / 1e9:.1f} GB"
+        if item.get("mbps"):
+            text += f", {item['mbps']:.0f} Mbps"
+        lines.append(text)
+    return lines
+
+
 def entry_from_record(record):
     from ablit.catalog.models import Entry
     return Entry(**record["entry"])
 
 
 def _up(args, entry, opts, driver, environ, store):
-    if entry.id != "llama31-8b-abliterated-q4km" or args.endpoint != "tunnel":
-        raise RunError("Step 3 supports the 8B llama.cpp entry on Vast through an SSH tunnel.")
+    if entry.profile.engine not in engines.LAUNCHABLE_ENGINES or args.endpoint != "tunnel":
+        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast through an SSH tunnel.")
     if args.backends and args.backends != "vast":
-        raise RunError("Paid launches in step 3 support only --backends vast.")
+        raise RunError("Paid launches support only --backends vast.")
     creds = credentials("vast", environ)
     driver.store = store
     with store.lock("selection"):

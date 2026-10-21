@@ -68,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ablit",
         description="Find the cheapest rented GPU machine that can run a model, "
                     "show the full cost, and start it on your own marketplace account.",
-        epilog="Paid launches support the 8B llama.cpp entry on Vast. Other entries can be planned.",
+        epilog="Paid launches support the llama.cpp and Xolotl entries on Vast. Other entries can be planned.",
     )
     parser.add_argument("--version", action="version", version=f"ablit {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")

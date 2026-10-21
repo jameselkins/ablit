@@ -67,6 +67,9 @@ class HardwareRequest:
     compute_capability_min: float | None = None
     image_gb: float = 0.0
     cuda_version_min: float | None = None
+    # GPU generations the engine image holds code for, as the compute capability
+    # times ten (86 for 8.6). When it is set, a GPU of any other generation fails.
+    cuda_architectures: tuple[int, ...] | None = None
     os: str = "linux"
 
 

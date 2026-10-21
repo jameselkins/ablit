@@ -40,6 +40,23 @@ def test_compute_capability_floor():
     assert [o.offer_id for o in kept] == ["new"]
 
 
+def test_gpu_generation_must_be_one_the_engine_image_holds():
+    req = dataclasses.replace(REQ, cuda_architectures=(86, 89, 120))
+    offers = [make_offer("ada", compute_capability=8.9), make_offer("ampere", compute_capability=8.6),
+              make_offer("blackwell", compute_capability=12.0), make_offer("a100", compute_capability=8.0),
+              make_offer("hopper", compute_capability=9.0), make_offer("unknown", compute_capability=None)]
+    result = apply_filter_chain(offers, req, OPTS)
+    assert [o.offer_id for o in result.kept] == ["ada", "ampere", "blackwell"]
+    reasons = result.steps[0].reasons
+    assert reasons["GPU generation is not in the engine image"] == 2
+    assert reasons["compute capability unknown"] == 1
+
+
+def test_any_generation_passes_when_the_engine_lists_none():
+    offers = [make_offer("a100", compute_capability=8.0), make_offer("unknown", compute_capability=None)]
+    assert len(apply_filter_chain(offers, REQ, OPTS).kept) == 2
+
+
 def test_total_vram_floor():
     req = dataclasses.replace(REQ, gpu_count=8, vram_gb_each=80, vram_gb_total=614)
     small = make_offer("small", gpu_count=8, gpu_vram_gb_each=40)

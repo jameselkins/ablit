@@ -119,7 +119,7 @@ def test_engine_scripts_follow_the_rules(repo_root: Path):
         text = (repo_root / "engines" / engine / "bootstrap.sh").read_text(encoding="utf-8")
         assert ("untested on a rented machine" if engine == "llamacpp" else "TODO(step") in text
         lock = (repo_root / "engines" / engine / "lock.yaml").read_text(encoding="utf-8")
-        if engine == "llamacpp":
+        if engine in ("llamacpp", "xolotl"):
             assert re.search(r"^digest: sha256:[a-f0-9]{64}$", lock, re.M)
         else:
             assert re.search(r"^digest: null", lock, re.M)

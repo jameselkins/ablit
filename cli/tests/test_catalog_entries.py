@@ -151,6 +151,24 @@ def test_planner_request_comes_from_the_entry(repo_root: Path):
     assert xq.disk_gb > xq.download_gb
 
 
+def test_the_xolotl_request_adds_the_image_and_the_join_margin_to_the_staging_peak(repo_root: Path):
+    from ablit.engines import engine_lock
+    from ablit.select.request import request_from_entry
+
+    entries = {e.id: e for e in load_catalog(repo_root / "catalog" / "models").entries}
+    for name in ("ds41-september-gsq-uncensored", "ds41-1017-xq-v3-uncensored"):
+        entry = entries[name]
+        lock = engine_lock(entry)
+        req = request_from_entry(entry, lock["image_gb"])
+        peak = compute_staging(entry).peak_gb
+        assert req.disk_gb == pytest.approx(peak + lock["image_gb"] + lock["disk_margin_gb"] + lock["extract_disk_gb"])
+        # The join streams its parts, so the peak is the whole download plus a little, not twice that.
+        assert peak < 1.1 * req.download_gb
+        assert req.cuda_architectures == (86, 89, 120) and req.cuda_version_min == 13.0
+        assert req.min_download_mbps == 1000 and req.startup_hours == 0.3
+        assert req.host_ram_gb == 90
+
+
 def test_a_broken_entry_is_reported_and_the_rest_still_load(tmp_path: Path, repo_root: Path):
     for path in (repo_root / "catalog" / "models").glob("*.yaml"):
         (tmp_path / path.name).write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
@@ -158,3 +176,19 @@ def test_a_broken_entry_is_reported_and_the_rest_still_load(tmp_path: Path, repo
     result = load_catalog(tmp_path)
     assert "broken.yaml" in result.problems
     assert len(result.entries) == len(SEED_IDS)
+
+
+def test_the_plan_names_the_gpu_generations_and_the_driver_the_xolotl_image_needs(repo_root: Path):
+    from ablit.engines import engine_lock
+    from ablit.plan import PlanReport
+    from ablit.plan_text import render
+    from ablit.select import PlanOptions
+    from ablit.select.request import request_from_entry
+
+    entry = resolve(load_catalog(repo_root / "catalog" / "models").entries, "ds41-september-gsq-uncensored")
+    lock = engine_lock(entry)
+    req = request_from_entry(entry, lock["image_gb"])
+    text = render(PlanReport(entry, req, PlanOptions(), 1, [], [], [], 0, True, "invented-check", lock["digest"]))
+    assert "compute capability 8.6, 8.9 or 12.0 (the engine image holds code only for these generations)" in text
+    assert "a driver that supports CUDA 13.0 or newer" in text
+    assert "at least 603.7 GB free disk" in text
