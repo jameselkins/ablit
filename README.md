@@ -4,7 +4,7 @@ ablit is a command-line tool that finds the cheapest rented GPU machine that can
 
 It is for people who want to run an open-weight language model, such as an abliterated model (a model edited to remove its refusals), on a rented GPU without comparing marketplaces and engine settings by hand. ablit runs on your computer, so your marketplace key stays with you, and it runs no service, holds no money and relays no inference traffic.
 
-Status: alpha. One catalog entry, `llama31-8b-abliterated-q4km`, has completed paid round trips on Vast. Every other entry has been planned but never booted, and RunPod can be searched but not rented yet. The Status section below lists exactly what has been tested.
+Status: alpha. One catalog entry, `llama31-8b-abliterated-q4km`, is boot-tested: it completed paid round trips on Vast. Every other entry has been planned but never booted, and RunPod can be searched but not rented yet. The Status section below lists exactly what has been tested.
 
 ## Quickstart
 
@@ -14,19 +14,18 @@ ablit needs Python 3.11 or newer and OpenSSH.
 uv tool install ablit
 ablit plan llama31-8b-abliterated-q4km
 ablit setup vast
-ablit up llama31-8b-abliterated-q4km --max-spend 2 --untested
+ablit up llama31-8b-abliterated-q4km --max-spend 2
 ablit down
 ```
 
 First, `ablit plan` is free and needs no account. It prints the cheapest machine that meets the model's needs and the next four, with the full cost for 1 hour, 24 hours and 7 days. Second, `ablit setup vast` takes your Vast API key with hidden input and tests it, and you can choose to save it in the OS keyring. Third, `ablit up` shows the quote, asks you to type `rent`, then rents the machine, starts the engine, and prints a local endpoint that you can use with any OpenAI-compatible client. Last, `ablit down` destroys the machine and confirms that billing has stopped.
 
-`--max-spend 2` is a cap of 2 US dollars, and it is required. `--untested` is required because the catalog marks this entry `unverified`, which means nobody has recorded a boot test for it yet. Read the spend cap notice below before you rent.
+`--max-spend 2` is a cap of 2 US dollars, and it is required. Entries marked `unverified` also need `--untested`. Read the spend cap notice below before you rent.
 
 Example output from `ablit plan llama31-8b-abliterated-q4km` on 2026-10-21, cut to the first lines. Prices change from minute to minute.
 
 ```
 Chosen offer
-  Offer:       vast 56301726
   GPU:         RTX 3060 x1, 12.3 GB VRAM each
   Host RAM:    31.5 GB
   Price:       $0.0775 per hour all-in (GPU only: $0.0733)
@@ -66,7 +65,7 @@ All paid tests so far ran on Vast.
 - Tested in separate paid runs: the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost.
 - Not tested on a rented machine: vLLM, Xolotl, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM and Xolotl entries.
 - RunPod: search works, and renting is not available. Clore: search and renting are being added and are untested.
-- The 8B entry is still marked `unverified` in the catalog, and its status will change once the boot test is recorded.
+- The 8B entry is marked `boot-tested` in the catalog, with its record in `catalog/boot-tests/`.
 
 ## Install
 
@@ -94,14 +93,14 @@ Paid launches accept only `--endpoint tunnel`, and public endpoints are deferred
 |---|---|
 | `ablit setup [backend]` | Vast account setup with hidden input and OS keyring storage. |
 | `ablit plan <model>` | Shows the chosen offer and the next four, the totals for 1 hour, 24 hours, 7 days and `--hours`, and why other offers or backends were dropped. Rents nothing. Exits with code 3 when no offer qualifies. |
-| `ablit up <model>` | Plans, asks you to type `rent`, then rents the 8B entry on Vast and keeps its tunnel open. |
+| `ablit up <model>` | Plans, asks you to type `rent` (or takes `--yes`), then rents the 8B entry on Vast and keeps its tunnel open. |
 | `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. Supports `--all`, `--json`, `--show-key` and `--watch`. |
 | `ablit logs [run]` | Logs from the machine with known secrets removed. Supports `--stage` and `-f`. |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel and runs the local cap check. |
 | `ablit down [run]` | Destroys the instance, confirms it is gone, and revokes run credentials. Run it again if it exits with code 7. |
 | `ablit catalog list`, `show <id>`, `validate <file>` | Lists entries, explains one, or checks a contributor's file. |
 
-Agents and scripts should read AGENTS.md, which covers `--json` output, exit codes, and the handoff to a person before anything is rented. BUILD.md is the full specification, including every flag.
+Agents and scripts should read AGENTS.md, which covers `--json` output, exit codes, and renting with `--yes`. BUILD.md is the full specification, including every flag.
 
 ## Runtimes
 
@@ -122,7 +121,7 @@ Xolotl boot test result: pending. No result has been recorded.
 
 The catalog is a folder of YAML files in `catalog/models/`, one per model build, checked by `catalog/schema/v1.json`. It is curated, so it keeps the best build for each runtime and hardware tier and not every build that exists. The catalog data is released under CC0-1.0, and each entry records the license of the model it describes, which the catalog license does not change.
 
-There are five entries, and all five have the status `unverified`, which means the entry passed the checks and has no recorded boot test.
+There are five entries. `llama31-8b-abliterated-q4km` is `boot-tested`, which means a real run is recorded in `catalog/boot-tests/`. The other four are `unverified`: they passed the checks and have no recorded boot test.
 
 | Entry | Runtime | Hardware | Why it is here |
 |---|---|---|---|

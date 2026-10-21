@@ -70,7 +70,7 @@ def test_text_report_has_every_part(capsys):
                               vast=FakeVast(vast_rows()), runpod=FakeRunPod(runpod_types()))
     assert code == 0, err
     assert f"Plan for {MODEL} (status: boot-tested)" in out
-    assert UNTESTED_NOTICE in out
+    assert UNTESTED_NOTICE not in out  # the 8B entry is boot-tested
     assert "Chosen offer" in out and "Offer 2" in out and "Offer 5" in out and "Offer 6" not in out
     for label in ("1 hour", "24 hours", "7 days", "--hours (3)"):
         assert label in out
