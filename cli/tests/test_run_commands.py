@@ -93,6 +93,31 @@ def test_typed_rent_creates_and_saves_only_nonsecret_records(monkeypatch):
     assert record["create_sent"] and record["watchdog_key_id"] == "7401"
 
 
+def test_yes_rents_without_a_terminal_or_a_prompt(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False, raising=False)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: False, raising=False)
+    monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("--yes must not prompt"))
+    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    with respx.mock(assert_all_called=False) as router:
+        create, scoped = launch_routes(router)
+        def listing(request):
+            return page([instance(label="ablit-" + RunStore().all()[0]["run_id"])])
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=listing)
+        assert main(["up", MODEL, "--untested", "--max-spend", "5", "--yes"], environ={}) == 0
+        assert create.call_count == 1
+    assert "Quote approved with --yes." in capsys.readouterr().out
+
+
+def test_yes_still_refuses_a_cap_too_small_for_setup(monkeypatch):
+    launch_environment(monkeypatch)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False, raising=False)
+    with respx.mock as router:
+        router.post(VAST_URL).mock(side_effect=FakeVast([vast_row(7101)]))
+        assert main(["up", MODEL, "--untested", "--max-spend", "0.00001", "--yes"], environ={}) == 5
+    assert RunStore().all() == []
+
+
 def test_second_run_requires_another_and_creating_run_recovers(monkeypatch):
     launch_environment(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")

@@ -5,7 +5,7 @@
 # cannot import that package, so they cannot read these values.
 
 [vast]
-id = ""
+id = "755440"
 
 [runpod]
 id = ""

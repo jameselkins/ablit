@@ -97,6 +97,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_selection_flags(up)
     up.add_argument("--another", action="store_true",
                     help="allow a second active run of the same model")
+    up.add_argument("--yes", action="store_true",
+                    help="approve the quote without typing rent, for agents and scripts. "
+                         "The cap, the cap check and the price recheck still apply.")
     up.add_argument("--report", action="store_true",
                     help="write a local boot-test log with secrets removed")
 
@@ -341,9 +344,9 @@ def _cmd_selection(
         if args.max_spend is None:
             print("ablit up: --max-spend is required, and it has no default", file=sys.stderr)
             return exitcodes.USAGE
-        if not (sys.stdin.isatty() and sys.stdout.isatty()):
-            print("ablit up: a paid launch needs a terminal, because you must type `rent` to confirm",
-                  file=sys.stderr)
+        if not args.yes and not (sys.stdin.isatty() and sys.stdout.isatty()):
+            print("ablit up: a paid launch needs a terminal, because you must type `rent` to confirm. "
+                  "Pass --yes to approve the quote without a terminal.", file=sys.stderr)
             return exitcodes.USAGE
         if entry.status == "unverified" and not args.untested:
             print(f"ablit up: {entry.id} is unverified. Pass --untested to run it anyway.", file=sys.stderr)

@@ -90,7 +90,7 @@ def test_documentation_files_exist(repo_root: Path):
                  "tools/verify_entry.py", "tools/build_catalog.py",
                  "backends/vast.md", "backends/runpod.md", "backends/clore.md",
                  ".github/workflows/ci.yml", ".github/workflows/weekly-catalog.yml",
-                 ".github/workflows/release.yml", "pyproject.toml", ".importlinter"):
+                 ".github/workflows/release.yml", "pyproject.toml", ".importlinter", "AGENTS.md"):
         assert (repo_root / name).is_file(), name
     for engine in ("vllm", "llamacpp", "xolotl"):
         for name in ("bootstrap.sh", "health.sh", "lock.yaml"):
@@ -152,7 +152,7 @@ def test_backend_notes_exist_and_describe_the_requests(repo_root: Path):
 
 def test_readme_covers_the_required_sections(repo_root: Path):
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
-    for needle in ("alpha", "Paid links", "checked 2026-10-20", "llama31-8b-abliterated-q4km",
+    for needle in ("alpha", "Paid links", "checked 2026-10-21", "llama31-8b-abliterated-q4km",
                    "--endpoint", "127.0.0.1"):
         assert needle in readme, needle
-    assert "no referral ids are configured yet" in readme.lower()
+    assert "has a referral id for vast.ai and none for runpod" in readme.lower()

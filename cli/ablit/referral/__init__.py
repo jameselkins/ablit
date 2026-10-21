@@ -26,9 +26,10 @@ _ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 VAST_DISCLOSURE = """\
 Paid link: if you create a new Vast.ai account through the first link below,
-the ablit maintainer earns a commission of 3% of what you spend there, paid by
-Vast. ablit adds nothing to your prices. Commissions never affect which machine
-ablit picks.
+the ablit maintainer earns 3% of what you spend there for the life of your
+account, paid by Vast as credits. ablit adds nothing to your prices.
+Commissions never affect which machine ablit picks. To hide paid links, run
+`ablit setup --no-referral`.
   Sign up (paid link):   https://cloud.vast.ai/?ref_id=<ID>
   Sign up (no referral): https://cloud.vast.ai/
 """
@@ -39,6 +40,7 @@ the ablit maintainer earns a commission of 3% of what you spend on Pods and 5%
 of what you spend on Serverless, paid by RunPod to the maintainer in RunPod
 credits for 6 months. The new account must sign up with Google sign-in. ablit
 adds nothing to your prices. Commissions never affect which machine ablit picks.
+To hide paid links, run `ablit setup --no-referral`.
   Sign up (paid link):   https://runpod.io?ref=<ID>
   Sign up (no referral): https://www.runpod.io/
 """

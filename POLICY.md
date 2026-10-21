@@ -12,7 +12,7 @@ The code is arranged so that the rule holds by construction. Referral IDs live i
 
 All five tests are in `cli/tests/test_steering.py`, and CI runs them on every push and pull request.
 
-1. Import contract. An import-linter contract in `cli/.importlinter` forbids `ablit.select` and `ablit.backends` from importing `ablit.referral`, directly or through another module. A second test reads the source files to confirm the same thing, and a third starts a fresh interpreter to confirm that importing the planner and the drivers does not load the referral package.
+1. Import contract. An import-linter contract in `.importlinter` forbids `ablit.select` and `ablit.backends` from importing `ablit.referral`, directly or through another module. A second test reads the source files to confirm the same thing, and a third starts a fresh interpreter to confirm that importing the planner and the drivers does not load the referral package.
 2. Same result with and without IDs. The planner gives the same filtered set, the same order and the same selection when referral IDs are set for every marketplace, when none are set, and when the offers from the paying marketplaces are shuffled.
 3. Lowest total wins. A `hypothesis` property test generates offer sets, including sets larger than 64 offers in which an offer with cheap transfer sits outside the first 64 by hourly price. The first-ranked offer must have the lowest total among all offers that pass the filters. Vast returns at most 64 rows per query, so the test runs the search rule against a simulated marketplace that does the same.
 4. Cheaper without a program beats dearer with one. A backend that has no referral program wins over a more expensive backend that has one.

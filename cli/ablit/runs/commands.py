@@ -291,7 +291,9 @@ def _up(args, entry, opts, driver, environ, store):
             if args.catalog and not args.untested:
                 raise RunError("A local catalog launch requires --untested.")
             engines.check_artifacts(entry)
-            if input("Type rent to rent this machine: ").strip() != "rent":
+            if args.yes:
+                print("Quote approved with --yes.", flush=True)
+            elif input("Type rent to rent this machine: ").strip() != "rent":
                 print("Rental cancelled.")
                 return 2
             again = driver.requote(offer, creds)

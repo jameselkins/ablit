@@ -6,7 +6,7 @@ Project status: alpha. One catalog entry, `llama31-8b-abliterated-q4km`, has com
 
 ## What ablit does
 
-ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. Both marketplace drivers can search for offers, and the Vast driver can rent the 8B entry. A paid launch needs a terminal, because you must type `rent` to confirm the quote, and there is no `--yes` flag.
+ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. Both marketplace drivers can search for offers, and the Vast driver can rent the 8B entry. A paid launch asks you to type `rent` to confirm the quote. Agents and scripts can pass `--yes` instead, and the spend cap still applies.
 
 ## What ablit does not do
 
@@ -33,17 +33,17 @@ uv tool install --editable .
 
 Run `ablit setup vast` to enter a key with hidden input and test it with one read-only request. Choose the OS keyring to use the key in later commands. The session-only choice keeps the key only in the current process, which ends when setup exits. For a shell session, set `VAST_API_KEY` yourself with hidden input. An environment key takes priority over the keyring.
 
-The setup flow asks whether you have an account. Without an account, it offers "Sign up directly" and "Skip", since no referral ID is configured. It prints links and never opens a browser. RunPod account setup is deferred.
+The setup flow asks whether you have an account. Without a Vast account, it shows the disclosure below and offers "Sign up with the paid link", "Sign up directly" and "Skip". It prints links and never opens a browser. RunPod account setup is deferred.
 
 ## Paid links
 
-No referral IDs are configured yet, so ablit offers no paid link for any marketplace. When the project has an ID for a marketplace, a user who has no account there sees the disclosure and a choice between the paid link and a plain link. Without an ID, only the plain link and the skip choice appear.
+ablit has a referral ID for Vast.ai and none for RunPod. A user with no Vast account sees the disclosure and a choice between the paid link and a plain link. For a marketplace without an ID, only the plain link and the skip choice appear.
 
 The commission rates are the ones the programs published when they were last checked, and they apply only to new accounts.
 
-| Marketplace | Commission the maintainer would earn | Checked |
+| Marketplace | Commission the maintainer earns | Checked |
 |---|---|---|
-| Vast.ai | 3% of what the new user spends there, paid by Vast | checked 2026-10-20 |
+| Vast.ai | 3% of what the new user spends there for the life of the account, paid by Vast as credits | checked 2026-10-21 |
 | RunPod | 3% of Pod spend and 5% of Serverless spend, paid in RunPod credits for 6 months, and the new account must sign up with Google sign-in | checked 2026-10-20 |
 
 The rules for paid links are these.
@@ -77,6 +77,8 @@ By default, the engine on the rented machine listens on `127.0.0.1` only, and ab
 Paid launches in step 3 accept only `--endpoint tunnel`. Public endpoints are deferred. OpenSSH saves the first host key for each run and checks it on subsequent connections. Vast does not document a separate authenticated host fingerprint, so first contact uses trust on first use.
 
 ## Commands
+
+Agents and scripts should read AGENTS.md. It covers `--json` output, exit codes, and the handoff to a person before anything is rented.
 
 | Command | What it does |
 |---|---|

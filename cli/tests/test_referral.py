@@ -12,12 +12,23 @@ EMPTY = '[vast]\nid = ""\n[runpod]\nid = ""\n'
 SET = '[vast]\nid = "VAST-ID_01"\n[runpod]\nid = "runpodid01"\n'
 
 
-def test_shipped_ids_file_has_empty_values():
+def test_shipped_ids_file_has_only_the_vast_id():
     ids = referral.load_ids()
-    assert ids == {"runpod": "", "vast": ""}
+    assert ids == {"runpod": "", "vast": "755440"}
     text = (Path(referral.__file__).parent / "ids.toml").read_text(encoding="utf-8")
-    assert re.search(r'^\[vast\]\s*\nid = ""', text, re.M)
     assert re.search(r'^\[runpod\]\s*\nid = ""', text, re.M)
+
+
+def test_shipped_vast_id_shows_the_disclosure_next_to_the_paid_link():
+    text, choices = referral.setup_choices("vast", referral.load_ids())
+    assert text is not None and "https://cloud.vast.ai/?ref_id=755440" in text
+    assert text.index("Paid link:") < text.index("ref_id=")
+    assert [c.key for c in choices] == ["1", "2", "3"]
+
+
+def test_both_disclosures_say_how_to_hide_paid_links():
+    for text in (referral.VAST_DISCLOSURE, referral.RUNPOD_DISCLOSURE):
+        assert "ablit setup --no-referral" in text
 
 
 def test_vast_disclosure_matches_the_specification_exactly(repo_root: Path):

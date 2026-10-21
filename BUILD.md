@@ -40,7 +40,7 @@ ablit runs no service, holds no money and relays no inference traffic. It never 
 | `--catalog PATH` | bundled catalog | Local catalog for testing. Paid launch from it also needs `--untested`. |
 | `--json` | off | Versioned machine-readable output |
 
-There is no `--yes`. A paid `up` without a terminal exits with code 2.
+A paid `up` asks the user to type `rent`. `--yes` approves the quote without the prompt, so an agent or a script can rent. The required `--max-spend`, the cap check and the price recheck still apply. A paid `up` with neither a terminal nor `--yes` exits with code 2.
 
 ### Quote
 
@@ -313,14 +313,15 @@ Vast disclosure:
 
 ```
 Paid link: if you create a new Vast.ai account through the first link below,
-the ablit maintainer earns a commission of 3% of what you spend there, paid by
-Vast. ablit adds nothing to your prices. Commissions never affect which machine
-ablit picks.
+the ablit maintainer earns 3% of what you spend there for the life of your
+account, paid by Vast as credits. ablit adds nothing to your prices.
+Commissions never affect which machine ablit picks. To hide paid links, run
+`ablit setup --no-referral`.
   Sign up (paid link):   https://cloud.vast.ai/?ref_id=<ID>
   Sign up (no referral): https://cloud.vast.ai/
 ```
 
-The RunPod block uses the same wording with RunPod's terms: 3% of Pod spend and 5% of Serverless spend, paid to the maintainer in RunPod credits for 6 months, and the new account must sign up with Google sign-in. Before each release, check the rates on the program pages and update the date in the README.
+The RunPod block uses the same wording with RunPod's terms: 3% of Pod spend and 5% of Serverless spend, paid to the maintainer in RunPod credits for 6 months, and the new account must sign up with Google sign-in. Both blocks end with the `--no-referral` hint. Before each release, check the rates on the program pages and update the date in the README.
 
 Rules:
 
@@ -365,4 +366,4 @@ Every step that rents a machine needs the maintainer's approval of a specific am
 
 ## Left out of v1
 
-Clore renting, launching GGUF files outside the catalog, SkyPilot and dstack export, third-party driver plugins, `--yes` and automatic re-planning, TLS on the public endpoint, any hosted price data or price history, telemetry, multi-node serving, engines other than vLLM, llama.cpp and Xolotl, and a web UI.
+Clore renting, launching GGUF files outside the catalog, SkyPilot and dstack export, third-party driver plugins, automatic re-planning, TLS on the public endpoint, any hosted price data or price history, telemetry, multi-node serving, engines other than vLLM, llama.cpp and Xolotl, and a web UI.

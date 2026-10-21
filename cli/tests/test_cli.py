@@ -106,6 +106,7 @@ def test_up_without_a_terminal_exits_2(capsys, monkeypatch):
     code, out, err = run(capsys, "up", "llama31-8b-abliterated-q4km", "--max-spend", "5")
     assert code == 2
     assert "needs a terminal" in err
+    assert "--yes" in err
 
 
 def test_up_help_prints_the_spend_cap_notice(capsys):
@@ -117,10 +118,11 @@ def test_up_help_prints_the_spend_cap_notice(capsys):
     assert " ".join(SPOT_WARNING.split()) in " ".join(out.split())
 
 
-def test_there_is_no_yes_flag():
+def test_yes_parses_only_on_up():
     parser = build_parser()
+    assert parser.parse_args(["up", "m", "--yes"]).yes
     with pytest.raises(SystemExit):
-        parser.parse_args(["up", "m", "--yes"])
+        parser.parse_args(["plan", "m", "--yes"])
 
 
 def test_every_documented_flag_parses():
