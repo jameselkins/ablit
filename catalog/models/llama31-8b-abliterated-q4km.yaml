@@ -1,5 +1,5 @@
-# Seed entry. Status is unverified. Nobody has booted this entry.
-# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Seed entry. Status is boot-tested: it ran on a rented Vast machine on 2026-10-21.
+# The hardware floors below are source or derived figures. Only the tested machine is proven.
 # Sizes and hashes were filled in by tools/verify_entry.py --fill.
 schema: 1
 id: llama31-8b-abliterated-q4km
@@ -30,10 +30,10 @@ sources:
   - {url: "https://github.com/ggml-org/llama.cpp/blob/dd002b91f583af0b80140f9a140dc04856bfc2e0/tools/server/README.md", covers: [profile.port], note: Default server port in the llama.cpp server README at the pinned commit.}
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: No publisher states these. They are defaults or estimates chosen by ablit.}
   - https://huggingface.co/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF/blob/9a44c6b2a6e355dfd5beea6f5d5ad47412b632da/README.md
-tests: []
-status: unverified
+tests:
+  - {backend: vast, date: "2026-10-21", log: boot-tests/llama31-8b-abliterated-q4km-2026-10-21.md}
+status: boot-tested
 notes:
-  - Hardware floors are not yet tested. They are derived from the file size and key-value cache arithmetic.
+  - Booted on one RTX 3060 with 12 GB on Vast on 2026-10-21. The 8 GB floor itself is derived from the file size and key-value cache arithmetic, and no 8 GB GPU has been tried.
   - This is a 2024 build. Check that the chat template inside the GGUF matches the current llama.cpp template for Llama 3.1.
   - The model license has use restrictions and requires attribution. Read it before you redistribute anything.
-  - This entry is the planned first paid test target.

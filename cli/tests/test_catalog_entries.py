@@ -21,6 +21,8 @@ SEED_IDS = {
     "llama31-8b-abliterated-q4km",
 }
 
+BOOT_TESTED = {"llama31-8b-abliterated-q4km"}
+
 
 def _entry_params():
     root = Path(__file__).resolve().parents[2] / "catalog" / "models"
@@ -63,8 +65,13 @@ def test_the_seven_seed_entries_exist(entry_files):
 def test_seed_entry_facts(path: Path):
     data = load_entry_file(path)
     assert data["id"] == path.stem
-    assert data["status"] == "unverified"
-    assert data["tests"] == []
+    if path.stem in BOOT_TESTED:
+        assert data["status"] == "boot-tested" and data["tests"]
+        log = Path(__file__).resolve().parents[2] / "catalog" / data["tests"][0]["log"]
+        assert log.is_file()
+    else:
+        assert data["status"] == "unverified"
+        assert data["tests"] == []
     assert data["schema"] == 1
     assert check_entry(data) == []
 
@@ -96,6 +103,8 @@ def test_sources_are_primary_public_urls(path: Path):
 
 @pytest.mark.parametrize("path", _entry_params(), ids=lambda p: p.stem)
 def test_every_floor_is_labeled_as_not_yet_tested(path: Path):
+    if path.stem in BOOT_TESTED:
+        pytest.skip("boot-tested entry")
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert any("not yet tested" in note for note in data["notes"])
     assert "unverified" in path.read_text(encoding="utf-8").splitlines()[0]

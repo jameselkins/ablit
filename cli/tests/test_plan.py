@@ -69,7 +69,7 @@ def test_text_report_has_every_part(capsys):
     code, out, err = run_plan(capsys, "--hours", "3", "--max-spend", "20",
                               vast=FakeVast(vast_rows()), runpod=FakeRunPod(runpod_types()))
     assert code == 0, err
-    assert f"Plan for {MODEL} (status: unverified)" in out
+    assert f"Plan for {MODEL} (status: boot-tested)" in out
     assert UNTESTED_NOTICE in out
     assert "Chosen offer" in out and "Offer 2" in out and "Offer 5" in out and "Offer 6" not in out
     for label in ("1 hour", "24 hours", "7 days", "--hours (3)"):
@@ -137,7 +137,7 @@ def test_json_shape(capsys):
         "schema", "command", "checked_at", "result", "complete", "incomplete_label", "model", "request", "options",
         "chosen", "next", "qualified_count", "checked_count", "filter_steps", "backends", "notices",
     }
-    assert data["model"]["id"] == MODEL and data["model"]["status"] == "unverified"
+    assert data["model"]["id"] == MODEL and data["model"]["status"] == "boot-tested"
     assert data["model"]["revision"] and data["model"]["engine"] == "llamacpp"
     assert "image_digest" in data["model"]
     assert data["options"]["hours"] == 2 and data["options"]["max_spend"] == 9
@@ -156,7 +156,7 @@ def test_json_shape(capsys):
     assert {b["name"] for b in data["backends"]} == {"vast", "runpod"}
     assert all(b["status"] == "ok" for b in data["backends"])
     assert "How the spend cap works" in data["notices"]["spend_cap"]
-    assert data["notices"]["untested"] == UNTESTED_NOTICE
+    assert data["notices"]["untested"] is None  # the 8B entry is boot-tested
     assert out.strip().startswith("{") and out.strip().endswith("}")  # JSON only, nothing else on stdout
 
 

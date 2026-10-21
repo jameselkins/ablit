@@ -179,7 +179,9 @@ def _describe(entry: Entry) -> str:
         f"  {entry.display_name}",
         "",
         f"Status: {entry.status}",
-        "Hardware floors below are not yet tested. They come from the sources listed at the end.",
+        ("Hardware floors below come from the sources listed at the end. Only the machines in Tests have run it."
+         if entry.tests else
+         "Hardware floors below are not yet tested. They come from the sources listed at the end."),
         "",
         f"Source repo:  {entry.source.repo}",
         f"Revision:     {entry.source.revision}",
@@ -214,7 +216,7 @@ def _describe(entry: Entry) -> str:
         f"Artifacts:    {len(entry.artifacts)} file" + ("" if len(entry.artifacts) == 1 else "s"),
     ]
     if entry.tests:
-        lines.append(f"Tests:        {len(entry.tests)} recorded")
+        lines.append("Tests:        " + "; ".join(f"{t['backend']} on {t['date']}" for t in entry.tests))
     else:
         lines.append("Tests:        none. Nobody has booted this entry yet.")
     if entry.notes:
