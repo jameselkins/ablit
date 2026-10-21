@@ -25,6 +25,7 @@ import time
 from dataclasses import dataclass, replace
 
 INTERVAL_SECONDS = 30
+EVIDENCE_DELAY_SECONDS = 30
 RESERVE_MINUTES = 2.0
 STALL_SECONDS = 600.0
 HEARTBEAT_PATH = "/ablit/heartbeat.json"
@@ -210,8 +211,9 @@ def run(cfg: Config, stages_dir: str = "/ablit/stages", config_path: str = RUN_F
                                        "rx_bytes": rx, "action": action})
         if action != CONTINUE:
             # Let the attached CLI save the decision before the instance vanishes.
-            # Ten seconds is within the two-minute reserve, including API timeouts.
-            time.sleep(10)
+            # The CLI polls every 10 seconds, and one poll can take several more,
+            # so wait 30 seconds. That is within the two-minute reserve.
+            time.sleep(EVIDENCE_DELAY_SECONDS)
             try:
                 destroy_instance(decision.reason, config_path)
                 return 8 if action == DESTROY_CAP else 6
