@@ -1,59 +1,40 @@
 # ablit
 
-ablit is a command-line tool, still being built, for people who want to run a language model on a rented GPU machine without comparing marketplaces and engine settings by hand. Given a model from its catalog, the finished tool will find the cheapest rented machine that meets the model's needs, show the full cost, and ask you to confirm. After you confirm, it will rent the machine, start the inference engine, download the model files, check that the engine answers, and print an OpenAI-compatible endpoint.
+ablit is a command-line tool that finds the cheapest rented GPU machine that can run a model, shows the full cost, and starts the machine on your own marketplace account.
 
-Project status: alpha. One catalog entry, `llama31-8b-abliterated-q4km`, has completed paid round trips on Vast. A round trip rented a machine, served chat completions through an SSH tunnel, and stopped billing with `ablit down`. In separate paid tests, the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost. Every other entry is `unverified`, and RunPod can be searched but not rented yet.
+It is for people who want to run an open-weight language model, such as an abliterated model (a model edited to remove its refusals), on a rented GPU without comparing marketplaces and engine settings by hand. ablit runs on your computer, so your marketplace key stays with you, and it runs no service, holds no money and relays no inference traffic.
 
-## What ablit does
+Status: alpha. One catalog entry, `llama31-8b-abliterated-q4km`, has completed paid round trips on Vast. Every other entry has been planned but never booted, and RunPod can be searched but not rented yet. The Status section below lists exactly what has been tested.
 
-ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. Both marketplace drivers can search for offers, and the Vast driver can rent the 8B entry. A paid launch asks you to type `rent` to confirm the quote. Agents and scripts can pass `--yes` instead, and the spend cap still applies.
-
-## What ablit does not do
-
-- It runs no service, holds no money, and relays no inference traffic.
-- It never chooses a machine because of a referral commission. POLICY.md states the rule and names the tests that enforce it.
-- It does not guarantee your spend cap. The notice below explains when the cap can fail.
-- It does not run models that are missing from the catalog. A request for one exits with code 3 and a link to CONTRIBUTING.md.
-
-## Install
+## Quickstart
 
 ablit needs Python 3.11 or newer and OpenSSH.
 
 ```
 uv tool install ablit
+ablit plan llama31-8b-abliterated-q4km
+ablit setup vast
+ablit up llama31-8b-abliterated-q4km --max-spend 2 --untested
+ablit down
 ```
 
-`pipx install ablit` works too. To run it from a checkout of this repository instead:
+First, `ablit plan` is free and needs no account. It prints the cheapest machine that meets the model's needs and the next four, with the full cost for 1 hour, 24 hours and 7 days. Second, `ablit setup vast` takes your Vast API key with hidden input and tests it, and you can choose to save it in the OS keyring. Third, `ablit up` shows the quote, asks you to type `rent`, then rents the machine, starts the engine, and prints a local endpoint that you can use with any OpenAI-compatible client. Last, `ablit down` destroys the machine and confirms that billing has stopped.
+
+`--max-spend 2` is a cap of 2 US dollars, and it is required. `--untested` is required because the catalog marks this entry `unverified`, which means nobody has recorded a boot test for it yet. Read the spend cap notice below before you rent.
+
+Example output from `ablit plan llama31-8b-abliterated-q4km` on 2026-10-21, cut to the first lines. Prices change from minute to minute.
 
 ```
-uv tool install --editable .
+Chosen offer
+  Offer:       vast 56301726
+  GPU:         RTX 3060 x1, 12.3 GB VRAM each
+  Host RAM:    31.5 GB
+  Price:       $0.0775 per hour all-in (GPU only: $0.0733)
+  Totals, including download charges and the hours spent downloading and starting:
+    1 hour         $0.14
+    24 hours       $1.92
+    7 days         $13.08
 ```
-
-## Setup
-
-Run `ablit setup vast` to enter a key with hidden input and test it with one read-only request. Choose the OS keyring to use the key in later commands. The session-only choice keeps the key only in the current process, which ends when setup exits. For a shell session, set `VAST_API_KEY` yourself with hidden input. An environment key takes priority over the keyring.
-
-The setup flow asks whether you have an account. Without a Vast account, it shows the disclosure below and offers "Sign up with the paid link", "Sign up directly" and "Skip". It prints links and never opens a browser. RunPod account setup is deferred.
-
-## Paid links
-
-ablit has a referral ID for Vast.ai and none for RunPod. A user with no Vast account sees the disclosure and a choice between the paid link and a plain link. For a marketplace without an ID, only the plain link and the skip choice appear.
-
-The commission rates are the ones the programs published when they were last checked, and they apply only to new accounts.
-
-| Marketplace | Commission the maintainer earns | Checked |
-|---|---|---|
-| Vast.ai | 3% of what the new user spends there for the life of the account, paid by Vast as credits | checked 2026-10-21 |
-| RunPod | 3% of Pod spend and 5% of Serverless spend, paid in RunPod credits for 6 months, and the new account must sign up with Google sign-in | checked 2026-10-20 |
-
-The rules for paid links are these.
-
-1. Links appear only in `ablit setup`, only for a marketplace where you have no account, and only next to the disclosure.
-2. The commission never changes your prices, and it never affects which machine ablit picks. The planner cannot import the referral code, and tests check that the ranking does not change when referral IDs are set, unset or shuffled.
-3. You can turn all referral links off with `ablit setup --no-referral`, with `ABLIT_NO_REFERRAL=1`, or with `referral = false` in the config file.
-4. ablit has no telemetry.
-
-The maintainer checks the rates on the program pages before each release and updates the date in the table.
 
 ## How the spend cap works
 
@@ -70,32 +51,61 @@ unattended.
 
 The cap counts compute, disk, the model download and transfer charges. If the cap cannot cover the download, the startup estimate and 10 minutes of use, `ablit up` exits with code 5 and shows the smallest cap that would work, including the watchdog reserve. Quotes use a conservative 10 GB image allowance.
 
+## What ablit does not do
+
+- It never chooses a machine because of a referral commission. POLICY.md states the rule and names the tests that enforce it.
+- It does not guarantee your spend cap. The notice above explains when the cap can fail.
+- It does not run models that are missing from the catalog. A request for one exits with code 3 and a link to CONTRIBUTING.md.
+- It has no telemetry.
+
+## Status
+
+All paid tests so far ran on Vast.
+
+- Tested on a rented machine: the 8B llama.cpp entry rented a machine, served chat completions through an SSH tunnel, and stopped billing with `ablit down`.
+- Tested in separate paid runs: the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost.
+- Not tested on a rented machine: vLLM, Xolotl, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM and Xolotl entries.
+- RunPod: search works, and renting is not available. Clore: search and renting are being added and are untested.
+- The 8B entry is still marked `unverified` in the catalog, and its status will change once the boot test is recorded.
+
+## Install
+
+```
+uv tool install ablit
+```
+
+`pipx install ablit` works too. To run ablit from a checkout of this repository instead, run `uv tool install --editable .` in the checkout.
+
+## Setup
+
+Run `ablit setup vast` to enter a key with hidden input and test it with one read-only request. You can then save the key in the OS keyring for later commands, or keep it for the current process only, which ends when setup exits. For a shell session, you can set `VAST_API_KEY` yourself with hidden input, and an environment key takes priority over the keyring.
+
+Setup asks whether you already have an account. If you don't, it shows the disclosure in the Paid links section and offers "Sign up with the paid link", "Sign up directly" and "Skip". It prints links and never opens a browser. RunPod account setup is deferred.
+
 ## The endpoint
 
-By default, the engine on the rented machine listens on `127.0.0.1` only, and ablit opens an SSH port forward that checks the host key and picks a free local port. ablit then prints a local URL, the name of the keyring entry that holds the endpoint key, and a sample `curl` command. Closing the tunnel does not stop billing, so you run `ablit down` to stop the run. The engine key is a random 32-byte value that is passed to the engine through an environment variable.
+By default, the engine on the rented machine listens on `127.0.0.1` only, and ablit opens an SSH port forward that checks the host key and picks a free local port. ablit then prints a local URL, the name of the keyring entry that holds the endpoint key, and a sample `curl` command. Closing the tunnel does not stop billing, so run `ablit down` to stop the run.
 
-Paid launches in step 3 accept only `--endpoint tunnel`. Public endpoints are deferred. OpenSSH saves the first host key for each run and checks it on subsequent connections. Vast does not document a separate authenticated host fingerprint, so first contact uses trust on first use.
+Paid launches accept only `--endpoint tunnel`, and public endpoints are deferred. The endpoint key is a random 32-byte value that ablit passes to the engine through an environment variable. OpenSSH saves the first host key for each run and checks it on later connections, and Vast does not document a separate authenticated host fingerprint, so first contact uses trust on first use.
 
 ## Commands
-
-Agents and scripts should read AGENTS.md. It covers `--json` output, exit codes, and the handoff to a person before anything is rented.
 
 | Command | What it does |
 |---|---|
 | `ablit setup [backend]` | Vast account setup with hidden input and OS keyring storage. |
 | `ablit plan <model>` | Shows the chosen offer and the next four, the totals for 1 hour, 24 hours, 7 days and `--hours`, and why other offers or backends were dropped. Rents nothing. Exits with code 3 when no offer qualifies. |
 | `ablit up <model>` | Plans, asks you to type `rent`, then rents the 8B entry on Vast and keeps its tunnel open. |
-| `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. Supports --all, --json, --show-key and --watch. |
-| `ablit logs [run]` | Logs from the machine with known secrets removed. Supports stage filtering and -f. |
+| `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. Supports `--all`, `--json`, `--show-key` and `--watch`. |
+| `ablit logs [run]` | Logs from the machine with known secrets removed. Supports `--stage` and `-f`. |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel and runs the local cap check. |
-| `ablit down [run]` | Destroys the instance, confirms its absence and revokes run credentials. Retry exit 7 until cleanup is confirmed. |
-| `ablit catalog list`, `show <id>`, `validate <file>` | Lists entries, explains one, or checks a contributor's file. Works today. |
+| `ablit down [run]` | Destroys the instance, confirms it is gone, and revokes run credentials. Run it again if it exits with code 7. |
+| `ablit catalog list`, `show <id>`, `validate <file>` | Lists entries, explains one, or checks a contributor's file. |
 
-BUILD.md is the full specification, including every flag and exit code.
+Agents and scripts should read AGENTS.md, which covers `--json` output, exit codes, and the handoff to a person before anything is rented. BUILD.md is the full specification, including every flag.
 
 ## Runtimes
 
-A runtime, or engine, is the server program that loads the model on the rented machine and answers requests. ablit knows three. Only llama.cpp has run on a rented machine so far.
+A runtime, or engine, is the server program that loads the model on the rented machine and answers requests. ablit knows three.
 
 | Runtime | What it is | Used for | Tested on a rented machine |
 |---|---|---|---|
@@ -103,13 +113,16 @@ A runtime, or engine, is the server program that loads the model on the rented m
 | [vLLM](https://github.com/vllm-project/vllm) | A widely used Python server for full-size models across several GPUs | The DeepSeek FP8 entry on 8 GPUs, and the 70B entry | No. Its image digest is not pinned yet, so ablit refuses to rent it. |
 | [Xolotl](https://github.com/Indras-Mirror/Xolotl) | A research engine by one developer, built to run DeepSeek-V4.1-Flash on one 24 GB GPU with about 90 GB of RAM. It keeps the most used experts in GPU memory and the rest in RAM and on disk. Its quant files load only in Xolotl. | The DeepSeek quants that fit a single consumer-class GPU | No. It has no prebuilt image yet, so ablit refuses to rent it. |
 
+<!-- XOLOTL BOOT TEST RESULT: replace the line below when the Xolotl boot test has run. -->
+Xolotl boot test result: pending. No result has been recorded.
+
 `ablit plan` works for every entry, whatever its runtime. `ablit up` works today only for llama.cpp entries on Vast.
 
 ## Catalog
 
-The catalog is a folder of YAML files in `catalog/models/`, one per model build, checked by `catalog/schema/v1.json`. The catalog data is released under CC0-1.0. Each entry also records the license of the model it describes, and the catalog license does not change that license.
+The catalog is a folder of YAML files in `catalog/models/`, one per model build, checked by `catalog/schema/v1.json`. It is curated, so it keeps the best build for each runtime and hardware tier and not every build that exists. The catalog data is released under CC0-1.0, and each entry records the license of the model it describes, which the catalog license does not change.
 
-The catalog is curated: it keeps the best build for each runtime and hardware tier, not every build that exists. There are five entries. Each has the status `unverified`, which means it passed the checks and has no recorded boot test. The 8B entry has run on rented machines, and its status will change once the boot test is recorded.
+There are five entries, and all five have the status `unverified`, which means the entry passed the checks and has no recorded boot test.
 
 | Entry | Runtime | Hardware | Why it is here |
 |---|---|---|---|
@@ -119,19 +132,39 @@ The catalog is curated: it keeps the best build for each runtime and hardware ti
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | The abliterated 1017 model at full FP8 precision |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | Unmodified 70B model, kept as a cheaper first test of the vLLM runtime |
 
-Quality claims in this table come from the model authors and have not been checked by ablit.
+Quality claims in this table come from the model authors and have not been checked by ablit. CONTRIBUTING.md explains how to add an entry, and each entry carries its own notes and the source URL for every hardware figure.
 
-CONTRIBUTING.md explains how to add an entry. Each entry carries its own notes and the source URL for every hardware figure.
+## Paid links
 
-## Repository layout
+ablit has a referral ID for Vast.ai and none for RunPod. A user with no Vast account sees a disclosure and a choice between the paid link and a plain link. For a marketplace without an ID, only the plain link and the skip choice appear.
 
-| Path | Contents |
+The commission rates are the ones the programs published when they were last checked, and they apply only to new accounts.
+
+| Marketplace | Commission the maintainer earns | Checked |
+|---|---|---|
+| Vast.ai | 3% of what the new user spends there for the life of the account, paid by Vast as credits | checked 2026-10-21 |
+| RunPod | 3% of Pod spend and 5% of Serverless spend, paid in RunPod credits for 6 months, and the new account must sign up with Google sign-in | checked 2026-10-20 |
+
+The rules for paid links are these.
+
+1. Links appear only in `ablit setup`, only for a marketplace where you have no account, and only next to the disclosure.
+2. The commission never changes your prices, and it never affects which machine ablit picks. The planner cannot import the referral code, and tests check that the ranking does not change when referral IDs are set, unset or shuffled.
+3. You can turn all referral links off with `ablit setup --no-referral`, with `ABLIT_NO_REFERRAL=1`, or with `referral = false` in the config file.
+4. ablit has no telemetry.
+
+The maintainer checks the rates on the program pages before each release and updates the date in the table. POLICY.md has the full rule and the five tests that enforce it.
+
+## More documentation
+
+| File | Contents |
 |---|---|
-| `cli/` | The Python package and its synthetic tests. `pyproject.toml` at the top builds it. |
-| `catalog/` | Schema, version, license and the seed entries. |
-| `tools/` | `verify_entry.py` checks entries, and `build_catalog.py` compiles them. |
-| `backends/` | Notes on the request shapes of each marketplace. |
-| `engines/` | Bootstrap and health scripts for vLLM, llama.cpp and Xolotl. None has run on a rented machine yet. |
+| AGENTS.md | Using ablit from an agent or script, including `--json` output and exit codes |
+| BUILD.md | The full specification of commands, flags, planner, drivers and engine templates |
+| CONTRIBUTING.md | How to add a catalog entry or record a boot test |
+| POLICY.md | The referral commission rule and its tests |
+| SECURITY.md | How to report a problem, and what ablit does with secrets |
+
+The repository holds the Python package in `cli/`, the catalog in `catalog/`, entry tools in `tools/`, marketplace request notes in `backends/`, and the engine scripts in `engines/`.
 
 ## License
 
