@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -85,15 +86,25 @@ class RunStore:
         return candidates[0]
 
     @contextmanager
-    def lock(self, run_id: str):
+    def lock(self, run_id: str, wait: float = 0.0):
+        """Take the run lock. With `wait`, keep trying for that many seconds.
+
+        `down` and `status` wait, because an attached `up` holds the lock for a
+        few seconds on every poll, and `down` must work while `up` is attached.
+        """
         path = self.path(run_id).with_suffix(".lock")
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
         try:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as error:
-                raise RunError(f"Run {run_id} is busy in another command.") from error
+            deadline = time.monotonic() + wait
+            while True:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError as error:
+                    if time.monotonic() >= deadline:
+                        raise RunError(f"Run {run_id} is busy in another command.") from error
+                    time.sleep(0.2)
             yield
         finally:
             os.close(fd)

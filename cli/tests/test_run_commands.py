@@ -272,8 +272,31 @@ def test_down_while_locked_returns_cleanup_pending_without_confirmation(monkeypa
     store = RunStore()
     r = saved_run(store)
     keys.secret_set("accounts/vast", "invented-account-key")
+    monkeypatch.setattr(commands, "LOCK_WAIT_SECONDS", 0.5)
     with store.lock(r["run_id"]), respx.mock:
         assert main(["down", r["run_id"]], environ={}) == 7
+
+
+def test_down_waits_for_an_attached_up_to_release_the_lock(monkeypatch):
+    import threading
+    store = RunStore()
+    r = saved_run(store)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    taken, release = threading.Event(), threading.Event()
+    def hold():
+        with store.lock(r["run_id"]):
+            taken.set()
+            release.wait(5)
+    holder = threading.Thread(target=hold)
+    holder.start()
+    taken.wait(5)
+    threading.Timer(0.5, release.set).start()
+    with respx.mock as router:
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
+        router.delete(ROOT + "/api/v0/instances/7201/").respond(404)
+        router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
+        assert main(["down", r["run_id"]], environ={}) == 0
+    holder.join()
 
 
 def test_reliability_and_speed_drift_keep_the_confirmation(monkeypatch):

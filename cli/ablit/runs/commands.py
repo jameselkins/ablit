@@ -44,6 +44,8 @@ ONSTART = ("umask 077; mkdir -p /ablit/logs /ablit/stages; "
            "sleep 2; done) >/dev/null 2>&1 &")
 POLL_SECONDS = 10
 SSH_GRACE_SECONDS = 300
+# An attached `up` holds the run lock for one poll, which SSH timeouts can stretch.
+LOCK_WAIT_SECONDS = 90
 
 
 def minimum_cap(offer, req, floor) -> float:
@@ -362,7 +364,7 @@ def existing(args, driver, environ, store):
         while True:
             output, code = [], 0
             for selected in records:
-                with store.lock(selected["run_id"]):
+                with store.lock(selected["run_id"], wait=LOCK_WAIT_SECONDS):
                     record = store.load(selected["run_id"])
                     redactor = run_redactor(record, creds)
                     def status_down():
@@ -403,7 +405,7 @@ def existing(args, driver, environ, store):
     record = records[0]
     if args.command == "down":
         try:
-            with store.lock(record["run_id"]):
+            with store.lock(record["run_id"], wait=LOCK_WAIT_SECONDS):
                 return down(store, store.load(record["run_id"]), driver, creds)
         except RunError:
             print("Cleanup is pending because another command holds the run lock. Re-run down.")
