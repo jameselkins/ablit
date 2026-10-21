@@ -17,7 +17,7 @@ import httpx
 import yaml
 
 from ablit.backends.base import Backend, creds_from_env
-from ablit.backends.errors import BackendError
+from ablit.backends.errors import BackendError, CredentialsRejected
 from ablit.catalog.loader import repo_root
 from ablit.catalog.models import Entry
 from ablit.notices import SPEND_CAP_NOTICE, UNTESTED_NOTICE, spend_cap_notice
@@ -132,6 +132,7 @@ def run_plan(
     wanted: str | None = None,
     max_spend: float | None = None,
     environ: Mapping[str, str] | None = None,
+    strict_credentials: bool = False,
 ) -> PlanReport:
     """Search each wanted backend and rank what they return.
 
@@ -155,6 +156,11 @@ def run_plan(
             continue
         except httpx.HTTPError as error:
             reports.append(BackendReport(name, STATUS_FAILED, f"network error: {error}"))
+            continue
+        except CredentialsRejected as error:
+            if strict_credentials:
+                raise
+            reports.append(BackendReport(name, STATUS_FAILED, str(error)))
             continue
         except BackendError as error:
             reports.append(BackendReport(name, STATUS_FAILED, str(error)))

@@ -18,12 +18,14 @@ For that reason the driver pages by `dph_base`, which the server both orders and
 filters on, and builds pages ordered by the all-in price from those. See
 `_BundleStream`.
 
-TODO(step 3): write create, reconcile, destroy and the scoped watchdog key.
+The lifecycle has synthetic tests and is untested on a rented machine.
 """
 
 from __future__ import annotations
 
 import math
+import os
+import time
 from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
@@ -31,13 +33,17 @@ from typing import Any
 import httpx
 
 from ablit import __version__
-from ablit.backends.base import Capabilities, Creds, OfferSearch, UnwrittenBackend
+from ablit.backends.base import (Allocation, BillingEvidence, BootSpec, Capabilities, Creds,
+                                 Inventory, Observation, OfferSearch, TerminationResult,
+                                 UnwrittenBackend, WatchdogCred)
 from ablit.backends.errors import (
     CredentialsRejected,
     RequestRejected,
     ResponseNotRecognized,
     UnknownFieldType,
     UnknownUnit,
+    CreateUncertain,
+    WorkloadRejected,
 )
 from ablit.backends import fields
 from ablit.select.cost import total_cost
@@ -130,6 +136,8 @@ def offer_from_row(row: Any, allocated_gb: float) -> Offer:
     assert gpu_ram_mb is not None and cpu_ram_mb is not None and disk_gb is not None
     assert all_in is not None and base is not None and transfer_per_gb is not None and fraction is not None
 
+    if "cpu_arch" in row and fields.text(row, "cpu_arch", backend=name) != "amd64":
+        raise UnknownFieldType("vast: only amd64 engine images are supported")
     if arch not in GPU_VENDORS:
         raise UnknownFieldType(f"vast: field 'gpu_arch' in {where} is {arch!r}, which the driver does not know")
     if verification not in VERIFICATION_VALUES:
@@ -186,6 +194,7 @@ def offer_from_row(row: Any, allocated_gb: float) -> Offer:
         region=_region(geolocation),
         allocated_disk_gb=allocated_gb,
         gpu_fraction=fraction,
+        host_id=str(fields.integer(row, "host_id", backend=name, minimum=1)) if "host_id" in row else None,
     )
 
 
@@ -211,6 +220,7 @@ def build_body(
         "type": "on-demand",
         "gpu_frac": {"eq": 1},
         "gpu_arch": {"eq": req.gpu_vendor},
+        "cpu_arch": {"eq": "amd64"},
         "num_gpus": {"eq": req.gpu_count},
         "gpu_ram": {"gte": _mb_from_gb(req.vram_gb_each)},
         "cpu_ram": {"gte": _mb_from_gb(req.host_ram_gb)},
@@ -220,6 +230,8 @@ def build_body(
         "duration": {"gte": int(math.ceil((req.startup_hours + opts.hours) * 3600))},
         "order": [["dph_base", "asc"]],
     }
+    if req.cuda_version_min is not None:
+        body["cuda_max_good"] = {"gte": req.cuda_version_min}
     if req.vram_gb_total is not None:
         body["gpu_total_ram"] = {"gte": _mb_from_gb(req.vram_gb_total)}
     if req.compute_capability_min is not None:
@@ -330,11 +342,15 @@ class _BundleStream:
 
 class VastBackend(UnwrittenBackend):
     name = "vast"
+    inventory_interval = 1.1
 
-    def __init__(self, client: httpx.Client | None = None, url: str = BUNDLES_URL) -> None:
+    def __init__(self, client: httpx.Client | None = None, url: str = BUNDLES_URL, *, store=None) -> None:
         self._client = client
         self._owns_client = client is None
         self._url = url
+        self.store = store
+        self.denied_host_ids: set[str] = set()
+        self._inventory_at: float | None = None
 
     def close(self) -> None:
         """Close the HTTP client when this driver created it."""
@@ -343,7 +359,7 @@ class VastBackend(UnwrittenBackend):
             self._client = None
 
     def capabilities(self) -> Capabilities:
-        return Capabilities(search=True)
+        return Capabilities(search=True, rent=True, scoped_watchdog_credential=True)
 
     # --- HTTP -------------------------------------------------------------
 
@@ -353,6 +369,7 @@ class VastBackend(UnwrittenBackend):
             headers["Authorization"] = f"Bearer {creds.api_key}"
         if self._client is None:
             self._client = httpx.Client(timeout=httpx.Timeout(30.0))
+        # https://docs.vast.ai/api-reference/search/search-offers
         response = self._client.post(self._url, json=body, headers=headers)
         status = response.status_code
         if status in (401, 403):
@@ -362,7 +379,7 @@ class VastBackend(UnwrittenBackend):
         if status == 429:
             raise RequestRejected(self.name, status, "rate limited, try again later")
         if status < 200 or status >= 300:
-            raise RequestRejected(self.name, status, response.text[:200])
+            raise RequestRejected(self.name, status, "the request failed")
         try:
             data = response.json()
         except ValueError as error:
@@ -380,6 +397,8 @@ class VastBackend(UnwrittenBackend):
 
         def query(base_cursor: float | None) -> list[Offer]:
             body = build_body(req, opts, base_cursor=base_cursor)
+            if self.denied_host_ids:
+                body["host_id"] = {"notin": sorted(int(host) for host in self.denied_host_ids)}
             rows = self._post(body, creds, later_page=base_cursor is not None)
             offers = [offer_from_row(row, allocated) for row in rows]
             bases = [o.sticker_hourly for o in offers]
@@ -456,3 +475,198 @@ class VastBackend(UnwrittenBackend):
             if found.offer_id == offer.offer_id:
                 return found
         return None
+
+    def _request(self, method: str, path: str, creds: Creds, *, body=None, params=None, missing_ok=False, missing_error=None):
+        """Send one request without retrying a mutation or echoing an error body."""
+        if self._client is None:
+            self._client = httpx.Client(timeout=30)
+        if method == "GET" and path == "/api/v1/instances":
+            if self._inventory_at is not None:
+                pause = self.inventory_interval - (time.monotonic() - self._inventory_at)
+                if pause > 0:
+                    time.sleep(pause)
+            self._inventory_at = time.monotonic()
+        response = self._client.request(method, "https://console.vast.ai" + path,
+                                        headers={"Authorization": f"Bearer {creds.api_key}"},
+                                        json=body, params=params)
+        if response.status_code == 404 and missing_ok:
+            return None
+        if response.status_code == 400 and missing_error:
+            try:
+                failure = response.json()
+            except ValueError:
+                failure = None
+            if isinstance(failure, dict) and failure.get("success") is False and failure.get("error") == missing_error:
+                return None
+        if response.status_code in (401, 403):
+            raise CredentialsRejected("vast", response.status_code, "the API key or its permissions were refused")
+        if not response.is_success:
+            raise RequestRejected("vast", response.status_code, "the request failed; check the Vast console")
+        try:
+            data = response.json()
+        except ValueError as error:
+            raise ResponseNotRecognized("vast: expected JSON") from error
+        if isinstance(data, dict) and data.get("success") is False:
+            raise RequestRejected("vast", response.status_code, "success was false")
+        return data
+
+    @staticmethod
+    def _object(data) -> dict:
+        if not isinstance(data, dict):
+            raise ResponseNotRecognized("vast: expected an object")
+        return data
+
+    @staticmethod
+    def _success(data) -> dict:
+        data = VastBackend._object(data)
+        if fields.boolean(data, "success", backend="vast") is not True:
+            raise ResponseNotRecognized("vast: success was not true")
+        return data
+
+    def test_credentials(self, creds: Creds) -> None:
+        # https://docs.vast.ai/api-reference/instances/show-instances
+        self._success(self._request("GET", "/api/v1/instances", creds,
+                                    params={"limit": 1, "select_cols": '["id"]'}))
+
+    def instances(self, creds: Creds) -> list[dict]:
+        """Read all pages. No filtered page can prove that billing has stopped."""
+        out, seen = [], set()
+        params = {"limit": 25, "select_cols": '["id","label","actual_status","ssh_host","ssh_port","host_id","dph_total","volume_info"]'}
+        while True:
+            # https://docs.vast.ai/api-reference/instances/show-instances
+            data = self._success(self._request("GET", "/api/v1/instances", creds, params=params))
+            if not isinstance(data.get("instances"), list) or "next_token" not in data:
+                raise ResponseNotRecognized("vast: missing instances or pagination cursor")
+            for row in data["instances"]:
+                row = self._object(row)
+                fields.integer(row, "id", backend="vast", minimum=1)
+                label = row.get("label")
+                if label is not None and not isinstance(label, str):
+                    raise UnknownFieldType("vast: label must be text or null")
+                out.append(row)
+            token = data["next_token"]
+            if token is None:
+                return out
+            if not isinstance(token, str) or not token or token in seen:
+                raise ResponseNotRecognized("vast: invalid or repeated pagination cursor")
+            seen.add(token)
+            params["after_token"] = token
+
+    @staticmethod
+    def label(run_id: str) -> str:
+        return f"ablit-{run_id}"
+
+    def reconcile(self, run_id: str, creds: Creds) -> Inventory:
+        rows = [r for r in self.instances(creds) if r.get("label") == self.label(run_id)]
+        for row in rows:
+            if row.get("volume_info"):
+                raise ResponseNotRecognized("vast: this run never requests volumes; unexpected volume_info needs console review")
+        return Inventory(run_id, self.name, [str(r["id"]) for r in rows])
+
+    def create(self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds) -> Allocation:
+        """Journal the attempt before sending it. A run gets at most one create."""
+        from ablit.runs import RunStore
+        store = self.store or RunStore()
+        with store.lock(run_id + ".create"):
+            record = store.load(run_id)
+            if record.get("create_sent"):
+                found = self.reconcile(run_id, creds)
+                if len(found.resource_ids) == 1:
+                    return Allocation(run_id, self.name, found.resource_ids, offer.hourly_all_in)
+                raise CreateUncertain("Create was already sent. Re-run down to reconcile; no second create is allowed.")
+            if "@sha256:" not in boot.image:
+                raise ResponseNotRecognized("vast: an image digest is required")
+            if boot.env:
+                raise ResponseNotRecognized("vast: credentials and engine config must travel over SSH")
+            record["create_sent"] = True
+            record["started_at"] = time.time()
+            store.save(record)
+            body = {"image": boot.image, "disk": boot.disk_gb, "label": self.label(run_id),
+                    "runtype": "ssh", "target_state": "running", "onstart": boot.onstart,
+                    "cancel_unavail": True}
+            # The operation schema specifies PUT; its shared introduction says POST.
+            # https://docs.vast.ai/api-reference/instances/create-instance
+            try:
+                data = self._success(self._request("PUT", f"/api/v0/asks/{int(offer.offer_id)}", creds, body=body))
+            except RequestRejected as error:
+                if error.status in (400, 401, 403, 404, 410):
+                    record["create_rejected"] = True
+                    store.save(record)
+                raise
+            if os.environ.get("ABLIT_FAULT") == "drop-create-response":
+                raise CreateUncertain("The create response was dropped by ABLIT_FAULT. Re-run up or down to find the label.")
+            instance = str(fields.integer(data, "new_contract", backend="vast", minimum=1))
+            record["resource_ids"] = [instance]
+            store.save(record)
+            return Allocation(run_id, self.name, [instance], offer.hourly_all_in)
+
+    def observe(self, alloc: Allocation, creds: Creds) -> Observation:
+        rows = [r for r in self.instances(creds) if str(r["id"]) in alloc.resource_ids]
+        if not rows:
+            return Observation(time.time(), "absent")
+        if len(rows) != 1:
+            raise ResponseNotRecognized("vast: expected exactly one instance")
+        row = rows[0]
+        status = fields.text(row, "actual_status", backend="vast", nullable=True)
+        rate = fields.number(row, "dph_total", backend="vast", minimum=0)
+        host = row.get("ssh_host")
+        port = row.get("ssh_port")
+        if host is not None:
+            host = fields.text(row, "ssh_host", backend="vast")
+        if port is not None:
+            port = fields.integer(row, "ssh_port", backend="vast", minimum=1)
+            if port > 65535:
+                raise UnknownFieldType("vast: invalid SSH port")
+        host_id = str(fields.integer(row, "host_id", backend="vast", minimum=1)) if row.get("host_id") is not None else None
+        found = Allocation(alloc.run_id, "vast", alloc.resource_ids, rate, host, port, host_id)
+        # The list schema has no documented cumulative USD cost or transfer counter.
+        return Observation(time.time(), status or "unknown", hourly_rate=rate, allocation=found)
+
+    def destroy(self, inv: Inventory, creds: Creds) -> TerminationResult:
+        terminated = []
+        for instance in inv.resource_ids:
+            # https://docs.vast.ai/api-reference/instances/destroy-instance
+            data = self._request("DELETE", f"/api/v0/instances/{int(instance)}", creds, missing_ok=True)
+            if data is not None:
+                self._success(data)
+            terminated.append(instance)
+        return TerminationResult(True, terminated)
+
+    def verify_billing_stopped(self, inv: Inventory, creds: Creds) -> BillingEvidence:
+        # https://docs.vast.ai/api-reference/instances/show-instances
+        rows = self.instances(creds)
+        remaining = [str(r["id"]) for r in rows
+                     if str(r["id"]) in inv.resource_ids or r.get("label") == self.label(inv.run_id)]
+        return BillingEvidence(time.time(), remaining)
+
+    def watchdog_credential(self, alloc: Allocation, creds: Creds) -> WatchdogCred:
+        if len(alloc.resource_ids) != 1:
+            raise ResponseNotRecognized("vast: a watchdog needs exactly one instance")
+        instance = int(alloc.resource_ids[0])
+        permissions = {"api": {"instance_write": {"api.instance.destroy": {"constraints": {"id": {"eq": instance}}}}}}
+        # https://docs.vast.ai/api-reference/accounts/create-api-key
+        # https://docs.vast.ai/cli/permissions
+        data = self._object(self._request("POST", "/api/v0/auth/apikeys", creds,
+                                         body={"name": self.label(alloc.run_id), "permissions": permissions}))
+        key_id = str(fields.integer(data, "id", backend="vast", minimum=1))
+        token = fields.text(data, "key", backend="vast")
+        assert token is not None
+        return WatchdogCred(str(instance), token, key_id)
+
+    def delete_watchdog_key(self, key_id: str, creds: Creds) -> None:
+        # https://docs.vast.ai/api-reference/accounts/delete-api-key
+        data = self._request("DELETE", f"/api/v0/auth/apikeys/{int(key_id)}", creds, missing_ok=True)
+        if data is not None and data != "Successfully Deleted API Key":
+            raise ResponseNotRecognized("vast: unknown API key deletion response")
+
+    def register_ssh_key(self, public_key: str, creds: Creds) -> str:
+        # https://docs.vast.ai/api-reference/accounts/create-ssh-key
+        data = self._success(self._request("POST", "/api/v0/ssh", creds, body={"ssh_key": public_key}))
+        key = self._object(data.get("key"))
+        return str(fields.integer(key, "id", backend="vast", minimum=1))
+
+    def delete_ssh_key(self, key_id: str, creds: Creds) -> None:
+        # https://docs.vast.ai/api-reference/accounts/delete-ssh-key
+        data = self._request("DELETE", f"/api/v0/ssh/{int(key_id)}", creds, missing_error="no_ssh_key")
+        if data is not None:
+            self._success(data)

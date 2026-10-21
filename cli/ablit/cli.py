@@ -1,14 +1,10 @@
-"""Command-line entry point.
-
-Every command and flag from the specification is parsed here. The catalog
-commands and `plan` work today. The other commands print "not implemented yet"
-to stderr and exit with code 2, because the code they need is not written.
-"""
+"""Parse commands for planning and the Vast run lifecycle."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -31,6 +27,7 @@ from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
 from ablit.plan import UnknownBackend, report_json, run_plan
 from ablit.plan_text import render
 from ablit.select import PlanOptions
+from ablit.runs import RunError, RunStore
 from ablit.select.request import request_from_entry
 
 CONTRIBUTING_URL = "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md"
@@ -71,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ablit",
         description="Find the cheapest rented GPU machine that can run a model, "
                     "show the full cost, and start it on your own marketplace account.",
-        epilog="Nothing in this version rents a machine. See `ablit catalog list`.",
+        epilog="Paid launches support the 8B llama.cpp entry on Vast. Other entries can be planned.",
     )
     parser.add_argument("--version", action="version", version=f"ablit {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
@@ -265,11 +262,11 @@ def _plan_options(args: argparse.Namespace) -> PlanOptions | str:
     """Build the planner options from the flags, or return a message describing a bad flag."""
     if args.spot:
         return "--spot is disabled until a spot round trip has been tested"
-    if not args.hours > 0:
+    if not math.isfinite(args.hours) or not args.hours > 0:
         return "--hours must be above zero"
     for flag, value in (("--min-download", args.min_download), ("--max-price-hr", args.max_price_hr),
                         ("--max-spend", args.max_spend)):
-        if value is not None and not value > 0:
+        if value is not None and (not math.isfinite(value) or not value > 0):
             return f"{flag} must be above zero"
     if args.min_reliability is not None and not 0 <= args.min_reliability <= 1:
         return "--min-reliability must be between 0 and 1"
@@ -353,10 +350,21 @@ def _cmd_selection(
             return exitcodes.USAGE
     if command == "plan":
         return _cmd_plan(args, entry, backends, environ)
-    return _not_implemented(command)
+    from ablit.runs.commands import up
+    opts = _plan_options(args)
+    if isinstance(opts, str):
+        print(f"ablit up: {opts}", file=sys.stderr)
+        return exitcodes.USAGE
+    available = default_backends() if backends is None else backends
+    try:
+        return up(args, entry, opts, available["vast"], environ, RunStore())
+    finally:
+        if backends is None:
+            for backend in available.values():
+                backend.close()
 
 
-def main(
+def _main(
     argv: Sequence[str] | None = None,
     *,
     backends: Mapping[str, Backend] | None = None,
@@ -380,7 +388,45 @@ def main(
         return exitcodes.USAGE
     if args.command in ("plan", "up"):
         return _cmd_selection(args, args.command, backends, environ)
-    return _not_implemented(args.command)
+    from ablit.credentials import setup_vast
+    from ablit.runs.commands import existing
+    available = default_backends() if backends is None else backends
+    try:
+        if args.command == "setup":
+            if args.backend not in (None, "vast"):
+                return _not_implemented("setup " + args.backend)
+            if not sys.stdin.isatty():
+                print("ablit setup needs a terminal.", file=sys.stderr)
+                return 2
+            return setup_vast(available["vast"], RunStore(), args.no_referral, environ)
+        return existing(args, available["vast"], environ, RunStore())
+    finally:
+        if backends is None:
+            for backend in available.values():
+                backend.close()
+
+
+def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> int:
+    from ablit.backends.errors import BackendError, CredentialsRejected, WorkloadRejected
+    from ablit.credentials import CredentialError
+    import httpx
+    try:
+        return _main(argv, backends=backends, environ=environ)
+    except (CredentialError, CredentialsRejected) as error:
+        print(f"ablit: {error}", file=sys.stderr)
+        return exitcodes.CREDENTIALS
+    except WorkloadRejected:
+        print("ablit: Vast rejected the workload. Run down to confirm cleanup.", file=sys.stderr)
+        return exitcodes.WORKLOAD_REJECTED
+    except RunError as error:
+        print(f"ablit: {error}", file=sys.stderr)
+        return exitcodes.USAGE
+    except (BackendError, httpx.HTTPError, OSError, ValueError) as error:
+        print(f"ablit: {type(error).__name__}. Check status and run down for pending cleanup.", file=sys.stderr)
+        return exitcodes.CLEANUP_PENDING
+    except (EOFError, KeyboardInterrupt):
+        print("Billing continues for existing rentals. Use `ablit status --all` and `ablit down <run>`.", file=sys.stderr)
+        return exitcodes.USAGE
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ from market_fixtures import (
 )
 
 MODEL = "llama31-8b-abliterated-q4km"  # one 8 GB GPU, 16 GB host RAM, a 4.9 GB download
-ALLOCATED = 5  # the entry's disk need rounded up
+ALLOCATED = 15  # the staging peak plus the pinned image allowance, rounded up
 
 
 def vast_rows(count: int = 6, start_base: float = 0.40) -> list[dict]:
@@ -103,7 +103,7 @@ def test_the_chosen_offer_is_the_one_with_the_lowest_total(capsys):
     assert chosen["gpu_vram_gb_each"] >= 8 and chosen["host_ram_gb"] >= 16
     hourly = chosen["hourly_all_in_usd"]
     assert chosen["totals"][0]["total"] == pytest.approx(
-        hourly * (chosen["download_hours"] + chosen["startup_hours"] + 1) + chosen["transfer_usd_per_gb"] * req.download_gb
+        hourly * (chosen["download_hours"] + chosen["startup_hours"] + 1) + chosen["transfer_usd_per_gb"] * (req.download_gb + req.image_gb)
     )
 
 

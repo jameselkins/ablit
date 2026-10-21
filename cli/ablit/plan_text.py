@@ -110,7 +110,7 @@ def render(report: PlanReport) -> str:
         needs.append(f"compute capability {req.compute_capability_min:g} or higher")
     needs.append(f"at least {req.host_ram_gb:g} GB host RAM")
     needs.append(
-        f"at least {req.disk_gb:,.1f} GB free disk (the staging peak; the engine image size is not counted yet)"
+        f"at least {req.disk_gb:,.1f} GB free disk (the staging peak plus the engine image allowance)"
     )
     needs.append(f"download of {req.download_gb:,.1f} GB at a speed floor of {_floor(report):g} Mbps")
     lines.append("What the machine needs")

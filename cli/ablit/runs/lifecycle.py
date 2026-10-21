@@ -1,0 +1,180 @@
+"""Reconcile resources, save watchdog evidence and retry incomplete cleanup."""
+
+from __future__ import annotations
+
+import json
+import math
+import time
+
+import httpx
+
+from ablit.backends.base import Allocation, Inventory
+from ablit.backends.errors import BackendError
+from ablit.credentials import CredentialError, secret_delete, secret_get
+from ablit.redact import Redactor
+from ablit.runs import RunError
+from ablit.runs.ssh import SSH
+from ablit.watchdog.ablit_watchdog import Config, reserve
+
+CONSOLE = "https://cloud.vast.ai/instances/"
+KEYS = "https://cloud.vast.ai/manage-keys/"
+
+
+def allocation(record: dict) -> Allocation:
+    return Allocation(record["run_id"], "vast", record.get("resource_ids", []),
+                      record["offer"]["hourly_all_in"], record.get("ssh_host"), record.get("ssh_port"),
+                      record.get("host_id"))
+
+
+def run_redactor(record: dict, creds) -> Redactor:
+    secrets = [creds.api_key]
+    for name in (record["run_id"], "watchdog/" + record["run_id"]):
+        try:
+            secrets.append(secret_get(name))
+        except CredentialError:
+            pass
+    return Redactor(s for s in secrets if s and len(s) >= 6)
+
+
+def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
+    """Read marketplace state and copy only known non-secret remote fields."""
+    observation = driver.observe(allocation(record), creds)
+    record["last_marketplace_check"] = observation.checked_at
+    record["marketplace_state"] = observation.state
+    if observation.allocation:
+        alloc = observation.allocation
+        record.update(ssh_host=alloc.ssh_host, ssh_port=alloc.ssh_port, host_id=alloc.host_id)
+    if observation.hourly_rate is not None:
+        record["observed_hourly_rate"] = observation.hourly_rate
+    if remote and record.get("ssh_host") and observation.state != "absent":
+        try:
+            probe = SSH(store, record).probe()
+            heartbeat = probe.get("heartbeat")
+            if heartbeat:
+                at, spent = heartbeat.get("at"), heartbeat.get("spend")
+                if (type(at) not in (int, float) or type(spent) not in (int, float)
+                        or not math.isfinite(at) or not math.isfinite(spent) or spent < 0
+                        or heartbeat.get("action") not in ("continue", "destroy_cap", "destroy_stall")):
+                    raise RunError("The remote heartbeat has an unknown shape.")
+                if heartbeat.get("rx_bytes") is not None and type(heartbeat["rx_bytes"]) is not int:
+                    raise RunError("The remote heartbeat has an unknown shape.")
+                record["heartbeat"] = {k: heartbeat[k] for k in ("at", "spend", "action", "rx_bytes") if k in heartbeat}
+                if heartbeat.get("action") == "destroy_cap":
+                    record["stop_reason"] = "watchdog_cap"
+            stages = probe.get("stages", [])
+            expected = {"01-start.done", "02-check.done", "03-randread.done", "04-speed.done", "05-download.done",
+                        "06-staging.done", "07-engine.done", "08-health.done", "09-ready.done"}
+            if not isinstance(stages, list) or any(s not in expected for s in stages):
+                raise RunError("The stage list contains unknown markers.")
+            record["stages"] = stages
+            if "failed" in probe:
+                failed = probe["failed"]
+                reason = str(failed.get("reason", "unknown"))
+                record["failure"] = {"reason": "speed_below_floor" if reason == "speed_below_floor" else "bootstrap_failed"}
+            if "ready" in probe:
+                record["ready"] = True
+        except (RunError, OSError, ValueError, httpx.HTTPError):
+            record["ssh_check"] = "unavailable"
+    rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
+    elapsed = max(time.time() - record["started_at"], 0) / 3600
+    # The API documents the rate but no cumulative transfer charge. Count the
+    # quoted image and model transfer locally, and take the larger heartbeat total.
+    estimated = rate * elapsed + record.get("transfer_estimate_usd", 0) + record["offer"].get("fixed_fees", 0)
+    record["spend_estimate_usd"] = max(estimated, record.get("heartbeat", {}).get("spend", 0))
+    store.save(record)
+    return record
+
+
+def local_stop_needed(record: dict, now: float) -> bool:
+    """Use the local check if the on-box heartbeat is over three minutes old."""
+    if record["marketplace_state"] == "absent":
+        return False
+    last = record.get("heartbeat", {}).get("at", record["started_at"])
+    cfg = Config(record["started_at"], record["offer"]["hourly_all_in"],
+                 record["offer"]["bandwidth_cost_per_gb"], record["cap_usd"],
+                 record["offer"]["download_mbps"])
+    return now - last > 180 and record["spend_estimate_usd"] + reserve(cfg) >= record["cap_usd"]
+
+
+def down(store, record: dict, driver, creds) -> int:
+    """Keep all evidence until resources, billing and credential cleanup are confirmed."""
+    run_id = record["run_id"]
+    if record["state"] == "billing_stopped_confirmed":
+        print(f"{run_id}: billing_stopped_confirmed. Billing stopped.")
+        return 0
+    record["state"] = "termination_requested"
+    record["pending_cleanup"] = []
+    store.save(record)
+    errors = []
+    billing_clear = False
+    try:
+        found = driver.reconcile(run_id, creds)
+        record["resource_ids"] = sorted(set(record.get("resource_ids", [])) | set(found.resource_ids))
+        store.save(record)
+    except (BackendError, httpx.HTTPError):
+        errors.append("Instance reconciliation is unconfirmed.")
+    inventory = Inventory(run_id, "vast", record.get("resource_ids", []))
+    for resource in inventory.resource_ids:
+        try:
+            driver.destroy(Inventory(run_id, "vast", [resource]), creds)
+        except (BackendError, httpx.HTTPError):
+            errors.append(f"Destroy of instance {resource} is unconfirmed.")
+    if not errors:
+        record["state"] = "resources_terminated"
+        store.save(record)
+    try:
+        evidence = driver.verify_billing_stopped(inventory, creds)
+        record["last_marketplace_check"] = evidence.checked_at
+        record["still_billable"] = evidence.still_billable
+        if evidence.still_billable:
+            errors.append("Instances are still in the user's instance list.")
+        elif not record.get("resource_ids") and record.get("create_sent") and not record.get("create_rejected"):
+            # An empty list after an ambiguous create does not prove that an
+            # accepted create cannot appear later. Vast documents no upper bound.
+            errors.append("Create was sent but no ID has been recovered. Check the run label in the console.")
+        else:
+            record["state"] = "resources_terminated"
+            billing_clear = True
+        if evidence.final_cost_usd is not None:
+            record["final_cost_usd"] = evidence.final_cost_usd
+    except (BackendError, httpx.HTTPError):
+        errors.append("Billing stop is unconfirmed.")
+    # Keep the watchdog usable until the marketplace confirms all instances absent.
+    if billing_clear:
+        if record.get("watchdog_key_id"):
+            try:
+                driver.delete_watchdog_key(record["watchdog_key_id"], creds)
+                record["watchdog_key_deleted"] = True
+                store.save(record)
+            except (BackendError, httpx.HTTPError):
+                errors.append("Watchdog key deletion is unconfirmed.")
+        elif record.get("watchdog_key_sent"):
+            errors.append(f"The watchdog key response was lost. Review and revoke it at {KEYS}")
+        if record.get("ssh_key_id") and not record.get("ssh_key_deleted"):
+            try:
+                driver.delete_ssh_key(record["ssh_key_id"], creds)
+                record["ssh_key_deleted"] = True
+                store.save(record)
+            except (BackendError, httpx.HTTPError):
+                errors.append("SSH key deletion is unconfirmed.")
+        elif record.get("ssh_key_sent") and not record.get("ssh_key_id"):
+            errors.append("SSH key registration was unconfirmed. Review the public key in the Vast console.")
+    if not errors:
+        try:
+            secret_delete("watchdog/" + run_id)
+            secret_delete(run_id)
+        except CredentialError:
+            errors.append("Local keyring cleanup is pending.")
+    record["pending_cleanup"] = errors
+    if not errors:
+        record["state"] = "billing_stopped_confirmed"
+    store.save(record)
+    if errors:
+        print(f"{run_id}: {record['state']}. Cleanup pending. Check {CONSOLE}")
+        for error in errors:
+            print(error)
+        return 7
+    print(f"{run_id}: billing_stopped_confirmed. Billing stopped.")
+    if "final_cost_usd" in record:
+        print(f"Final cost reported by Vast: ${record['final_cost_usd']:.4f}")
+    return 0

@@ -64,6 +64,7 @@ class Allocation:
     hourly_rate: float
     ssh_host: str | None = None
     ssh_port: int | None = None
+    host_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,8 @@ class Observation:
     checked_at: float
     state: str
     spend_usd: float | None = None
+    hourly_rate: float | None = None
+    allocation: Allocation | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,7 @@ class WatchdogCred:
 
     instance_id: str
     token: str = field(repr=False)
+    key_id: str | None = None
 
 
 # Environment variables that hold a marketplace key until the keyring code is written.

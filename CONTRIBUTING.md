@@ -56,4 +56,12 @@ Before it rents anything, ablit also checks that every artifact of the entry is 
 
 Run the tests before you open a pull request. The five tests that enforce the rule against steering by commission are in `cli/tests/test_steering.py`, and POLICY.md explains them. A change that lets referral data reach the planner will not be accepted.
 
-Scripts in `engines/` that need a real rented machine are marked `TODO(step 3): untested`. Please keep those marks until someone has run the script on a rented machine, and please do not describe untested behavior as fact in the documentation.
+Scripts that have not run on a rented machine say `untested on a rented machine`. Synthetic coverage does not change a catalog entry to `boot-tested`.
+
+### Testing create recovery
+
+`ABLIT_FAULT=drop-create-response` discards a successful Vast create response before the instance ID is saved. The durable record still says create was sent. The next `ablit up` for the same model reconciles the label, and `ablit down <run>` can find and destroy the instance. Neither command sends another create for that run. Unset the variable after the fault. It has no effect unless explicitly set.
+
+Tests use `respx`, invented marketplace responses and a fake OS keyring. No test rents a machine. Run the complete test command above and `lint-imports` before a paid check. Paid checks require a separate approved budget and the maintainer's own account.
+
+The fault hook exercises a paid create when used against Vast. Run it only as part of an approved paid test. A lost watchdog-key or SSH-key response has no safe automatic lookup in the documented schema, so cleanup stays pending for console review.

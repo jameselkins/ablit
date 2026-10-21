@@ -6,7 +6,7 @@
 # /ablit/engine/common.sh and sets ABLIT_LIB to that path.
 #
 # Every step that needs a real rented machine is marked
-#   TODO(step 3): untested
+#   untested on a rented machine
 # because no script here has run on a rented box yet.
 #
 # Inputs are environment variables, listed under `variables` in each engine's
@@ -32,6 +32,7 @@ ablit_fail() {
   local reason="$1" detail="${2:-}"
   ablit_log "FAILED: $reason $detail"
   mkdir -p "$ABLIT_STATE_DIR"
+  # shellcheck disable=SC1003
   printf '{"reason":"%s","detail":"%s","at":%s}\n' \
     "$reason" "$(printf '%s' "$detail" | tr -d '"\\' | tr '\n' ' ')" "$(date +%s)" \
     >"$ABLIT_STATE_DIR/failed.json"
@@ -103,7 +104,7 @@ ablit_write_run_file() {
 }
 
 # Start the watchdog before any download. Safe to call again after a restart.
-# TODO(step 3): untested. Needs python3 on the box.
+# untested on a rented machine. Needs python3 on the box.
 ablit_start_watchdog() {
   local pidfile="$ABLIT_STATE_DIR/watchdog.pid"
   if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
@@ -122,7 +123,7 @@ ablit_start_watchdog() {
 # Compare two decimal numbers. Succeeds when $1 >= $2.
 ablit_ge() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a + 0 >= b + 0) }'; }
 
-# TODO(step 3): untested. Needs nvidia-smi and the cgroup files of a real container.
+# untested on a rented machine. Needs nvidia-smi and the cgroup files of a real container.
 ablit_check_hardware() {
   ablit_require_env ABLIT_GPU_COUNT ABLIT_MIN_VRAM_MB_EACH ABLIT_MIN_HOST_RAM_GB ABLIT_MIN_DISK_GB
   command -v nvidia-smi >/dev/null 2>&1 || ablit_fail "missing_tool" "nvidia-smi was not found"
@@ -177,7 +178,7 @@ ablit_check_hardware() {
 # Bounded random 4 KiB reads on a scratch file with the page cache bypassed.
 # The result is reported and never fails the run. A pass threshold is set only
 # after a measured passing box.
-# TODO(step 3): untested. O_DIRECT may be refused on some filesystems.
+# untested on a rented machine. O_DIRECT may be refused on some filesystems.
 ablit_random_read_test() {
   if [ "${ABLIT_RANDOM_READ_REQUIRED:-0}" != "1" ]; then
     ablit_log "random-read test not required by this profile"
@@ -228,7 +229,7 @@ ablit_file_size() { stat -c %s "$1" 2>/dev/null || echo 0; }
 
 # Measure speed over the first two minutes of the largest file. The partial file
 # is kept, so the next stage resumes from it.
-# TODO(step 3): untested.
+# untested on a rented machine.
 ablit_speed_check() {
   ablit_require_env ABLIT_MIN_DOWNLOAD_MBPS
   local line url dest
@@ -262,7 +263,7 @@ ablit_speed_check() {
 ablit_sha256() { sha256sum "$1" | cut -d' ' -f1; }
 
 # Download one file with range requests, then check size and hash before the rename.
-# TODO(step 3): untested.
+# untested on a rented machine.
 ablit_download_one() {
   local url="$1" rel="$2" want_bytes="$3" want_sha="$4"
   local dest="$ABLIT_DATA_DIR/$rel" part headers had attempt
@@ -270,7 +271,11 @@ ablit_download_one() {
   headers="$ABLIT_STATE_DIR/logs/last-download-headers.txt"
   mkdir -p "$(dirname "$dest")"
 
-  if [ -f "$dest" ] && [ "$(ablit_file_size "$dest")" = "$want_bytes" ]; then
+  if [ -f "$dest" ] && [ "$(ablit_file_size "$dest")" = "$want_bytes" ] && [ "$(ablit_sha256 "$dest")" = "$want_sha" ]; then
+    return 0
+  fi
+  if [ "$(ablit_file_size "$part")" = "$want_bytes" ] && [ "$(ablit_sha256 "$part")" = "$want_sha" ]; then
+    mv "$part" "$dest"
     return 0
   fi
   for attempt in 1 2 3 4 5; do
@@ -310,7 +315,7 @@ _ablit_http_code() {
   curl --silent --output /dev/null --write-out '%{http_code}' --max-time 60 "$@" || true
 }
 
-# TODO(step 3): untested.
+# untested on a rented machine.
 ablit_health_check() {
   ablit_require_env ABLIT_PORT ABLIT_ENDPOINT_KEY ABLIT_SERVED_NAME
   case "$ABLIT_SERVED_NAME" in
@@ -329,16 +334,22 @@ ablit_health_check() {
   done
 
   # The engine must listen on the loopback address only.
-  local listeners
-  if command -v ss >/dev/null 2>&1; then
-    listeners="$(ss -ltnH "sport = :${ABLIT_PORT}" | awk '{print $4}')"
-  else
-    ablit_fail "missing_tool" "ss is needed to confirm the engine listens on 127.0.0.1 only"
-  fi
-  [ -n "$listeners" ] || ablit_fail "bind_check" "no listener found on port ${ABLIT_PORT}"
-  if printf '%s\n' "$listeners" | grep -vqE '^(127\.0\.0\.1|\[::1\]):'; then
-    ablit_fail "bind_check" "the engine listens on an address other than 127.0.0.1"
-  fi
+  python3 - "$ABLIT_PORT" <<'PYBIND' || ablit_fail "bind_check" "the engine must listen on loopback only"
+import sys
+port = int(sys.argv[1])
+found = False
+for path in ("/proc/net/tcp", "/proc/net/tcp6"):
+    with open(path) as handle:
+        for line in handle.readlines()[1:]:
+            fields = line.split()
+            address, value = fields[1].split(":")
+            if int(value, 16) != port or fields[3] != "0A":
+                continue
+            found = True
+            if address not in ("0100007F", "00000000000000000000000001000000"):
+                sys.exit(1)
+sys.exit(0 if found else 1)
+PYBIND
 
   # 2. One chat completion with max_tokens 1.
   local body

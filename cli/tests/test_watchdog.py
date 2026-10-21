@@ -107,9 +107,22 @@ def test_read_rx_bytes_skips_loopback(tmp_path: Path):
     assert wd.read_rx_bytes(str(sample)) == 4000
 
 
-def test_the_destroy_call_is_a_stub():
-    with pytest.raises(NotImplementedError):
-        wd.destroy_instance("test")
+def test_destroy_uses_only_the_scoped_key_and_instance(tmp_path, monkeypatch):
+    import io
+    config = tmp_path / "run.json"
+    key = tmp_path / "watchdog.key"
+    key.write_text("invented-scoped-key")
+    config.write_text(json.dumps({"instance_id": 7701, "watchdog_key_path": str(key)}))
+    calls = []
+    def urlopen(request, timeout):
+        calls.append(request)
+        return io.BytesIO(b'{"success": true}')
+    monkeypatch.setattr(wd.urllib.request, "urlopen", urlopen)
+    wd.destroy_instance("invented reason", str(config))
+    assert calls[0].method == "DELETE"
+    assert calls[0].full_url == "https://console.vast.ai/api/v0/instances/7701"
+    assert calls[0].headers["Authorization"] == "Bearer invented-scoped-key"
+    assert calls[0].data is None
 
 
 def test_load_config_reads_the_run_file(tmp_path: Path):
@@ -151,3 +164,21 @@ def test_never_continues_once_spend_plus_reserve_reaches_the_cap(elapsed, rx, do
         assert decision.action == wd.DESTROY_CAP
     else:
         assert decision.action in (wd.CONTINUE, wd.DESTROY_STALL)
+
+
+def test_watchdog_retries_destroy_and_preserves_cap_evidence(tmp_path, monkeypatch):
+    heartbeat = tmp_path / "heartbeat.json"
+    monkeypatch.setattr(wd, "HEARTBEAT_PATH", str(heartbeat))
+    monkeypatch.setattr(wd, "read_rx_bytes", lambda: 123)
+    monkeypatch.setattr(wd.time, "time", lambda: 2000)
+    monkeypatch.setattr(wd.time, "sleep", lambda seconds: None)
+    calls = []
+    def destroy(reason, config_path):
+        calls.append(json.loads(heartbeat.read_text()))
+        if len(calls) == 1:
+            raise OSError("invented connection failure")
+    monkeypatch.setattr(wd, "destroy_instance", destroy)
+    cfg = wd.Config(1000, 1, 0, 0.01, 500)
+    assert wd.run(cfg, str(tmp_path), "invented-config") == 8
+    assert len(calls) == 2
+    assert all(x["action"] == wd.DESTROY_CAP and x["rx_bytes"] == 123 for x in calls)

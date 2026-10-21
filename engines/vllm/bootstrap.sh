@@ -9,6 +9,7 @@ set -euo pipefail
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
 . "${ABLIT_LIB:-$ENGINE_DIR/../lib/common.sh}"
+# shellcheck source=/dev/null
 [ -f "${ABLIT_STATE_DIR}/env" ] && { set -a; . "${ABLIT_STATE_DIR}/env"; set +a; }
 
 # vLLM pins host memory for the Engram tables of the DeepSeek build, and the

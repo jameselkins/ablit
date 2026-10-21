@@ -4,13 +4,23 @@ name: llamacpp-server-cuda
 engine: llamacpp
 image: ghcr.io/ggml-org/llama.cpp
 tag: server-cuda
-# A digest must be pinned before first use. ablit refuses to rent with a null digest.
-digest: null
+# The digest was read anonymously from GHCR on 2026-10-21.
+digest: sha256:c65f01343624f55848a82a6b653880e53399377a92b371975eb3303c1d5647e7
+resolved_at: '2026-10-21'
+source_revision: 1d88cb05f1a257f90741538ca3aca6c1b015c6d3
+version: b11749
+platform: linux/amd64
+# The image config declares CUDA_VERSION=12.8.1.
+cuda_version_min: 12.8
+index_digest: sha256:31b39eacce2bab5fde9286ec3980ed5548a3987644e94da0d0c2092f93313538
+compressed_bytes: 2594121813
+# This allowance covers the extracted image and startup tools. See the driver notes.
+image_gb: 10.0
 bind: 127.0.0.1
 api_key_variable: LLAMA_API_KEY
-# TODO: list the GGUF architectures that the pinned build supports. Until this
-# list is filled in, tools/verify_entry.py skips the architecture check.
-supported_architectures: []
+# Only the architecture used by the step 3 entry is claimed here.
+# https://github.com/ggml-org/llama.cpp/blob/1d88cb05f1a257f90741538ca3aca6c1b015c6d3/src/llama-arch.cpp
+supported_architectures: [llama]
 variables:
   - ABLIT_RUN_ID
   - ABLIT_MODEL_ID

@@ -102,6 +102,7 @@ def test_request_body_for_one_profile():
         "type": "on-demand",
         "gpu_frac": {"eq": 1},
         "gpu_arch": {"eq": "nvidia"},
+        "cpu_arch": {"eq": "amd64"},
         "num_gpus": {"eq": 1},
         "gpu_ram": {"gte": 24000},
         "cpu_ram": {"gte": 90000},

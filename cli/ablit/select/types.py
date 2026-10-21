@@ -44,6 +44,7 @@ class Offer:
     region: str | None = None
     allocated_disk_gb: float | None = None
     gpu_fraction: float = 1.0
+    host_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,7 @@ class HardwareRequest:
     vram_gb_total: float | None = None
     compute_capability_min: float | None = None
     image_gb: float = 0.0
+    cuda_version_min: float | None = None
     os: str = "linux"
 
 

@@ -40,3 +40,11 @@ class UnknownFieldType(ResponseNotRecognized):
 
 class UnknownUnit(ResponseNotRecognized):
     """A value is in a unit the driver cannot confirm, or two fields disagree about it."""
+
+
+class CreateUncertain(BackendError):
+    """Create may have succeeded. Only label reconciliation is allowed next."""
+
+
+class WorkloadRejected(RequestRejected):
+    """The marketplace explicitly rejected the workload."""

@@ -117,10 +117,13 @@ def test_engine_scripts_follow_the_rules(repo_root: Path):
             assert "set -euo pipefail" in text
             assert "0.0.0.0" not in text
         text = (repo_root / "engines" / engine / "bootstrap.sh").read_text(encoding="utf-8")
-        assert "TODO(step" in text
+        assert ("untested on a rented machine" if engine == "llamacpp" else "TODO(step") in text
         lock = (repo_root / "engines" / engine / "lock.yaml").read_text(encoding="utf-8")
-        assert re.search(r"^digest: null", lock, re.M)
-        assert "digest must be pinned before first" in lock
+        if engine == "llamacpp":
+            assert re.search(r"^digest: sha256:[a-f0-9]{64}$", lock, re.M)
+        else:
+            assert re.search(r"^digest: null", lock, re.M)
+            assert "digest must be pinned before first" in lock
         assert "127.0.0.1" in lock
     common = (repo_root / "engines" / "lib" / "common.sh").read_text(encoding="utf-8")
     for stage in ("01", "02", "03", "04", "05", "06", "07", "08", "09"):
@@ -149,7 +152,7 @@ def test_backend_notes_exist_and_describe_the_requests(repo_root: Path):
 
 def test_readme_covers_the_required_sections(repo_root: Path):
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
-    for needle in ("not released yet", "Paid links", "checked 2026-10-20", "planning complete, no command rents anything yet",
+    for needle in ("not released yet", "Paid links", "checked 2026-10-20", "8B llama.cpp entry on Vast",
                    "--endpoint", "127.0.0.1"):
         assert needle in readme, needle
     assert "no referral ids are configured yet" in readme.lower()

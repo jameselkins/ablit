@@ -2,13 +2,13 @@
 
 ablit is a command-line tool, still being built, for people who want to run a language model on a rented GPU machine without comparing marketplaces and engine settings by hand. Given a model from its catalog, the finished tool will find the cheapest rented machine that meets the model's needs, show the full cost, and ask you to confirm. After you confirm, it will rent the machine, start the inference engine, download the model files, check that the engine answers, and print an OpenAI-compatible endpoint.
 
-Project status: planning complete, no command rents anything yet.
+Project status: the 8B llama.cpp entry on Vast has a local implementation and synthetic tests. The paid round trips have not run.
 
-The catalog commands and `ablit plan` work today, and so do the offer filtering, cost model, search rule, watchdog logic and secret filter that the other commands will use. `ablit plan` reads live offers from Vast and RunPod with anonymous, read-only searches, and it rents nothing. The commands that rent, monitor and destroy machines print "not implemented yet" and exit with code 2. Every hardware floor in the catalog is labeled as not yet tested, because nobody has booted any of the seed entries.
+The catalog commands and `ablit plan` work for every seed entry. The `up`, `status`, `logs`, `tunnel` and `down` commands now support `llama31-8b-abliterated-q4km` on Vast. The launch path and engine remain untested on a rented machine, so the entry stays `unverified` and requires `--untested`.
 
 ## What ablit does
 
-ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. The marketplace drivers can search for offers today, and they cannot rent a machine yet. A paid launch will need a terminal, because you must type `rent` to confirm the quote, and there is no `--yes` flag.
+ablit runs on your computer with your own marketplace accounts. The planning code reads how much GPU memory, host RAM, disk and download speed a catalog entry needs, and it filters a list of machine offers against those needs. It then ranks the machines that remain by the total cost of the session, including the time spent downloading and starting. Both marketplace drivers can search for offers, and the Vast driver can rent the 8B entry. A paid launch needs a terminal, because you must type `rent` to confirm the quote, and there is no `--yes` flag.
 
 ## What ablit does not do
 
@@ -31,7 +31,9 @@ uv run --with-editable . ablit catalog show ds41-1017-xq-v3-uncensored
 
 ## Setup
 
-`ablit setup` is the first-run account flow. It will store marketplace keys in your operating system keyring, or keep them for the session only if you prefer, and it will never write a plaintext key without asking. For each marketplace, in alphabetical order, it asks whether you already have an account. If you do, you enter a key, ablit tests it with one read-only call, and you see no referral link. If you do not, you see the disclosure described in the next section and three choices of equal weight, which are to sign up with the paid link, to sign up directly, or to skip. ablit prints links and never opens a browser. The setup command is not written yet.
+Run `ablit setup vast` to enter a key with hidden input and test it with one read-only request. Choose the OS keyring to use the key in later commands. The session-only choice keeps the key only in the current process, which ends when setup exits. For a shell session, set `VAST_API_KEY` yourself with hidden input. An environment key takes priority over the keyring.
+
+The setup flow asks whether you have an account. Without an account, it offers "Sign up directly" and "Skip", since no referral ID is configured. It prints links and never opens a browser. RunPod account setup is deferred.
 
 ## Paid links
 
@@ -66,25 +68,25 @@ run `ablit down` or the rental ends. Check `ablit status` if you leave a run
 unattended.
 ```
 
-The cap counts compute, disk, the model download and transfer charges. If the cap cannot cover the download, the startup estimate and 10 minutes of use, `ablit up` exits with code 5 and shows the smallest cap that would work.
+The cap counts compute, disk, the model download and transfer charges. If the cap cannot cover the download, the startup estimate and 10 minutes of use, `ablit up` exits with code 5 and shows the smallest cap that would work, including the watchdog reserve. Quotes use a conservative 10 GB image allowance.
 
 ## The endpoint
 
 By default, the engine on the rented machine listens on `127.0.0.1` only, and ablit opens an SSH port forward that checks the host key and picks a free local port. ablit then prints a local URL, the name of the keyring entry that holds the endpoint key, and a sample `curl` command. Closing the tunnel does not stop billing, so you run `ablit down` to stop the run. The engine key is a random 32-byte value that is passed to the engine through an environment variable.
 
-With `--endpoint public`, ablit uses the port that the marketplace maps to the machine. Before you confirm, it prints "This endpoint uses plain HTTP. Your API key and your prompts cross the internet unencrypted." TLS on the public endpoint is not part of the first version.
+Paid launches in step 3 accept only `--endpoint tunnel`. Public endpoints are deferred. OpenSSH saves the first host key for each run and checks it on subsequent connections. Vast does not document a separate authenticated host fingerprint, so first contact uses trust on first use.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `ablit setup [backend]` | First-run account flow. Not written yet. |
+| `ablit setup [backend]` | Vast account setup with hidden input and OS keyring storage. |
 | `ablit plan <model>` | Shows the chosen offer and the next four, the totals for 1 hour, 24 hours, 7 days and `--hours`, and why other offers or backends were dropped. Rents nothing. Exits with code 3 when no offer qualifies. |
-| `ablit up <model>` | Plans, asks you to type `rent`, then rents, bootstraps and prints the endpoint. Not written yet. |
-| `ablit status [run]` | Run state, resource IDs, spend against the cap. Not written yet. |
-| `ablit logs [run]` | Logs from the machine with secrets removed. Not written yet. |
-| `ablit tunnel [run]` | Re-opens the SSH tunnel. Not written yet. |
-| `ablit down [run]` | Destroys every billable resource of the run. Not written yet. |
+| `ablit up <model>` | Plans, asks you to type `rent`, then rents the 8B entry on Vast and keeps its tunnel open. |
+| `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. Supports --all, --json, --show-key and --watch. |
+| `ablit logs [run]` | Logs from the machine with known secrets removed. Supports stage filtering and -f. |
+| `ablit tunnel [run]` | Re-opens the SSH tunnel and runs the local cap check. |
+| `ablit down [run]` | Destroys the instance, confirms its absence and revokes run credentials. Retry exit 7 until cleanup is confirmed. |
 | `ablit catalog list`, `show <id>`, `validate <file>` | Lists entries, explains one, or checks a contributor's file. Works today. |
 
 BUILD.md is the full specification, including every flag and exit code.
@@ -111,7 +113,7 @@ CONTRIBUTING.md explains how to add an entry. Each entry carries its own notes a
 
 | Path | Contents |
 |---|---|
-| `cli/` | The Python package skeleton and its tests. |
+| `cli/` | The Python package and its synthetic tests. |
 | `catalog/` | Schema, version, license and the seed entries. |
 | `tools/` | `verify_entry.py` checks entries, and `build_catalog.py` compiles them. |
 | `backends/` | Notes on the request shapes of each marketplace. |

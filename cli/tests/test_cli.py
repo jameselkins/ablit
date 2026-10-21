@@ -72,10 +72,13 @@ def test_catalog_validate_accepts_a_seed_file_and_rejects_a_bad_one(capsys, tmp_
     ["logs"], ["logs", "run1", "--stage", "bootstrap", "-f"],
     ["tunnel"], ["tunnel", "run1"], ["down"], ["down", "run1"],
 ])
-def test_commands_without_code_exit_2_and_say_so(capsys, argv):
+def test_run_commands_without_a_selected_run_or_terminal_exit_2(capsys, argv):
     code, out, err = run(capsys, *argv)
+    if argv == ["status", "--all"]:
+        assert code == 0 and "No runs" in out
+        return
     assert code == 2
-    assert "not implemented yet" in err
+    assert "terminal" in err or "run" in err.lower()
 
 
 def test_plan_refuses_spot_until_a_round_trip_has_been_tested(capsys):
