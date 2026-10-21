@@ -54,6 +54,9 @@ class BootSpec:
     onstart: str
     disk_gb: int
     env: dict[str, str] = field(default_factory=dict, repr=False)
+    # Used by marketplaces that take the SSH key with the create request, such as
+    # Clore. Vast registers the key on the account instead and ignores this field.
+    ssh_public_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -113,8 +116,8 @@ class WatchdogCred:
     key_id: str | None = None
 
 
-# Environment variables that hold a marketplace key until the keyring code is written.
-ENV_KEY_NAMES = {"vast": "VAST_API_KEY", "runpod": "RUNPOD_API_KEY"}
+# Environment variables that hold a marketplace key. A key found here wins over the keyring.
+ENV_KEY_NAMES = {"vast": "VAST_API_KEY", "runpod": "RUNPOD_API_KEY", "clore": "CLORE_API_KEY"}
 
 
 def creds_from_env(backend: str, environ: Mapping[str, str] | None = None) -> Creds | None:

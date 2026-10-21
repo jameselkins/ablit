@@ -11,11 +11,13 @@ These commands spend nothing:
 3. `ablit plan <model> --json` searches the marketplaces and prints the chosen offer, the next four and their full cost.
 4. `ablit status --all --json` prints every local run and its state.
 
-`plan` reads public offer lists and needs no key.
+`plan` reads public offer lists from Vast, RunPod and Clore, and needs no key.
 
 ## Renting
 
 `ablit up` rents a machine and costs money. In a terminal it asks the user to type `rent`. An agent passes `--yes` to approve the quote without the prompt.
+
+`ablit up` rents on Vast only. The Clore driver searches and has rental calls, but they are untested on a rented machine, and `up` does not use them yet. `ablit setup clore` saves a Clore key for when it does.
 
 Every paid `up` needs `--max-spend <USD>`, and the watchdog destroys the run when spend reaches it. `--yes` skips only the prompt. ablit still refuses a cap too small to cover setup and ten minutes of use (exit 5), and it cancels if the price changes between the quote and the rental (exit 5). Add `--untested` for an entry whose status is `unverified`.
 
@@ -52,7 +54,7 @@ Messages and errors go to standard error as plain sentences.
 
 ## Secrets
 
-The marketplace key lives in the OS keyring, or in `VAST_API_KEY`. ablit reads it, and an agent never needs to. Do not print, read or copy it.
+The marketplace key lives in the OS keyring, or in `VAST_API_KEY` (Vast), `RUNPOD_API_KEY` (RunPod) or `CLORE_API_KEY` (Clore). ablit reads it, and an agent never needs to. Do not print, read or copy it.
 
 `ablit status --show-key` prints the endpoint key for a run. Use it only when the user asks for the key.
 

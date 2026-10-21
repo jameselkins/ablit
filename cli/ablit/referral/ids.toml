@@ -4,6 +4,9 @@
 # This file is read only by ablit.referral. The planner and the backend drivers
 # cannot import that package, so they cannot read these values.
 
+[clore]
+id = ""
+
 [vast]
 id = "755440"
 

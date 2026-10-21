@@ -8,15 +8,16 @@ import pytest
 from ablit import referral
 from ablit.notices import SPEND_CAP_NOTICE
 
-EMPTY = '[vast]\nid = ""\n[runpod]\nid = ""\n'
-SET = '[vast]\nid = "VAST-ID_01"\n[runpod]\nid = "runpodid01"\n'
+EMPTY = '[vast]\nid = ""\n[runpod]\nid = ""\n[clore]\nid = ""\n'
+SET = '[vast]\nid = "VAST-ID_01"\n[runpod]\nid = "runpodid01"\n[clore]\nid = "cloreid01"\n'
 
 
 def test_shipped_ids_file_has_only_the_vast_id():
     ids = referral.load_ids()
-    assert ids == {"runpod": "", "vast": "755440"}
+    assert ids == {"clore": "", "runpod": "", "vast": "755440"}
     text = (Path(referral.__file__).parent / "ids.toml").read_text(encoding="utf-8")
     assert re.search(r'^\[runpod\]\s*\nid = ""', text, re.M)
+    assert re.search(r'^\[clore\]\s*\nid = ""', text, re.M)
 
 
 def test_shipped_vast_id_shows_the_disclosure_next_to_the_paid_link():
@@ -26,8 +27,8 @@ def test_shipped_vast_id_shows_the_disclosure_next_to_the_paid_link():
     assert [c.key for c in choices] == ["1", "2", "3"]
 
 
-def test_both_disclosures_say_how_to_hide_paid_links():
-    for text in (referral.VAST_DISCLOSURE, referral.RUNPOD_DISCLOSURE):
+def test_every_disclosure_says_how_to_hide_paid_links():
+    for text in (referral.VAST_DISCLOSURE, referral.RUNPOD_DISCLOSURE, referral.CLORE_DISCLOSURE):
         assert "ablit setup --no-referral" in text
 
 
@@ -47,6 +48,25 @@ def test_runpod_disclosure_carries_the_rates_and_conditions():
                    "Google sign-in", "ablit adds nothing to your prices",
                    "Commissions never affect which machine ablit picks"):
         assert " ".join(text.split()).find(phrase) != -1, phrase
+
+
+def test_clore_disclosure_carries_the_terms_from_the_program_page():
+    text = " ".join(referral.CLORE_DISCLOSURE.split())
+    for phrase in ("Paid link:", "15%", "50%", "limited-time", "gives no end date", "about 0.7%", "about 2.4%",
+                   "Clore pays it from its own fee", "does not say how long it lasts",
+                   "ablit adds nothing to your prices", "Commissions never affect which machine ablit picks"):
+        assert phrase in text, phrase
+    assert "https://docs.clore.ai/getting-started/deposit-withdrawal/referral-program" in Path(
+        referral.__file__).read_text(encoding="utf-8")
+
+
+def test_clore_paid_choice_appears_only_with_an_id():
+    assert referral.disclosure("clore", referral.load_ids(EMPTY)) is None
+    text, choices = referral.setup_choices("clore", referral.load_ids(SET))
+    assert "https://clore.ai/login?ref_id=cloreid01" in text and "<ID>" not in text
+    assert "Sign up (no referral): https://clore.ai/\n" in text
+    assert [c.key for c in choices] == ["1", "2", "3"]
+    assert referral.DISPLAY_NAMES["clore"] == "Clore.ai"
 
 
 def test_id_is_filled_into_the_link_and_nowhere_else():
@@ -127,7 +147,7 @@ def test_every_referral_link_sits_next_to_the_disclosure(repo_root: Path):
                 found += 1
                 window = lines[max(0, index - 8): index + 1]
                 assert any("Paid link:" in w for w in window), f"{path}:{index + 1} has a referral link with no disclosure"
-    assert found >= 2  # the Vast and RunPod templates in the referral package
+    assert found >= 3  # the Vast, RunPod and Clore templates in the referral package
 
 
 def test_referral_links_are_not_built_anywhere_but_the_referral_package(cli_dir: Path):

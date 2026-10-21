@@ -18,9 +18,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
 
-MARKETPLACES = ("runpod", "vast")  # alphabetical, the order setup lists them
+MARKETPLACES = ("clore", "runpod", "vast")  # alphabetical, the order setup lists them
 
-DISPLAY_NAMES = {"vast": "Vast.ai", "runpod": "RunPod"}
+DISPLAY_NAMES = {"clore": "Clore.ai", "vast": "Vast.ai", "runpod": "RunPod"}
 
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -45,7 +45,27 @@ To hide paid links, run `ablit setup --no-referral`.
   Sign up (no referral): https://www.runpod.io/
 """
 
-_TEMPLATES = {"vast": VAST_DISCLOSURE, "runpod": RUNPOD_DISCLOSURE}
+# Terms as Clore's referral program page states them on 2026-10-21:
+# https://docs.clore.ai/getting-started/deposit-withdrawal/referral-program
+# The commission is a share of the fees Clore charges the referred renter, not of
+# the rental price. The standard share is 15%, and a limited-time promotion pays
+# 50% to all referrers with no end date given. Clore pays it from its own fee. The
+# page does not say how long a referred user keeps earning, so the text says so.
+# The renter fee of 5% is from https://docs.clore.ai/for-renters/fee-structure,
+# which makes the commission about 0.7% of spend at 15% and about 2.4% at 50%.
+CLORE_DISCLOSURE = """\
+Paid link: if you create a new Clore.ai account through the first link below,
+the ablit maintainer earns a share of the fees Clore charges you. The share is
+15%, or 50% during a promotion that Clore says is limited-time and gives no end
+date for. At Clore's 5% renter fee that is about 0.7% of what you spend, or about
+2.4% during the promotion. Clore pays it from its own fee, and its page does not
+say how long it lasts. ablit adds nothing to your prices. Commissions never
+affect which machine ablit picks. To hide paid links, run `ablit setup --no-referral`.
+  Sign up (paid link):   https://clore.ai/login?ref_id=<ID>
+  Sign up (no referral): https://clore.ai/
+"""
+
+_TEMPLATES = {"clore": CLORE_DISCLOSURE, "vast": VAST_DISCLOSURE, "runpod": RUNPOD_DISCLOSURE}
 
 
 def load_ids(text: str | None = None) -> dict[str, str]:
