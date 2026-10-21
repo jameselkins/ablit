@@ -18,7 +18,7 @@ from ablit.catalog.staging import compute_staging
 def engine_lock(entry) -> dict:
     root = repo_root()
     if root is None:
-        raise ValueError("Run from the source checkout until packaging is available.")
+        raise ValueError("The engine files were not found next to this package. Reinstall ablit.")
     lock = yaml.safe_load((root / "engines" / entry.profile.engine / "lock.yaml").read_text())
     if lock["name"] != entry.profile.engine_lock:
         raise ValueError("The entry and image lock disagree.")

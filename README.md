@@ -2,9 +2,7 @@
 
 ablit is a command-line tool, still being built, for people who want to run a language model on a rented GPU machine without comparing marketplaces and engine settings by hand. Given a model from its catalog, the finished tool will find the cheapest rented machine that meets the model's needs, show the full cost, and ask you to confirm. After you confirm, it will rent the machine, start the inference engine, download the model files, check that the engine answers, and print an OpenAI-compatible endpoint.
 
-Project status: the 8B llama.cpp entry on Vast has a local implementation and synthetic tests. The paid round trips have not run.
-
-The catalog commands and `ablit plan` work for every seed entry. The `up`, `status`, `logs`, `tunnel` and `down` commands now support `llama31-8b-abliterated-q4km` on Vast. The launch path and engine remain untested on a rented machine, so the entry stays `unverified` and requires `--untested`.
+Project status: alpha. One catalog entry, `llama31-8b-abliterated-q4km`, has completed paid round trips on Vast. A round trip rented a machine, served chat completions through an SSH tunnel, and stopped billing with `ablit down`. In separate paid tests, the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost. Every other entry is `unverified`, and RunPod can be searched but not rented yet.
 
 ## What ablit does
 
@@ -19,14 +17,16 @@ ablit runs on your computer with your own marketplace accounts. The planning cod
 
 ## Install
 
-ablit is not released yet, so there is no package to install. Once it is released, the plan is to install it with `uv tool install ablit` or `pipx install ablit`. It needs Python 3.11 or newer.
-
-To try the catalog commands from a checkout of this repository:
+ablit needs Python 3.11 or newer and OpenSSH.
 
 ```
-cd cli
-uv run --with-editable . ablit catalog list
-uv run --with-editable . ablit catalog show ds41-1017-xq-v3-uncensored
+uv tool install ablit
+```
+
+`pipx install ablit` works too. To run it from a checkout of this repository instead:
+
+```
+uv tool install --editable .
 ```
 
 ## Setup
@@ -113,7 +113,7 @@ CONTRIBUTING.md explains how to add an entry. Each entry carries its own notes a
 
 | Path | Contents |
 |---|---|
-| `cli/` | The Python package and its synthetic tests. |
+| `cli/` | The Python package and its synthetic tests. `pyproject.toml` at the top builds it. |
 | `catalog/` | Schema, version, license and the seed entries. |
 | `tools/` | `verify_entry.py` checks entries, and `build_catalog.py` compiles them. |
 | `backends/` | Notes on the request shapes of each marketplace. |

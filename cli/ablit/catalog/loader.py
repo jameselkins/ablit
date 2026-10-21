@@ -32,10 +32,15 @@ class AmbiguousModel(CatalogError):
 
 
 def repo_root() -> Path | None:
-    """Return the checkout root when the package runs from a source checkout."""
-    candidate = Path(__file__).resolve().parents[3]
-    if (candidate / "catalog" / "schema" / "v1.json").is_file():
-        return candidate
+    """Return the directory that holds `catalog/` and `engines/`.
+
+    In a source checkout that is the repository root. An installed wheel
+    carries copies of both directories in `ablit/_data/`.
+    """
+    here = Path(__file__).resolve()
+    for candidate in (here.parents[3], here.parents[1] / "_data"):
+        if (candidate / "catalog" / "schema" / "v1.json").is_file():
+            return candidate
     return None
 
 

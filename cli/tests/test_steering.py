@@ -75,15 +75,15 @@ def test_importing_planner_and_backends_does_not_load_referral():
     assert result.returncode == 0, result.stderr
 
 
-def test_importlinter_contract_passes(cli_dir: Path):
+def test_importlinter_contract_passes(repo_root: Path):
     tool = shutil.which("lint-imports")
     if tool is None:
         pytest.skip("lint-imports is not installed")
-    result = subprocess.run([tool], cwd=cli_dir, capture_output=True, text=True)
+    result = subprocess.run([tool], cwd=repo_root, capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_importlinter_contract_catches_a_violation(tmp_path: Path, cli_dir: Path):
+def test_importlinter_contract_catches_a_violation(tmp_path: Path, repo_root: Path):
     tool = shutil.which("lint-imports")
     if tool is None:
         pytest.skip("lint-imports is not installed")
@@ -94,7 +94,7 @@ def test_importlinter_contract_catches_a_violation(tmp_path: Path, cli_dir: Path
         (directory / "__init__.py").write_text("")
     (package / "select" / "bad.py").write_text("from pkg import referral\n")
     # Reuse the real contract text with the package name swapped.
-    contract = (cli_dir / ".importlinter").read_text(encoding="utf-8")
+    contract = (repo_root / ".importlinter").read_text(encoding="utf-8")
     contract = contract.replace("ablit", "pkg")
     (tmp_path / ".importlinter").write_text(contract)
     env = {"PYTHONPATH": str(tmp_path), "PATH": "/usr/bin:/bin"}
@@ -102,8 +102,8 @@ def test_importlinter_contract_catches_a_violation(tmp_path: Path, cli_dir: Path
     assert result.returncode != 0, result.stdout
 
 
-def test_contract_file_names_both_packages(cli_dir: Path):
-    text = (cli_dir / ".importlinter").read_text(encoding="utf-8")
+def test_contract_file_names_both_packages(repo_root: Path):
+    text = (repo_root / ".importlinter").read_text(encoding="utf-8")
     assert "ablit.select" in text and "ablit.backends" in text
     assert "forbidden_modules" in text and "ablit.referral" in text
 

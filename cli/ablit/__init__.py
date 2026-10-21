@@ -5,4 +5,4 @@ functions, the referral text, the watchdog logic and the secret filter work.
 Nothing in it rents a machine yet.
 """
 
-__version__ = "0.0.0"
+__version__ = "0.1.0"

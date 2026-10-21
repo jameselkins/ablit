@@ -38,7 +38,7 @@ CI runs these checks on every pull request. None of them rents anything.
 4. The computed peak disk is no larger than any disk figure the entry claims in `profile.storage.disk_gb_claimed`.
 5. For an entry that uses llama.cpp, the GGUF `general.architecture` is on the pinned llama.cpp build's list. The check is skipped until `engines/llamacpp/lock.yaml` lists the supported architectures.
 
-On a fork, where the network may be unavailable, run the schema part alone with `python3 tools/verify_entry.py --offline`. To check the whole repository, install the package with `cd cli && uv run --with-editable . --with pytest --with hypothesis --with respx --with import-linter pytest -q`, run `lint-imports` from the `cli` directory, run `python3 tools/verify_entry.py --offline` for every entry, and run `python3 tools/build_catalog.py`.
+On a fork, where the network may be unavailable, run the schema part alone with `python3 tools/verify_entry.py --offline`. To check the whole repository, run `uv run --with-editable . --with pytest --with hypothesis --with respx --with import-linter pytest -q` from the top of the repository, run `lint-imports` there too, run `python3 tools/verify_entry.py --offline` for every entry, and run `python3 tools/build_catalog.py`.
 
 A weekly job runs check 2 again on every entry, and it fails when an artifact has disappeared. A maintainer then sets that entry to `removed`.
 

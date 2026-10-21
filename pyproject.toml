@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ablit"
+dynamic = ["version"]
+description = "Find the cheapest rented GPU machine that can run a model, and start it with an OpenAI-compatible endpoint."
+requires-python = ">=3.11"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "James Elkins" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "httpx",
+    "pyyaml",
+    "pydantic>=2",
+    "keyring",
+    "huggingface_hub",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "hypothesis",
+    "respx",
+    "import-linter",
+]
+
+[project.urls]
+Homepage = "https://github.com/jameselkins/ablit"
+Issues = "https://github.com/jameselkins/ablit/issues"
+
+[project.scripts]
+ablit = "ablit.cli:main"
+
+[tool.hatch.version]
+path = "cli/ablit/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cli/ablit"]
+
+# The catalog and engine templates live at the top of the repository. The
+# wheel carries copies in ablit/_data, which catalog.loader.repo_root finds.
+[tool.hatch.build.targets.wheel.force-include]
+"catalog/models" = "ablit/_data/catalog/models"
+"catalog/schema" = "ablit/_data/catalog/schema"
+"catalog/VERSION" = "ablit/_data/catalog/VERSION"
+"catalog/LICENSE" = "ablit/_data/catalog/LICENSE"
+"engines" = "ablit/_data/engines"
+
+[tool.hatch.build.targets.sdist]
+include = ["cli/ablit", "cli/tests", "catalog/models", "catalog/schema", "catalog/VERSION",
+           "catalog/LICENSE", "engines", "tools", ".importlinter", "LICENSE", "NOTICE", "README.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["cli/tests"]
+addopts = "-q"

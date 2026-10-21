@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install the package
-        run: python -m pip install --upgrade pip && python -m pip install -e cli
+        run: python -m pip install --upgrade pip && python -m pip install -e .
 
       - name: Verify every entry against Hugging Face
         run: |
