@@ -23,7 +23,7 @@ from ablit.catalog.loader import repo_root
 from ablit.credentials import CredentialError, credentials, secret_get, secret_set, setup_vast
 from ablit.plan import report_json, run_plan
 from ablit.plan_text import render
-from ablit.runs import RunError, RunStore
+from ablit.runs import RunBusy, RunError, RunStore
 from ablit.runs.lifecycle import allocation, down, local_stop_needed, reason, refresh, run_redactor, save_remote_logs
 from ablit.runs.ssh import SSH
 from ablit.select.cost import total_cost
@@ -44,6 +44,13 @@ ONSTART = ("umask 077; mkdir -p /ablit/logs /ablit/stages; "
            "chmod 700 /root /root/.ssh; chmod 600 /root/.ssh/authorized_keys; fi; "
            "sleep 2; done) >/dev/null 2>&1 &")
 POLL_SECONDS = 10
+# How long the monitor waits for the run lock before it skips one pass. A `status` or `down` in
+# another terminal holds the lock for a short time, and that must not stop a paid run.
+MONITOR_LOCK_WAIT_SECONDS = 10
+# The longest a machine may take to reach the "running" state, counted from the create. Vast shows
+# "loading" while it pulls the image, and one instance stayed there for over 32 minutes. After this
+# many seconds ablit destroys the run. Documented in BUILD.md.
+START_DEADLINE_SECONDS = 20 * 60
 SSH_GRACE_SECONDS = 300
 # An attached `up` holds the run lock for one poll, which SSH timeouts can stretch.
 LOCK_WAIT_SECONDS = 90
@@ -139,7 +146,13 @@ def monitor(store, record, driver, creds, *, want_ready=False):
             if not first:
                 time.sleep(POLL_SECONDS)
             first = False
-            with store.lock(run_id):
+            try:
+                with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
+                    pass
+            except RunBusy:
+                print(f"{run_id}: another ablit command holds the run lock. Skipping this check.", flush=True)
+                continue
+            with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
                 record = store.load(run_id)
                 if record["state"] == "billing_stopped_confirmed":
                     return 8 if record.get("stop_reason") == "watchdog_cap" else 0
@@ -165,6 +178,13 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 if record["marketplace_state"] in ("exited", "unknown", "offline", "absent", "stopped_by_marketplace"):
                     if record["marketplace_state"] == "stopped_by_marketplace" and record.get("host_id"):
                         store.deny(record["host_id"], "Vast stopped the instance before it ran")
+                    code = down(store, record, driver, creds)
+                    return code or 6
+                if (record["marketplace_state"] != "running" and not record.get("ready")
+                        and time.time() - record["started_at"] > START_DEADLINE_SECONDS):
+                    print(f"{run_id}: the marketplace did not start the machine in time "
+                          f"(state {record['marketplace_state']!r} after {START_DEADLINE_SECONDS // 60} minutes). "
+                          "Destroying the run.", flush=True)
                     code = down(store, record, driver, creds)
                     return code or 6
                 if record.get("failure"):
@@ -457,14 +477,22 @@ def existing(args, driver, environ, store, drivers=None):
         while True:
             output, code = [], 0
             for selected in records:
-                with store.lock(selected["run_id"], wait=LOCK_WAIT_SECONDS):
+                with contextlib.ExitStack() as held:
+                    # Status never blocks a running `up`. When the lock is busy it shows the saved record.
+                    try:
+                        held.enter_context(store.lock(selected["run_id"]))
+                        locked = True
+                    except RunBusy:
+                        locked = False
+                        print(f"{selected['run_id']}: another command holds the run lock, so this is the saved state.",
+                              file=sys.stderr)
                     record = store.load(selected["run_id"])
                     driver, creds = pair(record)
                     redactor = run_redactor(record, creds)
                     def status_down():
                         with contextlib.redirect_stdout(sys.stderr):
                             return down(store, record, driver, creds)
-                    if record["state"] != "billing_stopped_confirmed":
+                    if locked and record["state"] != "billing_stopped_confirmed":
                         if record.get("create_sent") and not record.get("resource_ids"):
                             found = driver.reconcile(record["run_id"], creds)
                             record["resource_ids"] = found.resource_ids
@@ -508,5 +536,5 @@ def existing(args, driver, environ, store, drivers=None):
         SSH(store, record).logs(args.stage, args.follow, run_redactor(record, creds))
         return 0
     if record["state"] != "running":
-        raise RunError("The endpoint is not running. Resume up for a creating run, or use down.")
+        raise RunError("The run is still starting. Run the same `ablit up` command again with the same --max-spend to resume it, or run `ablit down`.")
     return monitor(store, record, driver, creds)

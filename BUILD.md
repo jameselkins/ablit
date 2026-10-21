@@ -83,6 +83,8 @@ Any change to the price, offer, build or cap cancels the confirmation. If the of
 4. Use a lock file per run. Refuse a second active run of the same model unless the user passes `--another`.
 5. `down` moves through `termination_requested`, `resources_terminated` and `billing_stopped_confirmed`. Print "Billing stopped" only in the last state. Otherwise keep the run file, print what is still running and the marketplace page to check, and exit with code 7. Running `down` again retries.
 6. Print the final cost only when the marketplace reports it.
+7. Start deadline. If the machine is not in the marketplace state "running" 20 minutes after the create (`START_DEADLINE_SECONDS` in `cli/ablit/runs/commands.py`), `up` destroys the run and exits 6 with "the marketplace did not start the machine in time". A Vast instance once stayed in "loading" for over 32 minutes. Vast's documentation says GPU charges start when an instance is running and storage charges start at creation (https://docs.vast.ai/api-reference/hello-world, https://docs.vast.ai/cli/reference/show-instances-v1). UNVERIFIED: that nothing at all is billed while an instance loads. Disk charges probably accrue, so the deadline limits them.
+8. Lock use. `up` takes the run lock for one check at a time, and waits up to 10 seconds for it. If another command holds it longer, `up` skips that check and carries on. `status` never waits for the lock. When the lock is busy it prints the saved record and says so on standard error, without asking the marketplace.
 
 State lives in the platform's user state directory. There is no database and no daemon.
 
