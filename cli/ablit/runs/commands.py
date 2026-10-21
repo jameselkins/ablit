@@ -32,8 +32,18 @@ from ablit.watchdog.ablit_watchdog import Config, reserve
 # Vast supplies SSH in this launch mode and replaces the image entrypoint.
 # https://docs.vast.ai/guides/instances/connect/overview
 # The inspected server image already contains the bootstrap tools.
-ONSTART = "umask 077; mkdir -p /ablit/logs /ablit/stages"
+# On a rented machine sshd refused the run key with "bad ownership or modes for
+# file /root/.ssh/authorized_keys", although the image itself has root-owned
+# 700 directories. The modes come from how Vast writes the key at start, so the
+# start script repairs them in the background for two minutes, which also
+# covers a key Vast adds after this script runs.
+ONSTART = ("umask 077; mkdir -p /ablit/logs /ablit/stages; "
+           "(for i in $(seq 60); do if [ -f /root/.ssh/authorized_keys ]; then "
+           "chown root:root /root /root/.ssh /root/.ssh/authorized_keys; "
+           "chmod 700 /root /root/.ssh; chmod 600 /root/.ssh/authorized_keys; fi; "
+           "sleep 2; done) >/dev/null 2>&1 &")
 POLL_SECONDS = 10
+SSH_GRACE_SECONDS = 300
 
 
 def minimum_cap(offer, req, floor) -> float:
@@ -107,6 +117,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     stage = None
     failures = 0
     first = True
+    running_since = None
     try:
         while True:
             # Each pass lists the account's instances, so poll slowly enough to
@@ -172,7 +183,12 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         ssh.start(config, key, watchdog)
                         uploaded = True
                     except RunError:
-                        pass
+                        # Billing runs once the instance is "running". If SSH still
+                        # fails five minutes later, the run cannot bootstrap.
+                        if record["marketplace_state"] == "running":
+                            running_since = running_since or time.time()
+                            if time.time() - running_since > SSH_GRACE_SECONDS:
+                                raise RunError("SSH to the running instance failed for five minutes.")
                 if want_ready and not record.get("ready"):
                     request = record["quote"]["request"]
                     allowed = (request["download_gb"] * 8000 / (record["offer"]["download_mbps"] * 3600)
