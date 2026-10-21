@@ -1,0 +1,9 @@
+# Python packages for the Xolotl server inside the image.
+# The versions are the ones in Xolotl's own requirements.txt at the pinned commit.
+# The server imports jinja2 and regex at start, and psutil for its status page.
+# Pillow and numpy are left out because the server uses them only for image input
+# and for scripts the image does not carry.
+jinja2==3.1.6
+markupsafe==3.0.3
+regex==2026.9.10
+psutil==7.2.2

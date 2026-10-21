@@ -1,0 +1,39 @@
+This image contains the following software. Each part keeps its own license, and
+the license texts are in /opt/xolotl/licenses and in the Python package folders.
+
+Xolotl, copyright (c) 2026 Niko1221 and the Strata contributors, MIT License.
+  The engine and server code compiled or copied into /opt/xolotl.
+  License text: /opt/xolotl/licenses/xolotl-LICENSE.
+  Source: https://github.com/Indras-Mirror/Xolotl (commit in /opt/xolotl/BUILD-INFO).
+
+Strata, by Niko1221, MIT License.
+  Xolotl is a fork of Strata, and the same license text covers both.
+
+ggml and llama.cpp, copyright (c) 2023-2026 The ggml authors, MIT License.
+  Compiled into ds41_generate. The Xolotl changes to ggml are in
+  /opt/xolotl/licenses/xolotl-ggml.patch.
+  License text: /opt/xolotl/licenses/llama.cpp-LICENSE and ggml-LICENSE.
+  Source: https://github.com/ggml-org/llama.cpp (commit in /opt/xolotl/BUILD-INFO).
+
+Outfit font, copyright 2021 The Outfit Project Authors, SIL Open Font License 1.1.
+  Used by the Xolotl web page. License text: /opt/xolotl/serve/web/fonts/OFL.txt.
+
+Python packages: Jinja2 and MarkupSafe (Pallets, BSD 3-Clause), psutil (BSD
+3-Clause), and regex (Apache License 2.0 and CNRI Python license). Their license
+files are in the dist-info folders under /usr/local/lib/python3.12/dist-packages.
+
+NVIDIA CUDA. This image is built on the NVIDIA CUDA runtime container and
+contains software from the NVIDIA CUDA Toolkit, including the CUDA runtime and
+cuBLAS that are linked into ds41_generate. Use of the NVIDIA parts is governed
+by the NVIDIA Deep Learning Container License
+(https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license) and
+the NVIDIA CUDA Toolkit license
+(https://docs.nvidia.com/cuda/eula/index.html). Anyone who receives this image
+accepts those terms for the NVIDIA parts. The NVIDIA parts may run only on
+systems with NVIDIA GPUs. This image is not sponsored or endorsed by NVIDIA.
+
+Ubuntu 24.04 packages (bash, coreutils, gawk, curl, python3, ca-certificates,
+libstdc++6 and their dependencies) keep their own licenses, which include the
+GNU GPL and LGPL. Their licenses are in /usr/share/doc/<package>/copyright, and
+their source is available from https://archive.ubuntu.com/ubuntu with
+"apt-get source <package>" for the versions that "dpkg -l" lists in the image.

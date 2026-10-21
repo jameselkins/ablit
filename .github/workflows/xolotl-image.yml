@@ -1,0 +1,176 @@
+name: Xolotl image
+
+# Builds the Xolotl engine image for ablit and publishes it to GitHub Container
+# Registry. It runs only when someone starts it by hand from the Actions tab.
+# Nothing triggers it automatically, and it never rents a machine.
+#
+# The build compiles CUDA code for several GPU generations on a runner with no
+# GPU. Expect it to take several hours. If it runs past the six hour limit, run
+# it again with a shorter list of architectures, and note that the published
+# image then runs only on those generations.
+on:
+  workflow_dispatch:
+    inputs:
+      cuda_architectures:
+        description: "CUDA architectures to compile, as numbers separated by semicolons (75 is RTX 20, 80 is A100, 86 is RTX 30, 89 is RTX 40, 90 is H100, 120 is RTX 50)"
+        type: string
+        default: "75;80;86;89;90;120"
+      push:
+        description: "Push the image to ghcr.io after the smoke test passes"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Two builds at the same time would compete for the same tags.
+concurrency:
+  group: xolotl-image
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/jameselkins/ablit-xolotl
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # GitHub stops a job after six hours. This leaves room for the steps around the build.
+    timeout-minutes: 355
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      # The Xolotl commit comes from the engine lock, so the image and the lock
+      # cannot name different commits.
+      - name: Read the pinned Xolotl commit and the architecture list
+        env:
+          REQUESTED_ARCHITECTURES: ${{ inputs.cuda_architectures }}
+        run: |
+          set -euo pipefail
+          commit="$(sed -n 's/^  commit: \([0-9a-f]\{40\}\)$/\1/p' engines/xolotl/lock.yaml)"
+          if [ "$(printf '%s\n' "$commit" | grep -c .)" -ne 1 ]; then
+            echo "Expected exactly one 40 character commit under source in engines/xolotl/lock.yaml." >&2
+            exit 1
+          fi
+          if ! printf '%s' "$REQUESTED_ARCHITECTURES" | grep -Eq '^[0-9]+(;[0-9]+)*$'; then
+            echo "cuda_architectures must be numbers separated by semicolons, for example 86;89." >&2
+            exit 1
+          fi
+          {
+            echo "XOLOTL_COMMIT=$commit"
+            echo "XOLOTL_SHORT=${commit:0:7}"
+            echo "CUDA_ARCHITECTURES=$REQUESTED_ARCHITECTURES"
+          } >> "$GITHUB_ENV"
+          echo "Building Xolotl $commit for architectures $REQUESTED_ARCHITECTURES"
+
+      # The CUDA development image is several gigabytes, and the build needs room
+      # for the compiler output. These folders hold software the build does not use.
+      - name: Free disk space
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force
+          sudo apt-get clean
+          df -h /
+          docker version
+
+      # The Python part builds first. It needs no compiler, so a mistake in the
+      # server files, the Python packages or the mock server test shows up in
+      # minutes. The stages are cached on the runner, so the later builds reuse them.
+      - name: Build and check the Python part
+        working-directory: engines/xolotl/image
+        run: |
+          set -euo pipefail
+          docker build --progress=plain --target pycheck \
+            --build-arg "XOLOTL_COMMIT=$XOLOTL_COMMIT" \
+            --build-arg "CUDA_ARCHITECTURES=$CUDA_ARCHITECTURES" \
+            --tag ablit-xolotl:pycheck .
+
+      - name: Build the engine
+        working-directory: engines/xolotl/image
+        run: |
+          set -euo pipefail
+          docker build --progress=plain --target smoke \
+            --build-arg "XOLOTL_COMMIT=$XOLOTL_COMMIT" \
+            --build-arg "CUDA_ARCHITECTURES=$CUDA_ARCHITECTURES" \
+            --build-arg "BUILD_JOBS=$(nproc)" \
+            --tag ablit-xolotl:smoke .
+
+      # The runner has no GPU. The smoke image carries a stub of the driver
+      # library, so this shows that the binary and the Python server start.
+      - name: Smoke test
+        run: docker run --rm ablit-xolotl:smoke
+
+      - name: Build the release image
+        working-directory: engines/xolotl/image
+        run: |
+          set -euo pipefail
+          docker build --progress=plain --target release \
+            --build-arg "XOLOTL_COMMIT=$XOLOTL_COMMIT" \
+            --build-arg "CUDA_ARCHITECTURES=$CUDA_ARCHITECTURES" \
+            --build-arg "BUILD_JOBS=$(nproc)" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "$IMAGE:$XOLOTL_SHORT" \
+            --tag "$IMAGE:$XOLOTL_SHORT-$GITHUB_RUN_NUMBER" .
+          docker image inspect "$IMAGE:$XOLOTL_SHORT" --format 'Image size in bytes: {{.Size}}'
+          docker history "$IMAGE:$XOLOTL_SHORT"
+
+      - name: Push the image
+        if: ${{ inputs.push }}
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$XOLOTL_SHORT-$GITHUB_RUN_NUMBER"
+          docker push "$IMAGE:$XOLOTL_SHORT" | tee push.log
+          digest="$(grep -o 'digest: sha256:[0-9a-f]\{64\}' push.log | tail -n 1 | cut -d' ' -f2)"
+          if [ -z "$digest" ]; then
+            echo "The push output did not show a digest." >&2
+            exit 1
+          fi
+          # Ask the registry for the manifest of the tag and compare its hash with
+          # the digest that the push printed. A difference is reported, not fatal.
+          check="sha256:$(docker buildx imagetools inspect --raw "$IMAGE:$XOLOTL_SHORT" | sha256sum | cut -d' ' -f1)"
+          if [ "$check" != "$digest" ]; then
+            echo "Warning: the registry manifest hashes to $check but the push printed $digest."
+          fi
+          echo "IMAGE_DIGEST=$digest" >> "$GITHUB_ENV"
+          docker logout ghcr.io
+
+      - name: Job summary
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Xolotl image"
+            echo
+            echo "- Xolotl commit: \`${XOLOTL_COMMIT:-unknown}\`"
+            echo "- CUDA architectures compiled: \`${CUDA_ARCHITECTURES:-unknown}\`"
+            if [ -n "${IMAGE_DIGEST:-}" ]; then
+              echo "- Pushed digest: \`$IMAGE_DIGEST\`"
+              echo "- Pull reference: \`$IMAGE@$IMAGE_DIGEST\`"
+              echo "- Tags: \`$XOLOTL_SHORT\` and \`$XOLOTL_SHORT-$GITHUB_RUN_NUMBER\`"
+              echo
+              echo "Values for engines/xolotl/lock.yaml:"
+              echo
+              echo '```yaml'
+              echo "image: $IMAGE"
+              echo "tag: $XOLOTL_SHORT"
+              echo "digest: $IMAGE_DIGEST"
+              echo '```'
+              echo
+              echo "Before ablit can rent with this image, open the package page on GitHub, link it to this repository, and make it public. Vast pulls the image without credentials."
+            else
+              echo "- Nothing was pushed."
+            fi
+            if docker image inspect "$IMAGE:${XOLOTL_SHORT:-none}" >/dev/null 2>&1; then
+              size="$(docker image inspect "$IMAGE:$XOLOTL_SHORT" --format '{{.Size}}')"
+              echo "- Image size on disk: $((size / 1000000)) MB"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
