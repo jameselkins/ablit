@@ -1,0 +1,4 @@
+# Build tools, pinned to the versions in Xolotl's own requirements.txt.
+# They are installed in the build stage only and are not part of the final image.
+cmake==4.4.3
+ninja==1.13.2
