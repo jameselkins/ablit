@@ -33,6 +33,12 @@ stage_engine() {
   [ -f "$model" ] || ablit_fail "missing_file" "no weight file found under $ABLIT_DATA_DIR"
   bin="${LLAMA_SERVER_BIN:-$(command -v llama-server || echo /app/llama-server)}"
   [ -x "$bin" ] || ablit_fail "missing_tool" "llama-server was not found at $bin"
+  # The server image keeps llama-server's own libraries next to the binary, and
+  # the binary finds them only when started from that directory. An SSH session
+  # starts elsewhere, so name the directory on the library path.
+  local libdir
+  libdir="$(dirname "$bin")"
+  export LD_LIBRARY_PATH="$libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}:/usr/local/cuda/lib64"
   ablit_start_engine LLAMA_API_KEY \
     "$bin" -m "$model" --host 127.0.0.1 --port "$ABLIT_PORT" \
     --ctx-size "$ABLIT_CONTEXT_TOKENS" --parallel 1 --n-gpu-layers 99 --alias "$ABLIT_SERVED_NAME"

@@ -76,7 +76,8 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
             if "failed" in probe:
                 failed = probe["failed"]
                 reason = str(failed.get("reason", "unknown"))
-                record["failure"] = {"reason": "speed_below_floor" if reason == "speed_below_floor" else "bootstrap_failed"}
+                record["failure"] = {"reason": "speed_below_floor" if reason == "speed_below_floor" else "bootstrap_failed",
+                                     "detail": run_redactor(record, creds)(f"{reason}: {failed.get('detail', '')}")[:500]}
             if "ready" in probe:
                 record["ready"] = True
         except (RunError, OSError, ValueError, httpx.HTTPError):
@@ -184,3 +185,19 @@ def down(store, record: dict, driver, creds) -> int:
     if "final_cost_usd" in record:
         print(f"Final cost reported by Vast: ${record['final_cost_usd']:.4f}")
     return 0
+
+
+def save_remote_logs(store, record: dict, creds) -> None:
+    """Copy the end of the box's logs before a failed run is destroyed.
+
+    It never raises, because cleanup must go ahead even when SSH is down.
+    """
+    try:
+        text = SSH(store, record).run("tail -n 300 /ablit/logs/*.log 2>/dev/null", timeout=20)
+        path = store.root / "logs" / f"{record['run_id']}.log"
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.write_text(run_redactor(record, creds)(text.decode("utf-8", "replace")), encoding="utf-8")
+        path.chmod(0o600)
+        print(f"{record['run_id']}: saved the machine's logs to {path}", flush=True)
+    except Exception:
+        pass

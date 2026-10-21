@@ -23,7 +23,7 @@ from ablit.credentials import CredentialError, credentials, secret_get, secret_s
 from ablit.plan import report_json, run_plan
 from ablit.plan_text import render
 from ablit.runs import RunError, RunStore
-from ablit.runs.lifecycle import allocation, down, local_stop_needed, reason, refresh, run_redactor
+from ablit.runs.lifecycle import allocation, down, local_stop_needed, reason, refresh, run_redactor, save_remote_logs
 from ablit.runs.ssh import SSH
 from ablit.select.cost import total_cost
 from ablit.select.request import request_from_entry
@@ -155,6 +155,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     code = down(store, record, driver, creds)
                     return code or 6
                 if record.get("failure"):
+                    print(f"{run_id}: bootstrap failed: {record['failure'].get('detail', record['failure']['reason'])}", flush=True)
+                    save_remote_logs(store, record, creds)
                     if record["failure"]["reason"] == "speed_below_floor" and record.get("host_id"):
                         store.deny(record["host_id"], "speed_below_floor")
                     code = down(store, record, driver, creds)
@@ -194,6 +196,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     allowed = (request["download_gb"] * 8000 / (record["offer"]["download_mbps"] * 3600)
                                + request["startup_hours"] + 10 / 60) * 3600
                     if time.time() - record["started_at"] > allowed:
+                        print(f"{run_id}: the bootstrap deadline passed before the engine was ready.", flush=True)
+                        save_remote_logs(store, record, creds)
                         code = down(store, record, driver, creds)
                         return code or 6
                 current = record.get("stages", [])
@@ -225,6 +229,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
         return 0
     except (BackendError, RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError) as error:
         print(f"{run_id}: stopping the run because of {reason(error)}", flush=True)
+        save_remote_logs(store, store.load(run_id), creds)
         with store.lock(run_id):
             code = down(store, store.load(run_id), driver, creds)
         return code or 6

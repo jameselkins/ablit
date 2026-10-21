@@ -111,3 +111,17 @@ def test_prerent_artifact_check_uses_anonymous_pinned_metadata_only():
             "siblings": [{"rfilename": artifact.path, "size": artifact.bytes + 1}]})
         with pytest.raises(ValueError, match="size changed"):
             engines.check_artifacts(entry)
+
+
+def test_an_engine_that_exits_on_start_fails_the_stage_with_its_log(repo_root, tmp_path):
+    common = repo_root / "engines/lib/common.sh"
+    script = '''set -euo pipefail
+source "$1"
+ablit_start_engine INVENTED_KEY bash -c 'echo "error while loading shared libraries"; exit 127'
+'''
+    result = subprocess.run(["bash", "-c", script, "test", str(common)],
+                            env={**os.environ, "ABLIT_STATE_DIR": str(tmp_path), "ABLIT_ENDPOINT_KEY": "invented-endpoint-key",
+                                 "ABLIT_ENGINE_START_CHECK_S": "1"}, capture_output=True)
+    assert result.returncode != 0
+    failed = json.loads((tmp_path / "failed.json").read_text())
+    assert failed["reason"] == "engine_exited" and "shared libraries" in failed["detail"]

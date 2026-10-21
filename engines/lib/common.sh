@@ -395,5 +395,12 @@ ablit_start_engine() {
     export "${key_var}=${ABLIT_ENDPOINT_KEY}"
     exec nohup "$@"
   ) >>"$ABLIT_STATE_DIR/logs/engine.log" 2>&1 &
-  echo $! >"$ABLIT_STATE_DIR/engine.pid"
+  local pid=$!
+  echo "$pid" >"$ABLIT_STATE_DIR/engine.pid"
+  # An engine that cannot start usually exits within seconds. Fail then, with
+  # the end of its log, instead of waiting for the health check to time out.
+  sleep "${ABLIT_ENGINE_START_CHECK_S:-10}"
+  if ! kill -0 "$pid" 2>/dev/null; then
+    ablit_fail "engine_exited" "the engine exited on start: $(tail -n 5 "$ABLIT_STATE_DIR/logs/engine.log" | tr '\n' ' ')"
+  fi
 }
