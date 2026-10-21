@@ -107,7 +107,7 @@ def test_scoped_key_body_and_revocation(driver):
         key = driver.watchdog_credential(ALLOC, KEY)
         assert json.loads(create.calls[0].request.content) == {
             "name": "ablit-" + RUN,
-            "permissions": {"api": {"instance_write": {"api.instance.destroy": {"constraints": {"id": {"eq": 7201}}}}}}}
+            "permissions": {"api": {"instance_write": {"api.instance": {"DELETE": {"constraints": {"id": {"eq": 7201}}}}}}}}
         assert key.key_id == "7401" and key.instance_id == "7201"
         assert key.token not in repr(key)
         router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")

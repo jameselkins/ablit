@@ -17,7 +17,7 @@ import httpx
 
 from ablit import engines
 from ablit.backends.base import BootSpec
-from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, WorkloadRejected
+from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
 from ablit.catalog.loader import repo_root
 from ablit.credentials import CredentialError, credentials, secret_get, secret_set, setup_vast
 from ablit.plan import report_json, run_plan
@@ -83,7 +83,15 @@ def prepare(store, record, entry, driver, creds):
             raise RunError("The watchdog key response is unknown. Run down and review keys in the Vast console.")
         record["watchdog_key_sent"] = True
         store.save(record)
-        watchdog = driver.watchdog_credential(allocation(record), creds)
+        try:
+            watchdog = driver.watchdog_credential(allocation(record), creds)
+        except RequestRejected as error:
+            # A 4xx refusal means no key exists, so cleanup has nothing to revoke.
+            # A 5xx answer may follow a created key, so it stays pending.
+            if error.status is not None and 400 <= error.status < 500:
+                record["watchdog_key_sent"] = False
+                store.save(record)
+            raise
         record["watchdog_key_id"] = watchdog.key_id
         store.save(record)
         secret_set("watchdog/" + record["run_id"], watchdog.token)
@@ -106,10 +114,11 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 if record.get("stop_reason") == "watchdog_cap" and record["marketplace_state"] == "absent":
                     code = down(store, record, driver, creds)
                     return 8 if code == 0 else code
-                # A new instance reports no status while Vast prepares it, which the
-                # driver calls "unknown". Keep waiting then. The bootstrap deadline
-                # below still destroys a run that never becomes ready.
-                if record["marketplace_state"] in ("exited", "offline", "absent"):
+                # Vast's API notes say "exited", "unknown" and "offline" never reach
+                # "running". A new instance with no status yet is "starting", and the
+                # bootstrap deadline below still destroys a run that never gets ready.
+                # https://docs.vast.ai/api-reference/instances/show-instances
+                if record["marketplace_state"] in ("exited", "unknown", "offline", "absent"):
                     code = down(store, record, driver, creds)
                     return code or 6
                 if record.get("failure"):
@@ -286,6 +295,7 @@ def up(args, entry, opts, driver, environ, store):
                    if r["run_id"] not in before or (before[r["run_id"]] == "creating" and r.get("resource_ids"))]
         if not targets:
             raise
+        print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
         creds = credentials("vast", environ)
         pending = False
         for record in targets:

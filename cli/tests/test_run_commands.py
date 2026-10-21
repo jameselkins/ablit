@@ -297,7 +297,7 @@ def test_a_new_instance_without_a_status_is_not_destroyed(monkeypatch):
     r = saved_run(store)
     from ablit.backends import Creds
     def refreshed(store, record, driver, creds):
-        record.update(marketplace_state="unknown", spend_estimate_usd=0.0)
+        record.update(marketplace_state="starting", spend_estimate_usd=0.0)
         store.save(record)
     monkeypatch.setattr(commands, "refresh", refreshed)
     monkeypatch.setattr(commands, "down", lambda *args: pytest.fail("a starting instance must not be destroyed"))
@@ -308,3 +308,23 @@ def test_a_new_instance_without_a_status_is_not_destroyed(monkeypatch):
     def interrupt(seconds): raise KeyboardInterrupt
     monkeypatch.setattr(commands.time, "sleep", interrupt)
     assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
+
+
+def test_a_refused_watchdog_key_cleans_up_without_a_lost_key_warning(monkeypatch):
+    launch_environment(monkeypatch)
+    monkeypatch.setattr("builtins.input", lambda prompt: "rent")
+    with respx.mock(assert_all_called=False) as router:
+        create, scoped = launch_routes(router)
+        scoped.respond(401, json={"success": False, "msg": "invented refusal"})
+        count = []
+        def listing(request):
+            count.append(1)
+            r = RunStore().all()[0]
+            return page([instance(label="ablit-" + r["run_id"])]) if len(count) < 3 else page([])
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=listing)
+        destroy = router.delete(ROOT + "/api/v0/instances/7201/").respond(200, json={"success": True})
+        router.delete(ROOT + "/api/v0/ssh/7501/").respond(200, json={"success": True})
+        assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 4
+        assert destroy.call_count == 1
+    record = RunStore().all()[0]
+    assert record["state"] == "billing_stopped_confirmed" and record["pending_cleanup"] == []

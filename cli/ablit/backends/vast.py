@@ -627,7 +627,10 @@ class VastBackend(UnwrittenBackend):
         host_id = str(fields.integer(row, "host_id", backend="vast", minimum=1)) if row.get("host_id") is not None else None
         found = Allocation(alloc.run_id, "vast", alloc.resource_ids, rate, host, port, host_id)
         # The list schema has no documented cumulative USD cost or transfer counter.
-        return Observation(time.time(), status or "unknown", hourly_rate=rate, allocation=found)
+        # A new instance has no status while Vast prepares it. Vast's API notes
+        # say a literal "unknown" status never reaches "running", so the two
+        # are kept apart.
+        return Observation(time.time(), status or "starting", hourly_rate=rate, allocation=found)
 
     def destroy(self, inv: Inventory, creds: Creds) -> TerminationResult:
         terminated = []
@@ -650,9 +653,14 @@ class VastBackend(UnwrittenBackend):
         if len(alloc.resource_ids) != 1:
             raise ResponseNotRecognized("vast: a watchdog needs exactly one instance")
         instance = int(alloc.resource_ids[0])
-        permissions = {"api": {"instance_write": {"api.instance.destroy": {"constraints": {"id": {"eq": instance}}}}}}
+        # The permissions page shows the name "api.instance.destroy", but Vast
+        # refuses that name, and any other name it does not know, with HTTP 401
+        # (checked 2026-10-21). Vast's own built-in rights name the route
+        # "api.instance" and nest the HTTP method, so the key gets DELETE on
+        # that route for this one instance ID only.
         # https://docs.vast.ai/api-reference/accounts/create-api-key
         # https://docs.vast.ai/cli/permissions
+        permissions = {"api": {"instance_write": {"api.instance": {"DELETE": {"constraints": {"id": {"eq": instance}}}}}}}
         data = self._object(self._request("POST", "/api/v0/auth/apikeys/", creds,
                                          body={"name": self.label(alloc.run_id), "permissions": permissions}))
         key_id = str(fields.integer(data, "id", backend="vast", minimum=1))
