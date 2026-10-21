@@ -12,9 +12,9 @@ on:
   workflow_dispatch:
     inputs:
       cuda_architectures:
-        description: "CUDA architectures to compile, as numbers separated by semicolons (75 is RTX 20, 80 is A100, 86 is RTX 30, 89 is RTX 40, 90 is H100, 120 is RTX 50)"
+        description: "CUDA architectures to compile, as numbers separated by semicolons (75 is RTX 20, 80 is A100, 86 is RTX 30, 89 is RTX 40, 90 is H100, 120a is RTX 50. Blackwell needs the a suffix for its FP4 instructions)"
         type: string
-        default: "75;80;86;89;90;120"
+        default: "75;80;86;89;90;120a"
       push:
         description: "Push the image to ghcr.io after the smoke test passes"
         type: boolean
@@ -56,7 +56,7 @@ jobs:
             echo "Expected exactly one 40 character commit under source in engines/xolotl/lock.yaml." >&2
             exit 1
           fi
-          if ! printf '%s' "$REQUESTED_ARCHITECTURES" | grep -Eq '^[0-9]+(;[0-9]+)*$'; then
+          if ! printf '%s' "$REQUESTED_ARCHITECTURES" | grep -Eq '^[0-9]+[af]?(;[0-9]+[af]?)*$'; then
             echo "cuda_architectures must be numbers separated by semicolons, for example 86;89." >&2
             exit 1
           fi

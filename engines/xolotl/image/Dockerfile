@@ -39,7 +39,7 @@ ARG CUDA_RUNTIME_IMAGE=nvcr.io/nvidia/cuda:13.0.2-runtime-ubuntu24.04@sha256:6a0
 ARG XOLOTL_COMMIT=63fc34c6ea839d3e78e765b3e3aa72173116d352
 # One entry per GPU generation: Turing, A100, RTX 30 and A-series, RTX 40 and L40,
 # H100, and RTX 50. See the README beside this file.
-ARG CUDA_ARCHITECTURES="75;80;86;89;90;120"
+ARG CUDA_ARCHITECTURES="75;80;86;89;90;120a"
 
 # ---------------------------------------------------------------------------
 # sources: source code and Python packages
@@ -183,7 +183,7 @@ RUN set -eu; \
     echo "GPU code found in ds41_generate:"; cat build-xolotl/ELF-ARCHS; \
     if [ -s build-xolotl/ELF-ARCHS ]; then \
       for arch in $(printf '%s' "${CUDA_ARCHITECTURES}" | tr ';' ' '); do \
-        grep -q "^sm_${arch}$" build-xolotl/ELF-ARCHS || { echo "No GPU code for sm_${arch} in the binary." >&2; exit 1; }; \
+        grep -q "^sm_${arch%[af]}$" build-xolotl/ELF-ARCHS || { echo "No GPU code for sm_${arch} in the binary." >&2; exit 1; }; \
       done; \
     else \
       echo "cuobjdump listed nothing, so the architecture check was skipped."; \

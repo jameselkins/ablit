@@ -37,7 +37,7 @@ CMake flags: `-DSTRATA_ENABLE_CUDA=ON -DSTRATA_GGML_CUDA=ON -DSTRATA_MMQ_KQUANTS
 - `-DSTRATA_PORTABLE=ON` compiles the CPU code for a baseline of AVX2. Without it, the code is tuned to the CPU of the build runner, and a rented host with another CPU could fail with an illegal instruction.
 - `-DSTRATA_BUILD_TESTS=OFF` skips the test programs, as the Xolotl setup script does.
 - `-DCMAKE_BUILD_TYPE=Release`.
-- `-DCMAKE_CUDA_ARCHITECTURES=75;80;86;89;90;120`.
+- `-DCMAKE_CUDA_ARCHITECTURES=75;80;86;89;90;120a`.
 
 Only the `ds41_generate` target is built. The build runs a second time if it fails the first time, because Xolotl documents that ptxas in CUDA 13.0 now and then fails on a file it has just written.
 
@@ -128,7 +128,7 @@ CUDA 13 supports compute capability 7.5 and up, and it dropped 7.0 (V100). The c
 | 86 | RTX 30 series, A10, A40 | The author tested a 3090 on Windows. |
 | 89 | RTX 40 series, L4, L40 | The author's main measurements were on an RTX 4090. |
 | 90 | H100, H200 | Hopper. Not tested by the author. |
-| 120 | RTX 50 series | Blackwell consumer cards. ggml compiles this as 120a. |
+| 120a | RTX 50 series | Blackwell consumer cards. Plain 120 fails: ptxas rejects the FP4 block-scale instructions in the MXFP4 kernels unless the target is 120a. |
 
 Left out: 70 (CUDA 13 cannot compile it), 100 and 103 (data center Blackwell), 87 (Jetson) and 121 (DGX Spark). Rented hosts with those GPUs fail the compute capability check. The build stops if the binary lacks code for a requested value, and `ELF-ARCHS` in the image lists what was found.
 
@@ -145,7 +145,7 @@ The workflow `.github/workflows/xolotl-image.yml` runs only from the Actions tab
 5. It logs in to ghcr.io with `GITHUB_TOKEN` (the job has `packages: write`), pushes both tags, reads the digest from the push output, and checks it against the manifest hash from the registry.
 6. The job summary shows the digest and the three values to put in `lock.yaml`: `image`, `tag` and `digest`.
 
-Inputs: `cuda_architectures` (default `75;80;86;89;90;120`) and `push` (default true, set it to false for a trial build).
+Inputs: `cuda_architectures` (default `75;80;86;89;90;120a`) and `push` (default true, set it to false for a trial build).
 
 After the first push, open the package page on GitHub, link the package to the ablit repository, and make it public. Vast pulls the image without credentials, so a private package fails to start.
 
