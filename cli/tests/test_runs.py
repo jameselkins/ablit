@@ -171,8 +171,11 @@ def test_no_key_revocation_when_billing_check_times_out(tmp_path):
     store = RunStore(tmp_path)
     r = record(store)
     driver = VastBackend(httpx.Client(), store=store)
+    driver._sleep = lambda seconds: None
     with respx.mock(assert_all_called=False) as router:
-        listing = router.get(ROOT + "/api/v1/instances/").mock(side_effect=[page([instance()]), httpx.ReadTimeout("invented")])
+        # Reads retry after a timeout, so every retry of the billing check times out too.
+        listing = router.get(ROOT + "/api/v1/instances/").mock(
+            side_effect=[page([instance()])] + [httpx.ReadTimeout("invented")] * 5)
         router.delete(ROOT + "/api/v0/instances/7201/").respond(200, json={"success": True})
         revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
         assert down(store, r, driver, KEY) == 7

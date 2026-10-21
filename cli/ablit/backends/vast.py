@@ -208,6 +208,14 @@ def retry_delay(response: httpx.Response, attempt: int) -> float:
     value = response.headers.get("Retry-After", "")
     if value.isdigit():
         return min(float(value), 60.0)
+    # Vast sends the end of its rate-limit window as seconds since the epoch.
+    reset = response.headers.get("x-ratelimit-reset", "")
+    try:
+        wait = float(reset) - time.time()
+    except ValueError:
+        wait = -1.0
+    if 0 < wait <= 60:
+        return wait + 0.5
     return min(2.0 * 2 ** attempt, 30.0)
 
 
@@ -504,9 +512,16 @@ class VastBackend(UnwrittenBackend):
         # rate-limits (429) or has a server error. Creates are never resent.
         attempts = 5 if method in ("GET", "DELETE") else 1
         for attempt in range(attempts):
-            response = self._client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
-                                            headers={"Authorization": f"Bearer {creds.api_key}"},
-                                            json=body, params=params)
+            try:
+                response = self._client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
+                                                headers={"Authorization": f"Bearer {creds.api_key}"},
+                                                json=body, params=params)
+            except httpx.TransportError:
+                # A network failure before any answer. Only safe requests retry.
+                if attempt + 1 >= attempts:
+                    raise
+                self._sleep(min(2.0 * 2 ** attempt, 30.0))
+                continue
             if response.status_code != 429 and response.status_code < 500:
                 break
             if attempt + 1 < attempts:

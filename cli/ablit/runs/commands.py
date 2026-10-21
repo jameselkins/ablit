@@ -23,7 +23,7 @@ from ablit.credentials import CredentialError, credentials, secret_get, secret_s
 from ablit.plan import report_json, run_plan
 from ablit.plan_text import render
 from ablit.runs import RunError, RunStore
-from ablit.runs.lifecycle import allocation, down, local_stop_needed, refresh, run_redactor
+from ablit.runs.lifecycle import allocation, down, local_stop_needed, reason, refresh, run_redactor
 from ablit.runs.ssh import SSH
 from ablit.select.cost import total_cost
 from ablit.select.request import request_from_entry
@@ -105,13 +105,32 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     tunnel = None
     uploaded = False
     stage = None
+    failures = 0
+    first = True
     try:
         while True:
+            # Each pass lists the account's instances, so poll slowly enough to
+            # stay under Vast's rate limit. Waiting here, outside the run lock,
+            # lets `ablit down` run from another terminal meanwhile.
+            if not first:
+                time.sleep(POLL_SECONDS)
+            first = False
             with store.lock(run_id):
                 record = store.load(run_id)
                 if record["state"] == "billing_stopped_confirmed":
                     return 8 if record.get("stop_reason") == "watchdog_cap" else 0
-                refresh(store, record, driver, creds)
+                try:
+                    refresh(store, record, driver, creds)
+                    failures = 0
+                except (BackendError, httpx.HTTPError) as error:
+                    # A short network or marketplace outage should not end a paid
+                    # run. The watchdog on the box keeps counting meanwhile. After
+                    # five minutes without an answer, stop the run.
+                    failures += 1
+                    print(f"{run_id}: marketplace check failed ({reason(error)}). Retrying.", flush=True)
+                    if failures * POLL_SECONDS < 300:
+                        continue
+                    raise
                 if record.get("stop_reason") == "watchdog_cap" and record["marketplace_state"] == "absent":
                     code = down(store, record, driver, creds)
                     return 8 if code == 0 else code
@@ -185,13 +204,11 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     endpoint(record)
                 if tunnel is not None and tunnel.poll() is not None:
                     raise RunError("The tunnel closed. Billing continues. Re-run tunnel or down.")
-            # Each pass lists the account's instances, so poll slowly enough
-            # to stay under Vast's rate limit.
-            time.sleep(POLL_SECONDS)
     except KeyboardInterrupt:
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
         return 0
-    except (RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError):
+    except (BackendError, RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError) as error:
+        print(f"{run_id}: stopping the run because of {reason(error)}", flush=True)
         with store.lock(run_id):
             code = down(store, store.load(run_id), driver, creds)
         return code or 6

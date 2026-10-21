@@ -20,6 +20,12 @@ CONSOLE = "https://cloud.vast.ai/instances/"
 KEYS = "https://cloud.vast.ai/manage-keys/"
 
 
+def reason(error: Exception) -> str:
+    """Name the failure without echoing a response body."""
+    text = str(error).splitlines()[0][:160] if str(error) else ""
+    return f"{type(error).__name__}: {text}" if text else type(error).__name__
+
+
 def allocation(record: dict) -> Allocation:
     return Allocation(record["run_id"], "vast", record.get("resource_ids", []),
                       record["offer"]["hourly_all_in"], record.get("ssh_host"), record.get("ssh_port"),
@@ -111,14 +117,14 @@ def down(store, record: dict, driver, creds) -> int:
         found = driver.reconcile(run_id, creds)
         record["resource_ids"] = sorted(set(record.get("resource_ids", [])) | set(found.resource_ids))
         store.save(record)
-    except (BackendError, httpx.HTTPError):
-        errors.append("Instance reconciliation is unconfirmed.")
+    except (BackendError, httpx.HTTPError) as error:
+        errors.append(f"Instance reconciliation is unconfirmed ({reason(error)}).")
     inventory = Inventory(run_id, "vast", record.get("resource_ids", []))
     for resource in inventory.resource_ids:
         try:
             driver.destroy(Inventory(run_id, "vast", [resource]), creds)
-        except (BackendError, httpx.HTTPError):
-            errors.append(f"Destroy of instance {resource} is unconfirmed.")
+        except (BackendError, httpx.HTTPError) as error:
+            errors.append(f"Destroy of instance {resource} is unconfirmed ({reason(error)}).")
     if not errors:
         record["state"] = "resources_terminated"
         store.save(record)
@@ -137,8 +143,8 @@ def down(store, record: dict, driver, creds) -> int:
             billing_clear = True
         if evidence.final_cost_usd is not None:
             record["final_cost_usd"] = evidence.final_cost_usd
-    except (BackendError, httpx.HTTPError):
-        errors.append("Billing stop is unconfirmed.")
+    except (BackendError, httpx.HTTPError) as error:
+        errors.append(f"Billing stop is unconfirmed ({reason(error)}).")
     # Keep the watchdog usable until the marketplace confirms all instances absent.
     if billing_clear:
         if record.get("watchdog_key_id"):

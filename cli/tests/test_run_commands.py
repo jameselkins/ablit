@@ -344,3 +344,20 @@ def test_a_run_vast_stopped_is_destroyed_and_its_host_denied(monkeypatch):
     monkeypatch.setattr(commands, "down", lambda *args: downs.append(1) or 0)
     assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 6
     assert downs == [1] and "7301" in store.denied_hosts()
+
+
+def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
+    store = RunStore()
+    r = saved_run(store)
+    from ablit.backends import Creds
+    calls = []
+    def refreshed(store, record, driver, creds):
+        calls.append(1)
+        if len(calls) == 1:
+            raise httpx.ConnectError("invented outage")
+        raise KeyboardInterrupt
+    monkeypatch.setattr(commands, "refresh", refreshed)
+    monkeypatch.setattr(commands, "down", lambda *args: pytest.fail("a short outage must not destroy the run"))
+    monkeypatch.setattr(commands.time, "sleep", lambda seconds: None)
+    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
+    assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
