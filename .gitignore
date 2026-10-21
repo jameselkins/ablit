@@ -24,3 +24,7 @@ catalog/dist/
 .idea/
 .vscode/
 .import_linter_cache/
+
+# Local secrets
+.env
+.env.*
