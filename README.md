@@ -93,21 +93,33 @@ Agents and scripts should read AGENTS.md. It covers `--json` output, exit codes,
 
 BUILD.md is the full specification, including every flag and exit code.
 
+## Runtimes
+
+A runtime, or engine, is the server program that loads the model on the rented machine and answers requests. ablit knows three. Only llama.cpp has run on a rented machine so far.
+
+| Runtime | What it is | Used for | Tested on a rented machine |
+|---|---|---|---|
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) | A widely used C++ server for GGUF model files, run from its official CUDA image pinned by digest | Small and mid-size GGUF models on one GPU | Yes. The 8B entry passed paid round trips on Vast on 2026-10-21. |
+| [vLLM](https://github.com/vllm-project/vllm) | A widely used Python server for full-size models across several GPUs | The DeepSeek FP8 entry on 8 GPUs, and the 70B entry | No. Its image digest is not pinned yet, so ablit refuses to rent it. |
+| [Xolotl](https://github.com/Indras-Mirror/Xolotl) | A research engine by one developer, built to run DeepSeek-V4.1-Flash on one 24 GB GPU with about 90 GB of RAM. It keeps the most used experts in GPU memory and the rest in RAM and on disk. Its quant files load only in Xolotl. | The DeepSeek quants that fit a single consumer-class GPU | No. It has no prebuilt image yet, so ablit refuses to rent it. |
+
+`ablit plan` works for every entry, whatever its runtime. `ablit up` works today only for llama.cpp entries on Vast.
+
 ## Catalog
 
 The catalog is a folder of YAML files in `catalog/models/`, one per model build, checked by `catalog/schema/v1.json`. The catalog data is released under CC0-1.0. Each entry also records the license of the model it describes, and the catalog license does not change that license.
 
-The first scaffold has seven entries, and each one has the status `unverified`, which means it passed the checks and nobody has booted it.
+The catalog is curated: it keeps the best build for each runtime and hardware tier, not every build that exists. There are five entries. Each has the status `unverified`, which means it passed the checks and has no recorded boot test. The 8B entry has run on rented machines, and its status will change once the boot test is recorded.
 
-| Entry | Engine |
-|---|---|
-| `ds41-1017-abl-fp8` | vLLM |
-| `ds41-september-gsq-uncensored` | Xolotl |
-| `ds41-1017-xq-v2-uncensored` | Xolotl |
-| `ds41-1017-xq-v3-uncensored` | Xolotl |
-| `ds41-1017-gsq-agentic-strata` | Xolotl |
-| `llama33-70b-fp8-dynamic` | vLLM |
-| `llama31-8b-abliterated-q4km` | llama.cpp |
+| Entry | Runtime | Hardware | Why it is here |
+|---|---|---|---|
+| `llama31-8b-abliterated-q4km` | llama.cpp | One small GPU | Cheap abliterated model, and the one that has run on rented machines |
+| `ds41-september-gsq-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | DeepSeek-V4.1-Flash on one GPU. The author's own tests give it the best agentic scores of the single-GPU builds. |
+| `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | The newer 1017 checkpoint on one GPU. The author reports it trails the September build on the hardest agentic tasks. |
+| `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | The abliterated 1017 model at full FP8 precision |
+| `llama33-70b-fp8-dynamic` | vLLM | From its sources | Unmodified 70B model, kept as a cheaper first test of the vLLM runtime |
+
+Quality claims in this table come from the model authors and have not been checked by ablit.
 
 CONTRIBUTING.md explains how to add an entry. Each entry carries its own notes and the source URL for every hardware figure.
 

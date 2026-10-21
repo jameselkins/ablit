@@ -21,7 +21,7 @@ def test_catalog_list_shows_every_entry_and_its_status(capsys):
     assert code == 0, err
     for entry_id in ("ds41-1017-abl-fp8", "ds41-1017-xq-v3-uncensored", "llama31-8b-abliterated-q4km"):
         assert entry_id in out
-    assert out.count("unverified") == 7
+    assert out.count("unverified") == 5
 
 
 def test_catalog_show_explains_one_entry(capsys):
@@ -39,14 +39,19 @@ def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):
     assert "CONTRIBUTING.md" in err
 
 
-def test_catalog_show_ambiguous_repo_asks_for_a_variant(capsys):
-    code, out, err = run(capsys, "catalog", "show", "IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored")
+def test_catalog_show_ambiguous_repo_asks_for_a_variant(capsys, tmp_path: Path, repo_root: Path):
+    # The curated catalog has one build per repo, so a local catalog adds a second build.
+    source = repo_root / "catalog" / "models" / "ds41-1017-xq-v3-uncensored.yaml"
+    (tmp_path / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    twin = source.read_text(encoding="utf-8").replace("id: ds41-1017-xq-v3-uncensored", "id: ds41-1017-xq-twin")
+    (tmp_path / "ds41-1017-xq-twin.yaml").write_text(twin, encoding="utf-8")
+    repo = "IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored"
+    code, out, err = run(capsys, "catalog", "show", repo, "--catalog", str(tmp_path))
     assert code == exitcodes.USAGE
-    assert "--variant" in err and "ds41-1017-xq-v2-uncensored" in err
-    code, out, err = run(capsys, "catalog", "show", "IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored",
-                         "--variant", "ds41-1017-xq-v2-uncensored")
+    assert "--variant" in err and "ds41-1017-xq-twin" in err
+    code, out, err = run(capsys, "catalog", "show", repo, "--catalog", str(tmp_path), "--variant", "ds41-1017-xq-twin")
     assert code == 0, err
-    assert "ds41-1017-xq-v2-uncensored" in out
+    assert "ds41-1017-xq-twin" in out
 
 
 def test_catalog_validate_accepts_a_seed_file_and_rejects_a_bad_one(capsys, tmp_path: Path, repo_root: Path):

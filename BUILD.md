@@ -173,10 +173,8 @@ A weekly job re-runs check 2. When an artifact has disappeared, it opens a pull 
 | ID | Engine | Floors | Notes |
 |---|---|---|---|
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs, 614 GB VRAM in total, 256 GB host RAM, disk from staging | Floors derived from the vLLM recipe, not yet tested |
-| `ds41-september-gsq-uncensored` | Xolotl | One 24 GB NVIDIA GPU, 90 GB host RAM (256 GB recommended), disk from staging | Floors from the Xolotl README, not yet tested |
-| `ds41-1017-xq-v2-uncensored` | Xolotl | Same | Separate entry from V3 |
-| `ds41-1017-xq-v3-uncensored` | Xolotl | Same | |
-| `ds41-1017-gsq-agentic-strata` | Xolotl | Same | Unmodified 1017 base |
+| `ds41-september-gsq-uncensored` | Xolotl | One 24 GB NVIDIA GPU, 90 GB host RAM (256 GB recommended), disk from staging | Floors from the Xolotl README, not yet tested. Best agentic scores among the single-GPU builds, by the author's own tests. |
+| `ds41-1017-xq-v3-uncensored` | Xolotl | Same | Best 1017 build by the author's own scores. V2 was removed on 2026-10-21. |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | 70B-class vLLM build |
 | `llama31-8b-abliterated-q4km` | llama.cpp | From its sources | First paid test target |
 

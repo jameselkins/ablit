@@ -16,9 +16,7 @@ from ablit.catalog.staging import compute_staging
 SEED_IDS = {
     "ds41-1017-abl-fp8",
     "ds41-september-gsq-uncensored",
-    "ds41-1017-xq-v2-uncensored",
     "ds41-1017-xq-v3-uncensored",
-    "ds41-1017-gsq-agentic-strata",
     "llama33-70b-fp8-dynamic",
     "llama31-8b-abliterated-q4km",
 }
@@ -103,8 +101,8 @@ def test_every_floor_is_labeled_as_not_yet_tested(path: Path):
     assert "unverified" in path.read_text(encoding="utf-8").splitlines()[0]
 
 
-def test_the_1017_xq_entries_hold_only_their_own_variant():
-    for variant, other in (("v2", "v3"), ("v3", "v2")):
+def test_the_1017_xq_entry_holds_only_the_v3_build():
+    for variant, other in (("v3", "v2"),):
         data = load_entry_file(Path(__file__).resolve().parents[2] / "catalog" / "models" / f"ds41-1017-xq-{variant}-uncensored.yaml")
         paths = [a["path"] for a in data["artifacts"]]
         assert any(p.startswith(f"{variant}/") for p in paths)
@@ -129,11 +127,14 @@ def test_load_catalog_and_resolve_by_id_and_repo(repo_root: Path):
     assert single.id == "llama31-8b-abliterated-q4km"
     from ablit.catalog import AmbiguousModel, ModelNotInCatalog
 
+    # The curated catalog has one build per repo, so a second build is added here.
+    twin = result.entries[0].model_copy(update={"id": "twin-build"})
+    entries = [*result.entries, twin]
+    repo = twin.source.repo
     with pytest.raises(AmbiguousModel) as info:
-        resolve(result.entries, "IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored")
-    assert set(info.value.candidates) == {"ds41-1017-xq-v2-uncensored", "ds41-1017-xq-v3-uncensored"}
-    picked = resolve(result.entries, "IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored", variant="ds41-1017-xq-v3-uncensored")
-    assert picked.id == "ds41-1017-xq-v3-uncensored"
+        resolve(entries, repo)
+    assert set(info.value.candidates) == {result.entries[0].id, "twin-build"}
+    assert resolve(entries, repo, variant="twin-build").id == "twin-build"
     with pytest.raises(ModelNotInCatalog):
         resolve(result.entries, "someone/not-in-the-catalog")
 

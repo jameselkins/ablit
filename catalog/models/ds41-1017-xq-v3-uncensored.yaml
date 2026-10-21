@@ -67,6 +67,6 @@ notes:
   - Peak disk comes from the staging list. It assumes the weight parts are deleted after they are joined and the Engram source shards are deleted after extraction, and that extraction needs both source shards on disk until it finishes.
   - The size of the extracted Engram tables is taken from the pre-extracted tables in the kaushikvira repo. It is assumed to match the other builds and has not been measured for them.
   - The engine is single-developer research code, and its speed numbers come from one machine.
-  - This entry lists only the v3/ directory, the tokenizer files, the rank file, the Q2_K draft file and the two Engram source shards. The repo also holds the other build, which is a separate entry.
+  - This entry lists only the v3/ directory, the tokenizer files, the rank file, the Q2_K draft file and the two Engram source shards. The repo also holds a V2 build, which the catalog left out because the author reports V3 as slightly better on agentic tasks.
   - The repo was renamed from GSQ to XQ on 2026-10-19, and old file paths at its root now return 404. The revision is pinned because the repo changes often.
   - The author's model card reports a regression against the September build on two of five tasks in a short agentic test, and says the cause is not isolated yet.
