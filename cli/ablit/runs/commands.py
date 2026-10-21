@@ -16,7 +16,8 @@ from dataclasses import asdict, replace
 import httpx
 
 from ablit import engines
-from ablit.backends.base import BootSpec
+from ablit.backends.base import ENV_KEY_NAMES, BootSpec
+from ablit.backends.runpod import RUNPOD_START
 from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
 from ablit.catalog.loader import repo_root
 from ablit.credentials import CredentialError, credentials, secret_get, secret_set, setup_vast
@@ -49,7 +50,8 @@ LOCK_WAIT_SECONDS = 90
 
 
 def minimum_cap(offer, req, floor) -> float:
-    cfg = Config(0, offer.hourly_all_in, offer.bandwidth_cost_per_gb, 0, offer.download_mbps)
+    # RunPod reports no speed per host. The planner ranks such an offer at the floor, so the reserve does too.
+    cfg = Config(0, offer.hourly_all_in, offer.bandwidth_cost_per_gb, 0, offer.download_mbps or floor)
     amount = total_cost(offer, req, 10 / 60, floor) + reserve(cfg)
     return math.ceil(amount * 100 - 1e-9) / 100
 
@@ -71,12 +73,15 @@ def make_intent(store, entry, offer, report, args, lock) -> dict:
     catalog_digest = hashlib.sha256(b"".join(p.read_bytes() for p in catalog_files)).hexdigest()
     record = {
         "schema": 1, "run_id": run_id, "model_id": entry.id, "state": "creating", "backend": "vast",
+        "backend": offer.backend,
         "quote": report_json(report), "offer": asdict(offer), "cap_usd": args.max_spend,
         "entry": entry.model_dump(), "catalog_sha256": catalog_digest,
         "image": lock["image"] + "@" + lock["digest"],
         "started_at": time.time(), "resource_ids": [], "create_sent": False,
         "min_download_mbps": args.min_download or entry.profile.min_download_mbps,
         "report_requested": getattr(args, "report", False),
+        # RunPod has no key limited to one pod, so the local cap check does not wait for a stale heartbeat.
+        "local_cap_primary": offer.backend == "runpod",
         "transfer_estimate_usd": offer.bandwidth_cost_per_gb * (report.req.download_gb + report.req.image_gb),
     }
     store.save(record)
@@ -105,6 +110,11 @@ def prepare(store, record, entry, driver, creds):
                 record["watchdog_key_sent"] = False
                 store.save(record)
             raise
+        if watchdog is None:
+            # The backend has no key limited to one machine. Nothing was created, so there is nothing to revoke.
+            record["watchdog_key_sent"] = False
+            store.save(record)
+            return record
         record["watchdog_key_id"] = watchdog.key_id
         store.save(record)
         secret_set("watchdog/" + record["run_id"], watchdog.token)
@@ -175,14 +185,18 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         # Wait for the SSH launch environment before copying the scripts.
                         ssh.run("command -v python3 && command -v bash && command -v curl")
                         ssh.upload(engines.bundle(entry_from_record(record), record))
-                        key, watchdog = secret_get(run_id), secret_get("watchdog/" + run_id)
-                        if not key or not watchdog:
+                        key = secret_get(run_id)
+                        # A backend with no scoped key (RunPod) has no watchdog key to send.
+                        scoped = bool(record.get("watchdog_key_id"))
+                        watchdog = secret_get("watchdog/" + run_id) if scoped else ""
+                        if not key or (scoped and not watchdog):
                             raise CredentialError("A run secret is missing from the OS keyring. Run down.")
-                        config = {"run_id": run_id, "model_id": record["model_id"],
-                                  "instance_id": int(record["resource_ids"][0]),
+                        backend = record.get("backend", "vast")
+                        config = {"run_id": run_id, "model_id": record["model_id"], "backend": backend,
+                                  "instance_id": int(record["resource_ids"][0]) if backend == "vast" else record["resource_ids"][0],
                                   "started_at": record["started_at"], "hourly_rate": record["offer"]["hourly_all_in"],
                                   "transfer_price_per_gb": record["offer"]["bandwidth_cost_per_gb"],
-                                  "cap_usd": record["cap_usd"], "advertised_mbps": record["offer"]["download_mbps"],
+                                  "cap_usd": record["cap_usd"], "advertised_mbps": record["offer"]["download_mbps"] or record["min_download_mbps"],
                                   "initial_cost_usd": record["offer"]["bandwidth_cost_per_gb"] * record["quote"]["request"]["image_gb"],
                                   "baseline_rx_bytes": 0}
                         ssh.start(config, key, watchdog)
@@ -196,7 +210,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                                 raise RunError("SSH to the running instance failed for five minutes.")
                 if want_ready and not record.get("ready"):
                     request = record["quote"]["request"]
-                    allowed = (request["download_gb"] * 8000 / (record["offer"]["download_mbps"] * 3600)
+                    speed = record["offer"]["download_mbps"] or record["min_download_mbps"]
+                    allowed = (request["download_gb"] * 8000 / (speed * 3600)
                                + request["startup_hours"] + 10 / 60) * 3600
                     if time.time() - record["started_at"] > allowed:
                         print(f"{run_id}: the bootstrap deadline passed before the engine was ready.", flush=True)
@@ -267,13 +282,47 @@ def entry_from_record(record):
     return Entry(**record["entry"])
 
 
-def _up(args, entry, opts, driver, environ, store):
+RENTABLE = ("runpod", "vast")
+
+
+def has_key(backend: str, environ) -> bool:
+    try:
+        credentials(backend, environ)
+        return True
+    except CredentialError:
+        return False
+
+
+def choose_backends(args, environ) -> list[str]:
+    """Return the backends a paid `up` searches.
+
+    With no `--backends`, ablit searches Vast as it always has, and also RunPod when a
+    RunPod key exists. A RunPod key with no Vast key searches RunPod alone.
+    """
+    wanted = [n.strip() for n in (args.backends or "").split(",") if n.strip()]
+    if args.backends and (not wanted or any(n not in RENTABLE for n in wanted)):
+        raise RunError("Paid launches support only --backends vast, runpod, or vast,runpod.")
+    if wanted:
+        return sorted(set(wanted))
+    names = ["vast"]
+    if has_key("runpod", environ):
+        names.append("runpod")
+        if not has_key("vast", environ):
+            names = ["runpod"]
+    return names
+
+
+def _up(args, entry, opts, driver, environ, store, drivers=None):
     if entry.profile.engine not in engines.LAUNCHABLE_ENGINES or args.endpoint != "tunnel":
-        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast through an SSH tunnel.")
-    if args.backends and args.backends != "vast":
-        raise RunError("Paid launches support only --backends vast.")
-    creds = credentials("vast", environ)
-    driver.store = store
+        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast and RunPod through an SSH tunnel.")
+    drivers = drivers or {"vast": driver}
+    names = choose_backends(args, environ)
+    missing = [n for n in names if n not in drivers]
+    if missing:
+        raise RunError(f"No driver is available for {', '.join(missing)}.")
+    all_creds = {name: credentials(name, environ) for name in names}
+    for name in names:
+        drivers[name].store = store
     with store.lock("selection"):
         active = store.active_model(entry.id)
         if active and not args.another:
@@ -281,11 +330,16 @@ def _up(args, entry, opts, driver, environ, store):
                 record = active[0]
                 if record["cap_usd"] != args.max_spend or record["entry"] != entry.model_dump():
                     raise RunError("The existing run has a different cap or build. Run down first.")
+                backend = record.get("backend", "vast")
+                if backend not in drivers:
+                    raise RunError(f"No driver is available for {backend}.")
+                use_driver, use_creds = drivers[backend], credentials(backend, environ)
+                use_driver.store = store
                 with store.lock(record["run_id"]):
                     record = store.load(record["run_id"])
                     if record["state"] != "creating":
                         raise RunError("The run state changed. Check status before resuming.")
-                    record = prepare(store, record, entry, driver, creds)
+                    record = prepare(store, record, entry, use_driver, use_creds)
             else:
                 raise RunError("An active run already exists for this model. Use tunnel, down, or --another.")
         else:
@@ -295,16 +349,20 @@ def _up(args, entry, opts, driver, environ, store):
             if not isinstance(digest, str) or not re.fullmatch(r"sha256:[a-f0-9]{64}", digest):
                 print("The engine image has no valid pinned digest.")
                 return 5
-            driver.denied_host_ids = store.denied_hosts()
+            for name in names:
+                drivers[name].denied_host_ids = store.denied_hosts()
             req = request_from_entry(entry, lock["image_gb"])
-            report = run_plan(entry, req, opts, {"vast": driver}, wanted="vast", max_spend=args.max_spend,
-                              environ={"VAST_API_KEY": creds.api_key}, strict_credentials=True)
+            report = run_plan(entry, req, opts, {name: drivers[name] for name in names}, wanted=",".join(names),
+                              max_spend=args.max_spend,
+                              environ={ENV_KEY_NAMES[name]: all_creds[name].api_key for name in names},
+                              strict_credentials=True)
             denied = store.denied_hosts()
             report = replace(report, ranked=[r for r in report.ranked if r.offer.host_id not in denied])
             print(render(report), end="")
             if not report.ranked:
                 return 3
             offer = report.ranked[0].offer
+            use_driver, use_creds = drivers[offer.backend], all_creds[offer.backend]
             smallest = minimum_cap(offer, req, args.min_download or req.min_download_mbps)
             print(f"Smallest cap covering setup, ten minutes and the watchdog reserve: ${smallest:.2f}")
             if args.max_spend < smallest:
@@ -317,7 +375,7 @@ def _up(args, entry, opts, driver, environ, store):
             elif input("Type rent to rent this machine: ").strip() != "rent":
                 print("Rental cancelled.")
                 return 2
-            again = driver.requote(offer, creds)
+            again = use_driver.requote(offer, use_creds)
             # Remaining duration, reliability and measured speed drift between checks.
             # Every price, the hardware and the disk must match the approved quote.
             drift = {"remaining_hours": offer.remaining_hours, "reliability": offer.reliability,
@@ -335,28 +393,30 @@ def _up(args, entry, opts, driver, environ, store):
                 secret_set(record["run_id"], secrets.token_hex(32))
                 ssh = SSH(store, record)
                 public = ssh.identity_public()
-                record["ssh_key_sent"] = True
-                store.save(record)
-                record["ssh_key_id"] = driver.register_ssh_key(public, creds)
-                store.save(record)
-                boot = BootSpec(record["image"], ONSTART, math.ceil(offer.allocated_disk_gb))
+                if hasattr(use_driver, "register_ssh_key"):
+                    # Vast keeps the key on the account. RunPod takes it in the create request instead.
+                    record["ssh_key_sent"] = True
+                    store.save(record)
+                    record["ssh_key_id"] = use_driver.register_ssh_key(public, use_creds)
+                    store.save(record)
+                boot = BootSpec(record["image"], RUNPOD_START if offer.backend == "runpod" else ONSTART,
+                                math.ceil(offer.allocated_disk_gb), ssh_public_key=public)
                 try:
-                    alloc = driver.create(offer, boot, record["run_id"], creds)
+                    alloc = use_driver.create(offer, boot, record["run_id"], use_creds)
                 except (httpx.HTTPError, CreateUncertain):
                     print(f"Create response is unknown. Re-run up or `ablit down {record['run_id']}` to recover by label.")
                     return 7
                 record = store.load(record["run_id"])
                 record["resource_ids"] = alloc.resource_ids
                 store.save(record)
-                record = prepare(store, record, entry, driver, creds)
-    return monitor(store, record, driver, creds, want_ready=True)
+                record = prepare(store, record, entry, use_driver, use_creds)
+    return monitor(store, record, use_driver, use_creds, want_ready=True)
 
 
-
-def up(args, entry, opts, driver, environ, store):
+def up(args, entry, opts, driver, environ, store, drivers=None):
     before = {r["run_id"]: r["state"] for r in store.all()}
     try:
-        return _up(args, entry, opts, driver, environ, store)
+        return _up(args, entry, opts, driver, environ, store, drivers)
     except (CredentialError, CredentialsRejected, BackendError, httpx.HTTPError,
             RunError, ValueError, subprocess.SubprocessError) as error:
         targets = [r for r in store.active_model(entry.id)
@@ -364,11 +424,12 @@ def up(args, entry, opts, driver, environ, store):
         if not targets:
             raise
         print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
-        creds = credentials("vast", environ)
         pending = False
         for record in targets:
+            backend = record.get("backend", "vast")
+            creds = credentials(backend, environ)
             with store.lock(record["run_id"]):
-                pending = down(store, store.load(record["run_id"]), driver, creds) == 7 or pending
+                pending = down(store, store.load(record["run_id"]), (drivers or {}).get(backend, driver), creds) == 7 or pending
         if pending:
             return 7
         if isinstance(error, (CredentialError, CredentialsRejected)):
@@ -377,18 +438,28 @@ def up(args, entry, opts, driver, environ, store):
             return 9
         return 6
 
-def existing(args, driver, environ, store):
+def existing(args, driver, environ, store, drivers=None):
     records = store.all() if args.command == "status" and args.all else [store.select(args.run)]
     if not records:
         print(json.dumps({"schema": 1, "runs": []}) if getattr(args, "json", False) else "No runs.")
         return 0
-    creds = credentials("vast", environ)
+    drivers = drivers or {"vast": driver}
+
+    def pair(record):
+        """Return the driver and key for the marketplace that holds a run."""
+        backend = record.get("backend", "vast")
+        if backend not in drivers:
+            raise RunError(f"No driver is available for {backend}.")
+        return drivers[backend], credentials(backend, environ)
+
+    driver, creds = pair(records[0])
     if args.command == "status":
         while True:
             output, code = [], 0
             for selected in records:
                 with store.lock(selected["run_id"], wait=LOCK_WAIT_SECONDS):
                     record = store.load(selected["run_id"])
+                    driver, creds = pair(record)
                     redactor = run_redactor(record, creds)
                     def status_down():
                         with contextlib.redirect_stdout(sys.stderr):

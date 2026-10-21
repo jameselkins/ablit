@@ -77,7 +77,7 @@ class SSH:
     def run(self, command: str, data: bytes | None = None, timeout=30) -> bytes:
         result = subprocess.run([*self.args(), command], input=data, capture_output=True, timeout=timeout)
         if result.returncode:
-            raise RunError("SSH failed. Check the saved host key and Vast connection details.")
+            raise RunError("SSH failed. Check the saved host key and the marketplace connection details.")
         return result.stdout
 
     def upload(self, archive: bytes) -> None:
