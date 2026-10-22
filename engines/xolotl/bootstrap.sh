@@ -68,6 +68,12 @@ XOLOTL_CORE_LOG="$ABLIT_STATE_DIR/logs/engine-core.log"
 ENGRAM_MODE="${ABLIT_ENGRAM_MODE:-direct}"
 XOLOTL_ARENA_GIB="${XOLOTL_ARENA_GIB:-60}"
 XOLOTL_USE_DRAFT="${XOLOTL_USE_DRAFT:-1}"
+# The engine at the pinned commit keeps finished conversations in pinned host
+# memory (--conversation-cache-mib). Its own default is 8192 MiB, taken a piece at
+# a time as conversations are saved (ds41_generate.cpp, "int conv_mib = 8192").
+# The 60 GiB arena already uses most of a 90 GB host, so this script asks for half
+# of that. A value of 0 turns the pool off, which is how the earlier pin ran.
+XOLOTL_CONVERSATION_CACHE_MIB="${XOLOTL_CONVERSATION_CACHE_MIB:-4096}"
 
 # Download settings. Chunks are small so that the checksum of a file can follow
 # the download closely, and so that the last file is spread over many connections.
@@ -304,12 +310,12 @@ write_server_config() {
   mkdir -p "$ABLIT_STATE_DIR/logs"
   "$XOLOTL_PYTHON" -I - "$XOLOTL_CONFIG" "$XOLOTL_ENGINE_EXE" "$XOLOTL_DIR" "$model" "$rank" "$tokenizer" \
     "$engram" "$draft" "$ABLIT_CONTEXT_TOKENS" "$XOLOTL_ARENA_GIB" "$ABLIT_SERVED_NAME" "$ABLIT_PORT" \
-    "$XOLOTL_CORE_LOG" <<'PY'
+    "$XOLOTL_CORE_LOG" "$XOLOTL_CONVERSATION_CACHE_MIB" <<'PY'
 import json
 import os
 import sys
 
-(out, exe, cwd, model, rank, tokenizer, engram, draft, ctx, arena, name, port, log) = sys.argv[1:14]
+(out, exe, cwd, model, rank, tokenizer, engram, draft, ctx, arena, name, port, log, pool) = sys.argv[1:15]
 env = {"STRATA_ATTN_F16_GATHER": "1"}
 if draft:
     env["STRATA_SERVE_DSPARK"] = draft
@@ -319,6 +325,7 @@ config = {
         "-m", model, "--backend", "cuda", "--experts", "gpu", "--engram", engram, "--rank", rank,
         "--ctx", ctx, "--stop", "1", "--arena-adapt", "--kv-fp4", "--route-bias", "0.5",
         "--route-bias-file", "0.3", "--arena-gib", arena, "--prompt-batch", "12288",
+        "--conversation-cache-mib", str(int(pool)),
     ],
     "cwd": cwd,
     "tokenizer": tokenizer,
