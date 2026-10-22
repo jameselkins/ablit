@@ -29,7 +29,7 @@ A change that breaks any of these tests must not be merged, even if the change l
 5. ablit prints links and never opens a browser.
 6. ablit has no telemetry.
 7. `ablit setup --no-referral`, `ABLIT_NO_REFERRAL=1` and `referral = false` in the config file each turn off all referral links, and the setting is saved.
-8. The README section named "Paid links" lists each commission rate and the date it was checked. The maintainer checks the rates on the program pages before each release.
+8. The README section named "Paid links" lists the commission rate and the date it was checked for each marketplace where ablit has a referral ID. The maintainer checks the rates on the program pages before each release.
 
 ## Reporting a violation
 
