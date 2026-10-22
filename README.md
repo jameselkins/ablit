@@ -4,7 +4,7 @@ ablit is a command-line tool that finds the cheapest rented GPU machine that can
 
 It is for people who want to run an open-weight language model, such as an abliterated model (a model edited to remove its refusals), on a rented GPU without comparing marketplaces and engine settings by hand. ablit runs on your computer, so your marketplace key stays with you, and it runs no service, holds no money and relays no inference traffic.
 
-Status: alpha. Two catalog entries are boot-tested on Vast: `llama31-8b-abliterated-q4km` on llama.cpp and `ds41-september-gsq-uncensored` on Xolotl. The other entries have been planned but never booted. The 8B entry also ran on RunPod Secure Cloud. The Status section below lists exactly what has been tested.
+Status: alpha. Three catalog entries are boot-tested on Vast: `llama31-8b-abliterated-q4km` on llama.cpp, and `ds41-september-gsq-uncensored` and `ds41-1017-xq-v3-uncensored` on Xolotl. The other entries have been planned but never booted. The 8B entry also ran on RunPod Secure Cloud. The Status section below lists exactly what has been tested.
 
 ## Quickstart
 
@@ -62,11 +62,11 @@ The cap counts compute, disk, the model download and transfer charges. If the ca
 All paid tests so far ran on Vast.
 
 - Tested on a rented machine: the 8B llama.cpp entry rented a machine, served chat completions through an SSH tunnel, and stopped billing with `ablit down`.
-- Tested on a rented machine: the September Xolotl entry did the same on a 98 GB GPU. It downloaded 372 GB at 4.1 to 4.8 Gbps, was ready 17 minutes after the rental started, and generated about 47 tokens per second. The 24 GB GPU floor is not tested yet.
+- Tested on a rented machine: the September Xolotl entry did the same on a 98 GB GPU. It downloaded 372 GB at 4.1 to 4.8 Gbps, was ready 17 minutes after the rental started, and generated about 47 tokens per second. The 1017 Xolotl entry did the same on a 32 GB RTX 5090 on 2026-10-22, at about 33 tokens per second. The 24 GB GPU floor is not tested yet.
 - Tested in separate paid runs: the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost.
-- Not tested on a rented machine: vLLM, the 1017 Xolotl entry, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM entries.
+- Not tested on a rented machine: vLLM, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM entries.
 - RunPod: the 8B entry rented a Secure Cloud pod, served through the tunnel, and stopped billing with `ablit down` on 2026-10-22. A Community Cloud pod never got a direct SSH address, so use `--trust verified` on RunPod for now. RunPod has no scoped keys, so its spend cap is enforced only by ablit on your computer. Clore: search works, and its renting code is untested and not connected to `ablit up`.
-- Both tested entries are marked `boot-tested` in the catalog, with their records in `catalog/boot-tests/`.
+- The tested entries are marked `boot-tested` in the catalog, with their records in `catalog/boot-tests/`.
 
 ## Install
 
@@ -111,23 +111,23 @@ A runtime, or engine, is the server program that loads the model on the rented m
 |---|---|---|---|
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | A widely used C++ server for GGUF model files, run from its official CUDA image pinned by digest | Small and mid-size GGUF models on one GPU | Yes. The 8B entry passed paid round trips on Vast on 2026-10-21. |
 | [vLLM](https://github.com/vllm-project/vllm) | A widely used Python server for full-size models across several GPUs | The DeepSeek FP8 entry on 8 GPUs, and the 70B entry | No. Its image digest is not pinned yet, so ablit refuses to rent it. |
-| [Xolotl](https://github.com/Indras-Mirror/Xolotl) | A research engine by one developer, built to run DeepSeek-V4.1-Flash on one 24 GB GPU with about 90 GB of RAM. It keeps the most used experts in GPU memory and the rest in RAM and on disk. Its quant files load only in Xolotl. | The DeepSeek quants that fit a single consumer-class GPU | Yes. The September entry booted on Vast on 2026-10-21, on a 98 GB GPU. A 24 GB GPU is not tested yet. |
+| [Xolotl](https://github.com/Indras-Mirror/Xolotl) | A research engine by one developer, built to run DeepSeek-V4.1-Flash on one 24 GB GPU with about 90 GB of RAM. It keeps the most used experts in GPU memory and the rest in RAM and on disk. Its quant files load only in Xolotl. | The DeepSeek quants that fit a single consumer-class GPU | Yes. The September entry booted on Vast on a 98 GB GPU, and the 1017 entry on a 32 GB RTX 5090. A 24 GB GPU is not tested yet. |
 
-Xolotl boot test result: on 2026-10-21 the September entry ran on one RTX PRO 6000 (98 GB) on Vast. It downloaded 372 GB in about 11 minutes, read the Engram tables in place, and answered at about 47 tokens per second end to end. The record is in `catalog/boot-tests/`.
+Xolotl boot test result: on 2026-10-21 the September entry ran on one RTX PRO 6000 (98 GB) on Vast. It downloaded 372 GB in about 11 minutes, read the Engram tables in place, and answered at about 47 tokens per second end to end. On 2026-10-22 the 1017 entry ran on one RTX 5090 (32 GB) and answered at about 33 tokens per second. The records are in `catalog/boot-tests/`.
 
-`ablit plan` works for every entry, whatever its runtime. `ablit up` is built for llama.cpp and Xolotl entries on Vast and RunPod. Both tested entries ran on Vast, and the 8B entry also ran on RunPod Secure Cloud.
+`ablit plan` works for every entry, whatever its runtime. `ablit up` is built for llama.cpp and Xolotl entries on Vast and RunPod. The tested entries ran on Vast, and the 8B entry also ran on RunPod Secure Cloud.
 
 ## Catalog
 
 The catalog is a folder of YAML files in `catalog/models/`, one per model build, checked by `catalog/schema/v1.json`. It is curated, so it keeps the best build for each runtime and hardware tier and not every build that exists. The catalog data is released under CC0-1.0, and each entry records the license of the model it describes, which the catalog license does not change.
 
-There are five entries. Two are `boot-tested`, which means a real run is recorded in `catalog/boot-tests/`. The other three are `unverified`: they passed the checks and have no recorded boot test.
+There are five entries. Three are `boot-tested`, which means a real run is recorded in `catalog/boot-tests/`. The other two are `unverified`: they passed the checks and have no recorded boot test.
 
 | Entry | Runtime | Hardware | Why it is here |
 |---|---|---|---|
 | `llama31-8b-abliterated-q4km` | llama.cpp | One small GPU | Cheap abliterated model. Boot-tested. |
 | `ds41-september-gsq-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | DeepSeek-V4.1-Flash on one GPU. The author's own tests give it the best agentic scores of the single-GPU builds. Boot-tested. |
-| `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | The newer 1017 checkpoint on one GPU. The author reports it trails the September build on the hardest agentic tasks. |
+| `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | The newer 1017 checkpoint on one GPU. The author reports it trails the September build on the hardest agentic tasks. Boot-tested. |
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | The abliterated 1017 model at full FP8 precision |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | Unmodified 70B model, kept as a cheaper first test of the vLLM runtime |
 

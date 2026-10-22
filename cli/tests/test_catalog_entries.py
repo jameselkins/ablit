@@ -21,7 +21,7 @@ SEED_IDS = {
     "llama31-8b-abliterated-q4km",
 }
 
-BOOT_TESTED = {"llama31-8b-abliterated-q4km", "ds41-september-gsq-uncensored"}
+BOOT_TESTED = {"llama31-8b-abliterated-q4km", "ds41-september-gsq-uncensored", "ds41-1017-xq-v3-uncensored"}
 
 
 def _entry_params():

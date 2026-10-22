@@ -21,17 +21,20 @@ def test_catalog_list_shows_every_entry_and_its_status(capsys):
     assert code == 0, err
     for entry_id in ("ds41-1017-abl-fp8", "ds41-1017-xq-v3-uncensored", "llama31-8b-abliterated-q4km"):
         assert entry_id in out
-    assert out.count("unverified") == 3
-    assert out.count("boot-tested") == 2
+    assert out.count("unverified") == 2
+    assert out.count("boot-tested") == 3
 
 
 def test_catalog_show_explains_one_entry(capsys):
     code, out, err = run(capsys, "catalog", "show", "ds41-1017-xq-v3-uncensored")
     assert code == 0, err
     assert "not yet tested" in out
-    assert "Nobody has booted this entry yet" in out
+    assert "Tests:        vast on 2026-10-22" in out
     assert "Peak disk:" in out and "GB" in out
     assert "https://github.com/Indras-Mirror/Xolotl" in out
+    code, out, err = run(capsys, "catalog", "show", "llama33-70b-fp8-dynamic")
+    assert code == 0, err
+    assert "Nobody has booted this entry yet" in out
 
 
 def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):

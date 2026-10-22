@@ -71,7 +71,8 @@ def test_null_digest_is_refused_before_search(monkeypatch):
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 5
 
 
-XOLOTL = "ds41-1017-xq-v3-uncensored"  # an unverified Xolotl entry
+XOLOTL = "ds41-1017-xq-v3-uncensored"
+UNVERIFIED = "llama33-70b-fp8-dynamic"  # the status check runs before the engine check
 
 
 def xolotl_launch(monkeypatch, rows, budget="50", extra=()):
@@ -124,11 +125,11 @@ def test_up_still_applies_the_cap_check_and_yes_to_a_xolotl_entry(monkeypatch, c
     assert RunStore().all() == []
 
 
-def test_up_refuses_the_unverified_xolotl_entry_without_untested(monkeypatch, capsys):
+def test_up_refuses_an_unverified_entry_without_untested(monkeypatch, capsys):
     launch_environment(monkeypatch)
     with respx.mock(assert_all_called=False) as router:
         router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search without --untested"))
-        assert main(["up", XOLOTL, "--max-spend", "50"], environ={}) == 2
+        assert main(["up", UNVERIFIED, "--max-spend", "50"], environ={}) == 2
     assert "Pass --untested to run it anyway." in capsys.readouterr().err
     assert RunStore().all() == []
 

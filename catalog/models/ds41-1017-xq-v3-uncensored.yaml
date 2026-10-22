@@ -1,5 +1,5 @@
-# Seed entry. Status is unverified. Nobody has booted this entry.
-# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Seed entry. Status is boot-tested: it booted on Vast on 2026-10-22, on a 32 GB RTX 5090.
+# The hardware floors below are source or derived figures, and the 24 GB GPU floor has not been tested.
 # Sizes and hashes were filled in by tools/verify_entry.py --fill.
 schema: 1
 id: ds41-1017-xq-v3-uncensored
@@ -59,13 +59,14 @@ sources:
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate.}
   - https://huggingface.co/IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored/blob/9d3c01d86709261e51d566b02e1dda75f40d009a/README.md
   - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
-tests: []
-status: unverified
+tests:
+  - {backend: vast, date: "2026-10-22", log: boot-tests/ds41-1017-xq-v3-uncensored-2026-10-22.md}
+status: boot-tested
 notes:
-  - Hardware floors are not yet tested. They come from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
+  - The entry booted and served on Vast on 2026-10-22, on a 32 GB RTX 5090. The 24 GB GPU floor is not yet tested. It comes from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
   - The README says 16 GB of VRAM should load but is untested, so the floor here stays at 24 GB.
   - Peak disk comes from the staging list. It assumes the weight parts are deleted as they are joined, and the join step says it streams, because the bootstrap appends one part at a time. The bootstrap adds a margin of one weight part (10.7 GB) to the disk it asks for, because the join appends a part before it deletes it.
-  - The staging list has no Engram extraction step. At the pinned engine commit, Ds41Engram::open reads model.safetensors.index.json and the two FP8 shards from the folder given to --engram, so the 203 GB copy that extract_engram.py makes should not be needed. This is read from the engine source and is untested on a rented machine. If the engine cannot open the files, the bootstrap extracts the tables and starts the engine again, and that needs about 203 GB more disk than the staging list counts. The disk request already includes 210 GB for it (extract_disk_gb in the engine lock), which costs a few cents an hour and avoids a second rental if the engine cannot open the files in place.
+  - The staging list has no Engram extraction step. At the pinned engine commit, Ds41Engram::open reads model.safetensors.index.json and the two FP8 shards from the folder given to --engram, so the 203 GB copy that extract_engram.py makes should not be needed. The boot test on 2026-10-22 confirmed this, because the engine read the tables in place. If the engine cannot open the files, the bootstrap extracts the tables and starts the engine again, and that needs about 203 GB more disk than the staging list counts. The disk request already includes 210 GB for it (extract_disk_gb in the engine lock), which costs a few cents an hour and avoids a second rental if the engine cannot open the files in place.
   - The index file model.safetensors.index.json is listed because the engine and extract_engram.py both read it. It is the same file (SHA-256 74b0686a, 7,470,294 bytes) in the September and 1017 official repos and in the dealignai checkpoint.
   - The download floor is 1000 Mbps. At 500 Mbps the 372 GB download alone takes about 100 minutes, and at 1000 Mbps it takes about 50 minutes.
   - The startup estimate is 0.3 hours after the download ends. It is 0.25 hours (the startup figure of the boot-tested llama.cpp entry, which covers the image pull, the container start and the health check) plus 92 seconds for the engine load (the longest time the model cards report) plus 60 seconds for the last join and checksum after the final byte. The total is 0.292 hours, rounded up. It has not been measured for this image.
