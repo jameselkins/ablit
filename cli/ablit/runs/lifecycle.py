@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
 import time
 
 import httpx
@@ -113,7 +114,7 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
                                      "detail": run_redactor(record, creds)(f"{reason}: {failed.get('detail', '')}")[:500]}
             if "ready" in probe:
                 record["ready"] = True
-        except (RunError, OSError, ValueError, httpx.HTTPError):
+        except (RunError, OSError, ValueError, httpx.HTTPError, subprocess.SubprocessError):
             record["ssh_check"] = "unavailable"
     rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
     elapsed = max(time.time() - record["started_at"], 0) / 3600
