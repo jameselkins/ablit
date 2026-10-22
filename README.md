@@ -65,7 +65,7 @@ All paid tests so far ran on Vast.
 - Tested on a rented machine: the September Xolotl entry did the same on a 98 GB GPU. It downloaded 372 GB at 4.1 to 4.8 Gbps, was ready 17 minutes after the rental started, and generated about 47 tokens per second. The 1017 Xolotl entry did the same on a 32 GB RTX 5090 on 2026-10-22, at about 33 tokens per second. The 24 GB GPU floor is not tested yet.
 - Tested in separate paid runs: the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost.
 - Not tested on a rented machine: vLLM, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM entries.
-- RunPod: the 8B entry rented a Secure Cloud pod, served through the tunnel, and stopped billing with `ablit down` on 2026-10-22. A Community Cloud pod never got a direct SSH address, so use `--trust verified` on RunPod for now. RunPod has no scoped keys, so its spend cap is enforced only by ablit on your computer. Clore: search works, and its renting code is untested and not connected to `ablit up`.
+- RunPod: the 8B entry rented a Secure Cloud pod, served through the tunnel, and stopped billing with `ablit down` on 2026-10-22. A Community Cloud pod never got a direct SSH address, so paid runs on RunPod use Secure Cloud only, and `plan` lists Community offers with that reason. RunPod has no scoped keys, so its spend cap is enforced only by ablit on your computer. Clore: search works, and its renting code is untested and not connected to `ablit up`.
 - The tested entries are marked `boot-tested` in the catalog, with their records in `catalog/boot-tests/`.
 
 ## Install
