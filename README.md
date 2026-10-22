@@ -80,7 +80,7 @@ run `ablit down` or the rental ends. Check `ablit status` if you leave a run
 unattended.
 ```
 
-The cap counts compute, disk, the model download and transfer charges. If the cap cannot cover the download, the startup estimate and 10 minutes of use, `ablit up` exits with code 5 and shows the smallest cap that would work. RunPod and Clore have no API keys limited to one machine, so on those marketplaces only the check on your computer enforces the cap.
+The cap counts compute, disk, the model download and transfer charges. If the cap cannot cover the download, the startup estimate and 10 minutes of use, `ablit up` exits with code 5 and shows the smallest cap that would work. RunPod and Clore have no API keys limited to one machine, so on those marketplaces only the check on your computer enforces the cap. `ablit plan` searches Clore without a key, and `ablit up` includes Clore only when you have saved a Clore key.
 
 ## Status
 
@@ -100,7 +100,7 @@ The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, a
 |---|---|---|
 | [Vast.ai](https://vast.ai) | Yes, without a key | Yes, tested. A watchdog key limited to the one machine enforces the cap on the machine. |
 | [RunPod](https://www.runpod.io) | Yes, without a key | Yes, tested on Secure Cloud. Community Cloud pods may get no public IP for SSH, so paid runs use Secure Cloud only. |
-| [Clore.ai](https://clore.ai) | Yes | The rental code exists and is untested. |
+| [Clore.ai](https://clore.ai) | Yes | Connected with `--backends clore`, and untested on a rented machine. Clore has no scoped keys, and the marketplace does not say which servers allow SSH, so ablit cancels a server that has no SSH port at the start deadline and skips it after that. |
 
 ## Catalog
 
