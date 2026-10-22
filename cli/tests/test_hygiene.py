@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -17,8 +18,18 @@ FORBIDDEN_WORDS = [
 PERSONAL = [r"@[A-Za-z0-9-]+\.(?:com|org|net|io)\b", r"/Users/", r"\bjameselkins@", r"sk-ant-", r"hf_[A-Za-z0-9]{20,}"]
 
 
+def _candidates(root: Path):
+    """Files git would publish: tracked, or untracked and not ignored. Outside git, every file."""
+    try:
+        out = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=root,
+                             capture_output=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return sorted(root.rglob("*"))
+    return sorted(root / name for name in out.decode("utf-8").split("\0") if name)
+
+
 def _files(root: Path):
-    for path in sorted(root.rglob("*")):
+    for path in _candidates(root):
         rel = path.relative_to(root)
         if not path.is_file() or any(part in SKIP_DIRS for part in rel.parts):
             continue
@@ -157,4 +168,4 @@ def test_readme_covers_the_required_sections(repo_root: Path):
     for needle in ("alpha", "Paid links", "checked 2026-10-21", "llama31-8b-abliterated-q4km",
                    "--endpoint", "127.0.0.1"):
         assert needle in readme, needle
-    assert "has a referral id for vast.ai and none for runpod" in readme.lower()
+    assert "has a referral id for vast.ai and none for runpod or clore" in readme.lower()

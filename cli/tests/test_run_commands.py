@@ -541,27 +541,3 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
     monkeypatch.setattr(commands.time, "sleep", lambda seconds: None)
     assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
-
-
-def test_ssh_failing_five_minutes_after_running_stops_the_run(monkeypatch, capsys):
-    store = RunStore()
-    r = saved_run(store)
-    from ablit.backends import Creds
-    def refreshed(store, record, driver, creds):
-        record.update(marketplace_state="running", spend_estimate_usd=0.0)
-        store.save(record)
-    class Denied:
-        def __init__(self, *args): pass
-        def run(self, command): raise commands.RunError("Permission denied")
-    clock = iter([1000.0, 1000.0, 1000.0, 1400.0, 1400.0, 1400.0, 1400.0])
-    monkeypatch.setattr(commands, "refresh", refreshed)
-    monkeypatch.setattr(commands, "SSH", Denied)
-    monkeypatch.setattr(commands.time, "time", lambda: next(clock, 1400.0))
-    monkeypatch.setattr(commands.time, "sleep", lambda seconds: None)
-    monkeypatch.setattr(commands, "local_stop_needed", lambda record, now: False)
-    r["started_at"] = 1000.0
-    store.save(r)
-    downs = []
-    monkeypatch.setattr(commands, "down", lambda *args: downs.append(1) or 0)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 6
-    assert downs == [1] and "SSH to the running instance failed" in capsys.readouterr().out

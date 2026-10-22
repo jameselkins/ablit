@@ -332,7 +332,8 @@ class CloreBackend(UnwrittenBackend):
             self._client = None
 
     def capabilities(self) -> Capabilities:
-        # Search works against live data. Renting stays False until a paid test shows it works.
+        # Search works against live data. Renting is connected to `ablit up`, but the flag stays False
+        # until a paid test on a rented machine shows it works.
         # There is no scoped watchdog credential on Clore, so that flag stays False for good.
         return Capabilities(search=True)
 
@@ -440,6 +441,13 @@ class CloreBackend(UnwrittenBackend):
                 offer = offer_from_row(row, cuda_min=req.cuda_version_min)
             except SkipServer as skip:
                 skipped[skip.reason] += 1
+                continue
+            except UnknownFieldType as error:
+                # A server that lacks a field ablit needs is not an offer. A field of the wrong type
+                # or unit still stops the search, because that means the answer changed shape.
+                if not str(error).endswith((" is missing", " is null")):
+                    raise
+                skipped["servers missing a field ablit needs"] += 1
                 continue
             if offer.host_id in self.denied_host_ids:
                 skipped["servers on the local deny list"] += 1

@@ -145,7 +145,7 @@ def test_a_runpod_key_alone_searches_runpod_alone(monkeypatch):
     assert RunStore().all()[0]["backend"] == "runpod"
 
 
-@pytest.mark.parametrize("flag", ["clore", "vast,clore", ","])
+@pytest.mark.parametrize("flag", ["lambda", "vast,lambda", ","])
 def test_up_refuses_a_backend_it_cannot_rent_on(monkeypatch, flag, capsys):
     launch_environment(monkeypatch)
     with respx.mock:

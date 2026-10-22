@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
 import time
 
 import httpx
@@ -18,8 +19,14 @@ from ablit.watchdog.ablit_watchdog import Config, reserve
 
 CONSOLE = "https://cloud.vast.ai/instances/"
 KEYS = "https://cloud.vast.ai/manage-keys/"
-CONSOLES = {"vast": CONSOLE, "runpod": "https://console.runpod.io/pods"}
-DISPLAY = {"vast": "Vast", "runpod": "RunPod"}
+CONSOLES = {"vast": CONSOLE, "runpod": "https://console.runpod.io/pods", "clore": "https://clore.ai/"}
+DISPLAY = {"vast": "Vast", "runpod": "RunPod", "clore": "Clore"}
+LISTS = {"vast": "Instances are still in the user's instance list.",
+         "runpod": "Pods are still in the user's pod list.",
+         "clore": "Orders are still in the user's order list."}
+UNRECOVERED = {"vast": "Create was sent but no ID has been recovered. Check the run label in the console.",
+               "clore": "Create was sent but no order ID has been recovered. Clore orders carry no label, so check "
+                        "My Orders in the Clore console for an order on the rented server."}
 
 
 def reason(error: Exception) -> str:
@@ -107,7 +114,7 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
                                      "detail": run_redactor(record, creds)(f"{reason}: {failed.get('detail', '')}")[:500]}
             if "ready" in probe:
                 record["ready"] = True
-        except (RunError, OSError, ValueError, httpx.HTTPError):
+        except (RunError, OSError, ValueError, httpx.HTTPError, subprocess.SubprocessError):
             record["ssh_check"] = "unavailable"
     rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
     elapsed = max(time.time() - record["started_at"], 0) / 3600
@@ -124,7 +131,7 @@ def local_stop_needed(record: dict, now: float) -> bool:
     if record["marketplace_state"] == "absent":
         return False
     last = record.get("heartbeat", {}).get("at", record["started_at"])
-    # A backend with no scoped on-box key (RunPod) cannot rely on the watchdog to stop the run,
+    # A backend with no scoped on-box key (RunPod, Clore) cannot rely on the watchdog to stop the run,
     # so the local check runs whatever the heartbeat age is.
     stale = now - last > 180 or bool(record.get("local_cap_primary"))
     cfg = Config(record["started_at"], record["offer"]["hourly_all_in"],
@@ -165,13 +172,11 @@ def down(store, record: dict, driver, creds) -> int:
         record["last_marketplace_check"] = evidence.checked_at
         record["still_billable"] = evidence.still_billable
         if evidence.still_billable:
-            errors.append("Instances are still in the user's instance list." if backend == "vast"
-                          else "Pods are still in the user's pod list.")
+            errors.append(LISTS.get(backend, LISTS["runpod"]))
         elif not record.get("resource_ids") and record.get("create_sent") and not record.get("create_rejected"):
             # An empty list after an ambiguous create does not prove that an
             # accepted create cannot appear later. Vast documents no upper bound.
-            errors.append("Create was sent but no ID has been recovered. Check the run label in the console."
-                          if backend == "vast" else
+            errors.append(UNRECOVERED.get(backend) or
                           f"Create was sent but no ID has been recovered. Check for a pod named ablit-{run_id} in the console.")
         else:
             record["state"] = "resources_terminated"

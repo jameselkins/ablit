@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 import shlex
+import signal
 import socket
 import subprocess
 import time
@@ -47,6 +49,20 @@ print(json.dumps(result))
 '''
 
 
+def _kill_group(proc) -> None:
+    """Kill ssh and anything it started, then reap it without waiting on open pipes."""
+    with contextlib.suppress(OSError):
+        os.killpg(proc.pid, signal.SIGKILL)
+    with contextlib.suppress(OSError):
+        proc.kill()
+    for pipe in (proc.stdin, proc.stdout, proc.stderr):
+        with contextlib.suppress(OSError, ValueError):
+            if pipe:
+                pipe.close()
+    with contextlib.suppress(subprocess.SubprocessError):
+        proc.wait(timeout=5)
+
+
 class SSH:
     def __init__(self, store, record):
         self.store, self.record = store, record
@@ -75,10 +91,27 @@ class SSH:
                 "-o", "GlobalKnownHostsFile=/dev/null", f"root@{host}"]
 
     def run(self, command: str, data: bytes | None = None, timeout=30) -> bytes:
-        result = subprocess.run([*self.args(), command], input=data, capture_output=True, timeout=timeout)
-        if result.returncode:
+        """Run one remote command. A timeout or a failure to start ssh is a RunError, like a failed command.
+
+        ssh starts in its own process group. On a timeout the whole group is killed, so a
+        helper process that still holds the output pipes cannot keep this call waiting.
+        """
+        try:
+            proc = subprocess.Popen([*self.args(), command], stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        except OSError as error:
+            raise RunError(f"SSH could not start ({error.__class__.__name__}).") from error
+        try:
+            stdout, _ = proc.communicate(data, timeout=timeout)
+        except subprocess.TimeoutExpired as error:
+            _kill_group(proc)
+            raise RunError(f"SSH did not answer within {timeout} seconds.") from error
+        except BaseException:
+            _kill_group(proc)
+            raise
+        if proc.returncode:
             raise RunError("SSH failed. Check the saved host key and the marketplace connection details.")
-        return result.stdout
+        return stdout
 
     def upload(self, archive: bytes) -> None:
         self.run("umask 077; mkdir -p /ablit/logs /ablit/stages /ablit/engine /models; tar -xf - -C /ablit", archive, timeout=60)

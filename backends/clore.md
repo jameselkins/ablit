@@ -1,6 +1,6 @@
 # Clore notes
 
-The Clore driver is `cli/ablit/backends/clore.py`. It can search the marketplace, and it has calls to rent, watch, cancel and check an order. **Renting is untested on a rented machine.** Nobody has made an order with it, so every rental call below follows Clore's documentation and a synthetic test, and nothing more. `ablit up` still supports Vast only and does not call the Clore rental code.
+The Clore driver is `cli/ablit/backends/clore.py`. It can search the marketplace, and it has calls to rent, watch, cancel and check an order. **Renting is untested on a rented machine.** Nobody has made an order with it, so every rental call below follows Clore's documentation and a synthetic test, and nothing more. `ablit up --backends clore` calls this code, and Clore is in the default list when a Clore key exists. The driver's `rent` flag stays off until a paid test passes.
 
 Every call below was read from Clore's own documentation. Where the documentation is silent, this page says so under "Gaps in the documentation", and the driver refuses what it cannot confirm.
 
@@ -88,8 +88,31 @@ These are things the documentation does not say. The driver either refuses them,
 18. No bandwidth charge is documented, so the driver sets it to zero.
 19. NVIDIA's compute capability list page is built by script, so `clore_gpus.py` names the pages it follows and notes that most entries were not re-read on 2026-10-21.
 
+## Wiring into `ablit up`
+
+- Backend choice. `--backends clore` is accepted. With no flag, Clore joins the search when `CLORE_API_KEY` or a saved key exists, as RunPod does. With no Vast key, only the backends that have a key are searched.
+- Each run saves its `backend`, and `status`, `down`, `tunnel` and `logs` pick the driver from it.
+- The quote adds the Clore note in `cli/ablit/notices.py`, and the run record sets `local_cap_primary`, so the local check ignores the heartbeat age.
+- The 20 minute start deadline, exit 6 (ended with no endpoint, cleanup confirmed) and exit 7 (cleanup not confirmed) are shared with the other backends. `status` shows the saved record, without a call, when another command holds the run lock.
+- A server that lacks a field ablit needs (a key that is missing or null) is left out of `plan` and counted in the search note as "servers missing a field ablit needs". A field with the wrong type still stops the search.
+- The on-box watchdog has no Clore key and makes no call. It cannot cancel the order.
+
+## SSH on Clore
+
+Checked on 2026-10-22.
+
+- Key login is documented. `create_order` takes `ssh_key` (up to 3072 characters, limited character set), and the user is `root`. https://docs.clore.ai/for-hosts/api and https://docs.clore.ai/for-renters/how-to-connect
+- `ports` `{"22": "tcp"}` forwards the SSH port. `my_orders` returns `pub_cluster` (hosts) and `tcp_ports` (for example `22:10000`). https://docs.clore.ai/for-hosts/api
+- `autossh_entrypoint` is described as Clore's entrypoint that deploys an SSH server and a custom `/root/onstart.sh`. https://docs.clore.ai/for-hosts/api
+- Local port forwarding (`ssh -L`) is documented for rentals. https://docs.clore.ai/for-renters/how-to-connect
+- Host key trust is ablit's own: first use is accepted and saved per run, and a change is refused. Clore documents no host key. The how-to-connect page mentions only removing an old key with `ssh-keygen -R` when a host key changes.
+- UNVERIFIED: that the engine images (llama.cpp CUDA, Xolotl) run an SSH server under `autossh_entrypoint`, and that the key reaches `/root/.ssh/authorized_keys` with usable modes. The start script repairs modes for two minutes, as on Vast.
+- UNVERIFIED: that the server allows TCP forwarding inside the container. The documentation shows `ssh -L` but not for an arbitrary image.
+- UNVERIFIED: that the host in `pub_cluster` is the one that serves the forwarded port. The driver uses the first entry.
+- UNVERIFIED: that a server lists a public SSH port at all. The marketplace documents no field about SSH or ports (https://docs.clore.ai/for-hosts/api), so `plan` cannot drop an unreachable server. A run that has no SSH port at the start deadline is cancelled, and its server goes on the local deny list so the next `plan` drops it.
+- The Clore quick start page reads the SSH address from `order["connection"]["ssh"]` and uses `ssh_password`, not `ssh_key`. https://docs.clore.ai/dev/getting-started/quick-start That field is not in the API reference, and the driver does not use it. UNVERIFIED which of the two is current.
+
 ## Not yet done
 
-- A paid round trip. Until one works, the `rent` capability stays off and `ablit up` does not use this driver.
-- Wiring Clore into `ablit up`, `status`, `down` and the watchdog, which are Vast-specific today.
+- A paid round trip. Until one works, the `rent` capability stays off.
 - Payment in CLORE, and spot orders.
