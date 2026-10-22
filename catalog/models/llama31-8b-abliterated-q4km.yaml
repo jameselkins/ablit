@@ -32,6 +32,7 @@ sources:
   - https://huggingface.co/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF/blob/9a44c6b2a6e355dfd5beea6f5d5ad47412b632da/README.md
 tests:
   - {backend: vast, date: "2026-10-21", log: boot-tests/llama31-8b-abliterated-q4km-2026-10-21.md}
+  - {backend: runpod, date: "2026-10-22", log: boot-tests/llama31-8b-abliterated-q4km-runpod-2026-10-22.md}
 status: boot-tested
 notes:
   - Booted on one RTX 3060 with 12 GB on Vast on 2026-10-21. The 8 GB floor itself is derived from the file size and key-value cache arithmetic, and no 8 GB GPU has been tried.

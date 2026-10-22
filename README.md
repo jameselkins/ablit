@@ -4,7 +4,7 @@ ablit is a command-line tool that finds the cheapest rented GPU machine that can
 
 It is for people who want to run an open-weight language model, such as an abliterated model (a model edited to remove its refusals), on a rented GPU without comparing marketplaces and engine settings by hand. ablit runs on your computer, so your marketplace key stays with you, and it runs no service, holds no money and relays no inference traffic.
 
-Status: alpha. Two catalog entries are boot-tested on Vast: `llama31-8b-abliterated-q4km` on llama.cpp and `ds41-september-gsq-uncensored` on Xolotl. The other entries have been planned but never booted. RunPod can be searched and rented, and RunPod renting has not been tested on a rented machine. The Status section below lists exactly what has been tested.
+Status: alpha. Two catalog entries are boot-tested on Vast: `llama31-8b-abliterated-q4km` on llama.cpp and `ds41-september-gsq-uncensored` on Xolotl. The other entries have been planned but never booted. The 8B entry also ran on RunPod Secure Cloud. The Status section below lists exactly what has been tested.
 
 ## Quickstart
 
@@ -65,7 +65,7 @@ All paid tests so far ran on Vast.
 - Tested on a rented machine: the September Xolotl entry did the same on a 98 GB GPU. It downloaded 372 GB at 4.1 to 4.8 Gbps, was ready 17 minutes after the rental started, and generated about 47 tokens per second. The 24 GB GPU floor is not tested yet.
 - Tested in separate paid runs: the watchdog on the machine destroyed a run at its cap, and ablit recovered a run whose create response was lost.
 - Not tested on a rented machine: vLLM, the 1017 Xolotl entry, spot (interruptible) machines, and public endpoints. `ablit up` refuses the vLLM entries.
-- RunPod: search works, and renting was added but has not been tested on a rented machine. Clore: search works, and its renting code is untested and not connected to `ablit up`.
+- RunPod: the 8B entry rented a Secure Cloud pod, served through the tunnel, and stopped billing with `ablit down` on 2026-10-22. A Community Cloud pod never got a direct SSH address, so use `--trust verified` on RunPod for now. RunPod has no scoped keys, so its spend cap is enforced only by ablit on your computer. Clore: search works, and its renting code is untested and not connected to `ablit up`.
 - Both tested entries are marked `boot-tested` in the catalog, with their records in `catalog/boot-tests/`.
 
 ## Install
@@ -115,7 +115,7 @@ A runtime, or engine, is the server program that loads the model on the rented m
 
 Xolotl boot test result: on 2026-10-21 the September entry ran on one RTX PRO 6000 (98 GB) on Vast. It downloaded 372 GB in about 11 minutes, read the Engram tables in place, and answered at about 47 tokens per second end to end. The record is in `catalog/boot-tests/`.
 
-`ablit plan` works for every entry, whatever its runtime. `ablit up` is built for llama.cpp and Xolotl entries on Vast and RunPod. Both tested entries ran on Vast, and nothing has run on RunPod yet.
+`ablit plan` works for every entry, whatever its runtime. `ablit up` is built for llama.cpp and Xolotl entries on Vast and RunPod. Both tested entries ran on Vast, and the 8B entry also ran on RunPod Secure Cloud.
 
 ## Catalog
 
