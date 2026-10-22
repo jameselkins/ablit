@@ -487,7 +487,7 @@ def test_a_new_instance_without_a_status_is_not_destroyed(monkeypatch):
     monkeypatch.setattr(commands, "SSH", NotReady)
     def interrupt(seconds): raise KeyboardInterrupt
     monkeypatch.setattr(commands.time, "sleep", interrupt)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
+    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
 
 
 def test_a_refused_watchdog_key_cleans_up_without_a_lost_key_warning(monkeypatch):
@@ -539,7 +539,7 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
     monkeypatch.setattr(commands, "refresh", refreshed)
     monkeypatch.setattr(commands, "down", lambda *args: pytest.fail("a short outage must not destroy the run"))
     monkeypatch.setattr(commands.time, "sleep", lambda seconds: None)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
+    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
 
 

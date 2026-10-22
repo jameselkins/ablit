@@ -78,6 +78,8 @@ def availability(req: HardwareRequest, opts: PlanOptions) -> Check:
             return "interruptible offer and --spot is off"
         if not offer.rentable:
             return "not rentable"
+        if not offer.ssh_reachable:
+            return "Community Cloud pods may have no public IP for SSH"
         if offer.remaining_hours is not None and offer.remaining_hours < req.startup_hours + opts.hours:
             return "rental ends too soon"
         return None

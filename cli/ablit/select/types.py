@@ -45,6 +45,8 @@ class Offer:
     allocated_disk_gb: float | None = None
     gpu_fraction: float = 1.0
     host_id: str | None = None
+    # False when the marketplace may place the rental on a machine that cannot be reached over SSH.
+    ssh_reachable: bool = True
 
 
 @dataclass(frozen=True)

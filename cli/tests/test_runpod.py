@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 import httpx
 import pytest
 import respx
@@ -256,3 +258,31 @@ def test_every_table_entry_has_a_sane_capability():
 
     assert all(7.0 <= value <= 12.1 for value in COMPUTE_CAPABILITY_BY_RUNPOD_ID.values())
     assert NVIDIA_LIST_URLS[0] == "https://developer.nvidia.com/cuda-gpus"
+
+
+def test_only_secure_cloud_offers_are_reachable_over_ssh():
+    fake = FakeRunPod([runpod_type(price=1.0)], [runpod_type(price=1.5)])
+    backend, router = backend_for(fake)
+    with router:
+        found = backend.search(REQ, None, OPTS)
+    reachable = {parse_offer_id(o.offer_id)[2]: o.ssh_reachable for o in found.offers}
+    assert reachable == {"any": False, "secure": True}
+
+
+def test_a_community_offer_stays_in_the_plan_with_a_drop_reason():
+    from ablit.select import apply_filter_chain
+
+    fake = FakeRunPod([runpod_type(price=1.0)], [runpod_type(price=1.5)])
+    backend, router = backend_for(fake)
+    with router:
+        found = backend.search(REQ, None, OPTS)
+    # Give the offers enough hardware that only the SSH rule can remove one.
+    roomy = [
+        dataclasses.replace(o, gpu_vram_gb_each=200, compute_capability=9.0, host_ram_gb=1000, disk_gb=1000)
+        for o in found.offers
+    ]
+    result = apply_filter_chain(roomy, REQ, OPTS)
+    assert [parse_offer_id(o.offer_id)[2] for o in result.kept] == ["secure"]
+    assert "any" not in [parse_offer_id(o.offer_id)[2] for o in result.kept]
+    reasons = {r for step in result.steps for r in step.reasons}
+    assert "Community Cloud pods may have no public IP for SSH" in reasons

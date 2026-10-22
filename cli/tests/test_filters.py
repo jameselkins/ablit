@@ -107,3 +107,10 @@ def test_min_download_flag_overrides_the_profile_floor():
     offers = [make_offer("a", download_mbps=800)]
     assert apply_filter_chain(offers, REQ, OPTS).kept
     assert not apply_filter_chain(offers, REQ, PlanOptions(min_download_mbps=1000)).kept
+
+
+def test_an_offer_that_may_have_no_public_ip_is_dropped_with_a_reason():
+    result = apply_filter_chain([make_offer("a", ssh_reachable=False), make_offer("b")], REQ, OPTS)
+    assert [o.offer_id for o in result.kept] == ["b"]
+    reasons = {r for step in result.steps for r in step.reasons}
+    assert "Community Cloud pods may have no public IP for SSH" in reasons
