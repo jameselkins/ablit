@@ -37,7 +37,7 @@ DeepSeek-V4.1-Flash has 552B parameters, so the usual way to run it is a node wi
 
 [Xolotl](https://github.com/Indras-Mirror/Xolotl) is a research engine by one developer that runs the model on one consumer GPU with about 90 GB of RAM. The model is a mixture of experts, so each token uses only a few of its experts. Xolotl keeps the most used experts in GPU memory and the rest in RAM and on disk, and it loads the others when a token needs them. Its quant files load only in Xolotl.
 
-Xolotl fits when you want the large DeepSeek model and an 8-GPU node is too expensive or not available, and when about 30 to 50 tokens per second for one user is enough. It does not fit a service with many users, because one engine handles one request at a time at the pinned commit. The engine is new, it has one main author, and its speed figures come from a few machines, so treat it as research code.
+Xolotl fits when you want the large DeepSeek model and an 8-GPU node is too expensive or not available, and when about 30 to 50 tokens per second for one user is enough. It does not fit a service with many users. The pinned engine commit has batch slots that let one engine serve several requests at once, but ablit leaves them off, because each slot uses more GPU memory and ablit has not tested them. The engine is new, it has one main author, and its speed figures come from a few machines, so treat it as research code.
 
 ## Quickstart
 
@@ -89,7 +89,7 @@ The cap counts compute, disk, the model download and transfer charges. If the ca
 |---|---|
 | `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Vast on 2026-10-21 (about 65 tokens per second) and on RunPod Secure Cloud on 2026-10-22 (about 40 tokens per second) |
 | `ds41-september-gsq-uncensored` on Xolotl | Yes, on Vast on 2026-10-21, on a 98 GB card |
-| `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22, on a 32 GB RTX 5090 |
+| `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22 on a 32 GB RTX 5090 (about 33 tokens per second), and on 2026-10-23 with the newer engine pin on a 98 GB card (about 52 tokens per second) |
 | The watchdog destroying a run at its cap, and recovery of a lost create response | Yes, on Vast on 2026-10-21 |
 | vLLM entries, spot machines, public endpoints, Clore rentals | No |
 

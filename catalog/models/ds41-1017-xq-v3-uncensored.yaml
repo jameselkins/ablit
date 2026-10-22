@@ -61,6 +61,7 @@ sources:
   - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
 tests:
   - {backend: vast, date: "2026-10-22", log: boot-tests/ds41-1017-xq-v3-uncensored-2026-10-22.md}
+  - {backend: vast, date: "2026-10-23", log: boot-tests/ds41-1017-xq-v3-uncensored-2026-10-22.md}
 status: boot-tested
 notes:
   - The entry booted and served on Vast on 2026-10-22, on a 32 GB RTX 5090. The 24 GB GPU floor is not yet tested. It comes from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
