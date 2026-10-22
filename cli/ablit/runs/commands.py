@@ -87,8 +87,8 @@ def make_intent(store, entry, offer, report, args, lock) -> dict:
         "started_at": time.time(), "resource_ids": [], "create_sent": False,
         "min_download_mbps": args.min_download or entry.profile.min_download_mbps,
         "report_requested": getattr(args, "report", False),
-        # RunPod has no key limited to one pod, so the local cap check does not wait for a stale heartbeat.
-        "local_cap_primary": offer.backend == "runpod",
+        # RunPod and Clore have no key limited to one machine, so the local cap check does not wait for a stale heartbeat.
+        "local_cap_primary": offer.backend in LOCAL_CAP_BACKENDS,
         "transfer_estimate_usd": offer.bandwidth_cost_per_gb * (report.req.download_gb + report.req.image_gb),
     }
     store.save(record)
@@ -191,6 +191,9 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     print(f"{run_id}: the marketplace did not start the machine in time "
                           f"(state {record['marketplace_state']!r} after {START_DEADLINE_SECONDS // 60} minutes). "
                           "Destroying the run.", flush=True)
+                    if record.get("backend") == "clore" and record.get("host_id") and not record.get("ssh_host"):
+                        # Clore listed no public SSH port for this server, so it cannot be reached. Skip it next time.
+                        store.deny(record["host_id"], "Clore listed no SSH port before the start deadline")
                     code = down(store, record, driver, creds)
                     return code or 6
                 if record.get("failure"):
@@ -309,7 +312,9 @@ def entry_from_record(record):
     return Entry(**record["entry"])
 
 
-RENTABLE = ("runpod", "vast")
+RENTABLE = ("clore", "runpod", "vast")
+# Backends with no key limited to one machine. The local cap check carries the cap on these.
+LOCAL_CAP_BACKENDS = ("clore", "runpod")
 
 
 def has_key(backend: str, environ) -> bool:
@@ -323,25 +328,24 @@ def has_key(backend: str, environ) -> bool:
 def choose_backends(args, environ) -> list[str]:
     """Return the backends a paid `up` searches.
 
-    With no `--backends`, ablit searches Vast as it always has, and also RunPod when a
-    RunPod key exists. A RunPod key with no Vast key searches RunPod alone.
+    With no `--backends`, ablit searches Vast as it always has, and also RunPod and Clore
+    when a key for them exists. Keys for RunPod or Clore with no Vast key search those alone.
     """
     wanted = [n.strip() for n in (args.backends or "").split(",") if n.strip()]
     if args.backends and (not wanted or any(n not in RENTABLE for n in wanted)):
-        raise RunError("Paid launches support only --backends vast, runpod, or vast,runpod.")
+        raise RunError("Paid launches support only --backends vast, runpod, clore, or a comma-separated mix of them.")
     if wanted:
         return sorted(set(wanted))
     names = ["vast"]
-    if has_key("runpod", environ):
-        names.append("runpod")
-        if not has_key("vast", environ):
-            names = ["runpod"]
+    others = [n for n in ("runpod", "clore") if has_key(n, environ)]
+    if others:
+        names = names + others if has_key("vast", environ) else others
     return names
 
 
 def _up(args, entry, opts, driver, environ, store, drivers=None):
     if entry.profile.engine not in engines.LAUNCHABLE_ENGINES or args.endpoint != "tunnel":
-        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast and RunPod through an SSH tunnel.")
+        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast, RunPod and Clore through an SSH tunnel.")
     drivers = drivers or {"vast": driver}
     names = choose_backends(args, environ)
     missing = [n for n in names if n not in drivers]
@@ -426,6 +430,7 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
                     store.save(record)
                     record["ssh_key_id"] = use_driver.register_ssh_key(public, use_creds)
                     store.save(record)
+                # Clore runs this as the order's `command`, with its own entrypoint providing sshd. UNVERIFIED.
                 boot = BootSpec(record["image"], RUNPOD_START if offer.backend == "runpod" else ONSTART,
                                 math.ceil(offer.allocated_disk_gb), ssh_public_key=public)
                 try:

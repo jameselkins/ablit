@@ -11,13 +11,19 @@ unattended.
 
 # Added to the spend cap notice when the chosen offer is on a marketplace that has no key limited
 # to one machine. The machine then cannot be trusted to destroy itself, so the check that runs on
-# this computer carries the cap. Source: backends/runpod.md.
+# this computer carries the cap. Sources: backends/runpod.md and backends/clore.md.
 LOCAL_CAP_NOTES = {
     "runpod": (
         "On RunPod, ablit cannot create a key that is limited to one machine, so the machine does not "
         "get one. The cap on this machine relies on the check that runs on this computer. The machine "
         "also tries to destroy itself with the key RunPod puts in it, and that has not been tested. "
         "Keep in your RunPod account only an amount you are willing to spend."
+    ),
+    "clore": (
+        "On Clore, a key cannot be limited to one machine, so the machine does not get one and cannot "
+        "cancel its own order. The cap on this machine relies on the check that runs on this computer. "
+        "If this computer is off or asleep, nothing cancels the order. Clore ends an order only when "
+        "the account balance runs out. Keep in your Clore account only an amount you are willing to spend."
     ),
 }
 
