@@ -155,7 +155,13 @@ def monitor(store, record, driver, creds, *, want_ready=False):
             with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
                 record = store.load(run_id)
                 if record["state"] == "billing_stopped_confirmed":
-                    return 8 if record.get("stop_reason") == "watchdog_cap" else 0
+                    if record.get("stop_reason") == "watchdog_cap":
+                        return 8
+                    if want_ready and tunnel is None:
+                        # Another command stopped the run before it had an endpoint.
+                        print(f"{run_id}: the run was stopped before the engine was ready.", flush=True)
+                        return 6
+                    return 0
                 try:
                     refresh(store, record, driver, creds)
                     failures = 0
@@ -266,7 +272,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     raise RunError("The tunnel closed. Billing continues. Re-run tunnel or down.")
     except KeyboardInterrupt:
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
-        return 0
+        # Leaving before there is an endpoint is not a success. Billing is not confirmed stopped.
+        return 7 if want_ready and tunnel is None else 0
     except (BackendError, RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError) as error:
         print(f"{run_id}: stopping the run because of {reason(error)}", flush=True)
         save_remote_logs(store, store.load(run_id), creds)

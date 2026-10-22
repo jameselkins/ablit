@@ -17,7 +17,7 @@ These commands spend nothing:
 
 `ablit up` rents a machine and costs money. In a terminal it asks the user to type `rent`. An agent passes `--yes` to approve the quote without the prompt.
 
-`ablit up` rents on Vast and RunPod. With no `--backends`, it searches Vast, and also RunPod when `RUNPOD_API_KEY` or a saved RunPod key exists, and it rents where the chosen offer is. Pass `--backends runpod` to rent on RunPod only. RunPod renting is untested on a rented machine. When the chosen offer is on RunPod, the quote adds a note that the spend cap relies on the check that runs on this computer, so tell the user before they rent. The Clore driver searches and has rental calls, but they are untested, and `up` does not use them yet. `ablit setup runpod` and `ablit setup clore` save a key.
+`ablit up` rents on Vast and RunPod. With no `--backends`, it searches Vast, and also RunPod when `RUNPOD_API_KEY` or a saved RunPod key exists, and it rents where the chosen offer is. Pass `--backends runpod` to rent on RunPod only. RunPod renting is untested on a rented machine. It uses Secure Cloud offers only, because Community Cloud pods may have no public IP for SSH. `plan` shows the Community offers with that drop reason. When the chosen offer is on RunPod, the quote adds a note that the spend cap relies on the check that runs on this computer, so tell the user before they rent. The Clore driver searches and has rental calls, but they are untested, and `up` does not use them yet. `ablit setup runpod` and `ablit setup clore` save a key.
 
 Every paid `up` needs `--max-spend <USD>`, and the watchdog destroys the run when spend reaches it. `--yes` skips only the prompt. ablit still refuses a cap too small to cover setup and ten minutes of use (exit 5), and it cancels if the price changes between the quote and the rental (exit 5). Add `--untested` for an entry whose status is `unverified`.
 
@@ -47,8 +47,8 @@ Messages and errors go to standard error as plain sentences.
 | 3 | Model not supported, or no offer qualified |
 | 4 | Missing or rejected credentials |
 | 5 | Quote incomplete, or the cap can't cover setup and 10 minutes of use |
-| 6 | Bootstrap, speed check or health check failed |
-| 7 | Cleanup pending, or billing stop not confirmed. Run `ablit down` again. |
+| 6 | Bootstrap, speed check or health check failed, the start deadline passed, or the run was stopped before the engine was ready |
+| 7 | Cleanup pending, or billing stop not confirmed (including Ctrl-C before the endpoint is ready). Run `ablit down` again. |
 | 8 | Cap reached, and the watchdog destroyed the run |
 | 9 | The marketplace rejected the workload. ablit cleans up and doesn't retry elsewhere. |
 

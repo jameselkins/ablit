@@ -201,6 +201,8 @@ def offers_from_data(
                 download_mbps=None,
                 rentable=stock is not None,
                 verified=tier == TIER_SECURE,
+                # The v2 create request cannot ask for a machine with a public IP. See backends/runpod.md.
+                ssh_reachable=tier == TIER_SECURE,
                 allocated_disk_gb=float(disk_gb),
             )
         )

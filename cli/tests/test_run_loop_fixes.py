@@ -83,7 +83,7 @@ def test_a_machine_still_loading_inside_the_deadline_is_left_alone(monkeypatch):
     monkeypatch.setattr(commands, "refresh", refresh)
     monkeypatch.setattr(commands, "down", lambda *a: pytest.fail("inside the deadline"))
     monkeypatch.setattr(commands.time, "sleep", lambda seconds: (_ for _ in ()).throw(KeyboardInterrupt))
-    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 0
+    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 7
 
 
 def test_tunnel_on_a_creating_run_says_how_to_resume(monkeypatch, capsys):
@@ -93,3 +93,64 @@ def test_tunnel_on_a_creating_run_says_how_to_resume(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "The run is still starting. Run the same `ablit up` command again with the same --max-spend" in err
     assert "Resume up" not in err
+
+
+class StubDriver:
+    """A driver whose cleanup works, or fails when `fail` is set."""
+
+    def __init__(self, fail=False):
+        self.fail = fail
+
+    def reconcile(self, run_id, creds):
+        from types import SimpleNamespace
+        return SimpleNamespace(resource_ids=["7201"])
+
+    def destroy(self, inventory, creds):
+        if self.fail:
+            from ablit.backends.errors import RequestRejected
+            raise RequestRejected("vast", 500, "down")
+
+    def verify_billing_stopped(self, inventory, creds):
+        from ablit.backends.base import BillingEvidence
+        return BillingEvidence(time.time(), [])
+
+
+def never_starts(monkeypatch):
+    store, run = prepared(monkeypatch, started_at=time.time() - commands.START_DEADLINE_SECONDS - 60,
+                          watchdog_key_id=None, watchdog_key_sent=False)
+
+    def refresh(store_, record, driver, creds):
+        record.update(marketplace_state="starting", spend_estimate_usd=0.01)
+        store_.save(record)
+
+    monkeypatch.setattr(commands, "refresh", refresh)
+    return store, run
+
+
+def test_start_deadline_with_confirmed_cleanup_exits_6(monkeypatch):
+    store, run = never_starts(monkeypatch)
+    assert commands.monitor(store, run, StubDriver(), CREDS, want_ready=True) == 6
+    assert store.load(run["run_id"])["state"] == "billing_stopped_confirmed"
+
+
+def test_start_deadline_with_unconfirmed_cleanup_exits_7(monkeypatch):
+    store, run = never_starts(monkeypatch)
+    assert commands.monitor(store, run, StubDriver(fail=True), CREDS, want_ready=True) == 7
+
+
+def test_a_run_stopped_by_another_command_before_ready_exits_6(monkeypatch, capsys):
+    store, run = prepared(monkeypatch, state="billing_stopped_confirmed")
+    monkeypatch.setattr(commands, "refresh", lambda *a: pytest.fail("the run is already stopped"))
+    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 6
+    assert "stopped before the engine was ready" in capsys.readouterr().out
+
+
+def test_a_stopped_run_is_still_a_clean_exit_for_tunnel_and_status(monkeypatch):
+    store, run = prepared(monkeypatch, state="billing_stopped_confirmed")
+    assert commands.monitor(store, run, None, CREDS) == 0
+
+
+def test_ctrl_c_before_the_endpoint_is_ready_does_not_exit_0(monkeypatch):
+    store, run = prepared(monkeypatch, started_at=time.time(), marketplace_state="starting")
+    monkeypatch.setattr(commands, "refresh", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt))
+    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 7
