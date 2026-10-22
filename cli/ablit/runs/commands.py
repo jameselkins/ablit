@@ -51,6 +51,9 @@ MONITOR_LOCK_WAIT_SECONDS = 10
 # "loading" while it pulls the image, and one instance stayed there for over 32 minutes. After this
 # many seconds ablit destroys the run. Documented in BUILD.md.
 START_DEADLINE_SECONDS = 20 * 60
+# How long the machine may be "running" before ablit has uploaded the bootstrap. Vast bills from
+# "running", and sshd normally answers within a minute or two, so five minutes is a generous
+# margin. The clock does not depend on an SSH call returning or raising.
 SSH_GRACE_SECONDS = 300
 # An attached `up` holds the run lock for one poll, which SSH timeouts can stretch.
 LOCK_WAIT_SECONDS = 90
@@ -208,6 +211,22 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     store.save(record)
                     code = down(store, record, driver, creds)
                     return code or 6
+                if want_ready and not uploaded and not record.get("ready") and not record.get("stages"):
+                    now = time.time()
+                    if record["marketplace_state"] == "running":
+                        running_since = running_since or now
+                        waited = int(now - running_since)
+                        if waited > SSH_GRACE_SECONDS:
+                            print(f"{run_id}: SSH did not answer in {SSH_GRACE_SECONDS} seconds after the machine was running. "
+                                  "Destroying the run.", flush=True)
+                            if record.get("host_id"):
+                                store.deny(record["host_id"], "SSH did not answer after the machine was running")
+                            code = down(store, record, driver, creds)
+                            return code or 6
+                        print(f"{run_id}: waiting for SSH on the machine ({waited} s)", flush=True)
+                    else:
+                        print(f"{run_id}: waiting for the marketplace to start the machine "
+                              f"(state {record['marketplace_state']!r}, {int(now - record['started_at'])} s)", flush=True)
                 if want_ready and not uploaded and record.get("ssh_host"):
                     ssh = SSH(store, record)
                     try:
@@ -231,12 +250,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         ssh.start(config, key, watchdog)
                         uploaded = True
                     except RunError:
-                        # Billing runs once the instance is "running". If SSH still
-                        # fails five minutes later, the run cannot bootstrap.
-                        if record["marketplace_state"] == "running":
-                            running_since = running_since or time.time()
-                            if time.time() - running_since > SSH_GRACE_SECONDS:
-                                raise RunError("SSH to the running instance failed for five minutes.")
+                        # SSH may still be starting. The deadline above ends the wait.
+                        pass
                 if want_ready and not record.get("ready"):
                     request = record["quote"]["request"]
                     speed = record["offer"]["download_mbps"] or record["min_download_mbps"]
