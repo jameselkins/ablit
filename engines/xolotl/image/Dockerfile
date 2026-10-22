@@ -36,7 +36,7 @@ ARG CUDA_DEVEL_IMAGE=nvcr.io/nvidia/cuda:13.0.2-devel-ubuntu24.04@sha256:5dc1bca
 ARG CUDA_RUNTIME_IMAGE=nvcr.io/nvidia/cuda:13.0.2-runtime-ubuntu24.04@sha256:6a0e31b59e70890446f2c17356d6efc0d54260090a8c63d6ca7c2ad049db95d2
 
 # The Xolotl commit that ablit pins in engines/xolotl/lock.yaml.
-ARG XOLOTL_COMMIT=63fc34c6ea839d3e78e765b3e3aa72173116d352
+ARG XOLOTL_COMMIT=03be8a60d334212901d18708924a84e9d219b6dd
 # One entry per GPU generation: Turing, A100, RTX 30 and A-series, RTX 40 and L40,
 # H100, and RTX 50. See the README beside this file.
 ARG CUDA_ARCHITECTURES="75;80;86;89;90;120a"
@@ -108,7 +108,8 @@ RUN set -eu; \
     cp -a tools/v41/serve "$app/tools/v41/serve"; \
     rm -f "$app/tools/v41/serve/test_serve_ds41.py" "$app/tools/v41/serve/ds41-engine.sh" \
           "$app/tools/v41/serve/strata-ds41-quetza.wrapper" "$app/tools/v41/serve/export_tokenizer.py" \
-          "$app/tools/v41/serve/drive_engine.py" "$app/tools/v41/serve"/*-win.json; \
+          "$app/tools/v41/serve/drive_engine.py" "$app/tools/v41/serve/ds41-engine-llmserver.sh" \
+          "$app/tools/v41/serve"/*-win.json "$app/tools/v41/serve"/*-llmserver.json; \
     install -m 0755 /tmp/context/ds41-engine.sh "$app/bin/ds41-engine"; \
     install -m 0755 /tmp/context/smoke.sh "$app/smoke/smoke.sh"; \
     install -m 0644 /tmp/context/NOTICE "$app/licenses/NOTICE"; \

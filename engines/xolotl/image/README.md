@@ -29,7 +29,7 @@ CUDA 13.0.2 is the toolkit that the Xolotl author builds with. The author's setu
 
 Sources, all fetched at build time and checked against the expected commit:
 
-- Xolotl at `63fc34c6ea839d3e78e765b3e3aa72173116d352`, from `https://github.com/Indras-Mirror/Xolotl`.
+- Xolotl at `03be8a60d334212901d18708924a84e9d219b6dd`, from `https://github.com/Indras-Mirror/Xolotl`.
 - llama.cpp at `3cf03257f219afbe7334045ff7c6a06ac68c627d`. The Xolotl script `tools/xolotl/fetch-llama.sh` pins this commit and applies `tools/xolotl/ggml/xolotl-ggml.patch`. The Dockerfile stops if the script pins a different commit.
 
 CMake flags: `-DSTRATA_ENABLE_CUDA=ON -DSTRATA_GGML_CUDA=ON -DSTRATA_MMQ_KQUANTS=ON -DSTRATA_DSV41_FQ_OP=ON -DSTRATA_DSV41_HC_MIX=ON`, as in the Xolotl README. Four more are set for a shared image.
@@ -85,7 +85,7 @@ STRATA_API_KEY="$ABLIT_ENDPOINT_KEY" STRATA_TEXT_LOG=0 \
 The config file is JSON, written by the bootstrap script. The keys that matter are listed here. The sample files above show every key.
 
 - `exe` is `/opt/xolotl/bin/ds41-engine`. Do not use Xolotl's own `ds41-engine.sh`. It uses systemd-run and a lock file under the home directory, and a container has neither. The image does not include that script.
-- `args` is the engine argument list. It holds `-m <gguf>`, `--backend cuda`, `--experts gpu`, `--engram <dir>[:<dir>]`, `--rank <rank file>`, `--ctx`, `--arena-gib`, `--kv-fp4`, `--route-bias` and `--prompt-batch`, with the values from the model card and the sample config.
+- `args` is the engine argument list. It holds `-m <gguf>`, `--backend cuda`, `--experts gpu`, `--engram <dir>[:<dir>]`, `--rank <rank file>`, `--ctx`, `--arena-gib`, `--kv-fp4`, `--route-bias`, `--prompt-batch` and `--conversation-cache-mib`, with the values from the model card and the sample config.
 - `cwd` is `/opt/xolotl`.
 - `tokenizer` is a directory with `vocab.json`, `merges.txt`, `token_type.json` and `chat_template.jinja`.
 - `model_name` is the name the endpoint reports, which ablit sets from `ABLIT_SERVED_NAME`.
@@ -184,13 +184,16 @@ The model weights are not in the image. Their licenses are covered by the catalo
 
 ## Does the pinned commit serve both catalog entries
 
-The pin `63fc34c6ea839d3e78e765b3e3aa72173116d352` (dated 2026-10-20) should serve both `ds41-september-gsq-uncensored` and `ds41-1017-xq-v3-uncensored`, but nobody has booted it, so this is unverified until the first run on a rented machine.
+The pin `03be8a60d334212901d18708924a84e9d219b6dd` (Indras-Mirror/Xolotl main on 2026-10-22) replaces `63fc34c6ea839d3e78e765b3e3aa72173116d352` (2026-10-20). The older pin booted on Vast for both `ds41-september-gsq-uncensored` and `ds41-1017-xq-v3-uncensored` on 2026-10-21 and 2026-10-22. The new pin has not been booted, so it is unverified until the first run on a rented machine.
 
-- Both model cards were last updated on 2026-10-19, before the pin, and both use the same per-expert formats (PTQ1_0, Q2_0 and Q3_K) and the same build flags.
-- The pin already contains `strata-ds41-1017.json`, which is the sample config for the 1017 build, and the DSpark sidecar support.
-- The Xolotl branch is now 104 commits ahead of the pin (HEAD `b3452666`). The newer commits add batch slots, a conversation pool, multi-GPU layer split and sm_70 support. ablit needs none of them, so the pin stays.
+What changed between the two pins, as far as the image and the bootstrap script are concerned:
 
-Newer code is needed only if the first boot of one entry fails in a way the changelog explains. In that case, change the commit in `lock.yaml` and rebuild.
+- The files the Dockerfile copies are the same, except `serve/server.py` and `tools/v41/serve/serve_ds41.py`. The tokenizer and Engram scripts, `dsv41_encoding.py`, `ds41-engine.sh`, `requirements.txt`, `fetch-llama.sh`, the ggml patch and all licenses are unchanged, so the Python packages, the llama.cpp commit and the license table stay as they were.
+- `CMakeLists.txt` and `v41_engine.cmake` add engine source files, but the flags and the architecture list are the same. A new runtime check in `ds41_cuda_policy.cpp` turns off chunk MMQ on a card below compute capability 7.5, which does not affect 86, 89 or 120.
+- The server gained the config key `parallel` (batch slots), the nested config key `conversation_cache`, and a few vision keys. The bootstrap script uses none of them except as shown below.
+- The Engram direct read is the same code. Only the history handling for batch slots changed in `ds41_engram.cpp`, and the open errors that `bootstrap.sh` searches for are unchanged.
+- New options and their defaults in `ds41_generate.cpp`: `--conversation-cache-mib` defaults to 8192 (pinned host memory, taken as conversations are saved) and `--conversation-cache-slots` to 64. `--batch` (also `--batch-slots`) defaults to 1, which is off, so a batch slot costs nothing unless the config asks for it. `--kv-q8` and `--kv-type N` default to off, and the engine refuses to start with both `--kv-fp4` and `--kv-q8`. The bootstrap script keeps `--kv-fp4`.
+- The bootstrap script sets `--conversation-cache-mib` to 4096 by default, because the 60 GiB arena already takes most of a 90 GB host. Set `XOLOTL_CONVERSATION_CACHE_MIB=0` in the environment to turn the pool off, which matches the earlier pin.
 
 One finding the bootstrap author may want to test. At the pin, `Ds41Engram::open` already reads `model.safetensors.index.json` and its shards from the directories named in `--engram`. If so, `extract_engram.py` (which rewrites about 203 GB) can be skipped by pointing `--engram` at a directory that holds the two FP8 shards and the index file. This is untested, and the catalog does not list `model.safetensors.index.json` or `config.json` as files to download. If it fails, run `extract_engram.py SRC_DIR --to layers.1=DIR_A --to layers.14=DIR_B`, which takes the source directory and one `--to` per layer group. With no arguments it prints its usage and exits with code 2.
 

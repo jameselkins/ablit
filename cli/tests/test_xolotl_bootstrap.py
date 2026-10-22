@@ -402,6 +402,6 @@ def test_the_lock_still_gives_the_workflow_exactly_one_commit_line():
     commits = re.findall(r"^  commit: ([0-9a-f]{40})$", lock, re.M)
     assert len(commits) == 1
     assert re.search(r"^image: ghcr.io/jameselkins/ablit-xolotl$", lock, re.M)
-    assert re.search(r"^tag: 63fc34c$", lock, re.M)
+    assert re.search(r"^tag: 03be8a6$", lock, re.M)
     assert re.search(r"^digest: sha256:[a-f0-9]{64}$", lock, re.M)
     assert re.search(r"^cuda_architectures: \[86, 89, 120\]$", lock, re.M)

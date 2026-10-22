@@ -130,7 +130,7 @@ staging:                           # order of steps, used to compute peak disk
   - {step: join, inputs: [weight], output_bytes: ..., keeps_inputs_until_done: false, delete_inputs_after: true}
 profile:
   engine: xolotl
-  engine_lock: xolotl-63fc34c
+  engine_lock: xolotl-03be8a6
   gpu: {vendor: nvidia, count: 1, vram_gb_each: 24, compute_capability_min: 7.5}
   host_ram_gb: 90
   host_ram_gb_recommended: 256
@@ -327,7 +327,7 @@ The pre-extracted Engram tables in `kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-age
 |---|---|---|
 | vLLM | `vllm/vllm-openai`, pinned digest, version 0.31.0 or later | FP8 profile: the DeepSeek V4.1 recipe flags, including `--engram-config '{"cpu_offload":true}'`, `--tensor-parallel-size 8` and `VLLM_ENGINE_READY_TIMEOUT_S=3600`. The planner requires exactly 8 GPUs for it. Key via the `VLLM_API_KEY` environment variable. |
 | llama.cpp | `ghcr.io/ggml-org/llama.cpp` server CUDA image, pinned digest | `llama-server -m <file> --host 127.0.0.1 --port <port> --ctx-size 4096 --n-gpu-layers 99`, key via `LLAMA_API_KEY` |
-| Xolotl | `ghcr.io/jameselkins/ablit-xolotl`, tag `63fc34c` (the Xolotl commit), built with CUDA 13 for compute capability 8.6, 8.9 and 12.0 by `.github/workflows/xolotl-image.yml`, pinned by digest in `engines/xolotl/lock.yaml`. The image holds no model files and no compiler, so nothing is built on the rented machine. The package must be public before a rental, because Vast pulls without credentials. | Key via the `STRATA_API_KEY` environment variable. The template renders its own config with `/opt/xolotl` and `/models` paths, including the Q2_K draft file, and starts `serve_ds41.py` with the `strata` engine. The paths sit in one block at the top of `engines/xolotl/bootstrap.sh`. Untested on a rented machine. |
+| Xolotl | `ghcr.io/jameselkins/ablit-xolotl`, tag `03be8a6` (the Xolotl commit), built with CUDA 13 for compute capability 8.6, 8.9 and 12.0 by `.github/workflows/xolotl-image.yml`, pinned by digest in `engines/xolotl/lock.yaml`. The image holds no model files and no compiler, so nothing is built on the rented machine. The package must be public before a rental, because Vast pulls without credentials. | Key via the `STRATA_API_KEY` environment variable. The template renders its own config with `/opt/xolotl` and `/models` paths, including the Q2_K draft file, and starts `serve_ds41.py` with the `strata` engine. The paths sit in one block at the top of `engines/xolotl/bootstrap.sh`. Untested on a rented machine. |
 
 ## Endpoint
 

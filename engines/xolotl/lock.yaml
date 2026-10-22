@@ -1,19 +1,19 @@
-# Engine lock for Xolotl. A catalog entry points here with `engine_lock: xolotl-63fc34c`.
-name: xolotl-63fc34c
+# Engine lock for Xolotl. A catalog entry points here with `engine_lock: xolotl-03be8a6`.
+name: xolotl-03be8a6
 engine: xolotl
 source:
   repo: https://github.com/Indras-Mirror/Xolotl
-  commit: 63fc34c6ea839d3e78e765b3e3aa72173116d352
+  commit: 03be8a60d334212901d18708924a84e9d219b6dd
   cuda: "13"
 # The image is built from the commit above by .github/workflows/xolotl-image.yml
 # and holds the compiled engine, the server and their Python packages. It holds
 # no model weights. The tag is the short commit. Vast pulls the image without
 # credentials, so the package on ghcr.io must be public before a rental.
 image: ghcr.io/jameselkins/ablit-xolotl
-tag: 63fc34c
+tag: 03be8a6
 # The digest of the pushed image. ablit refuses to rent with a null digest, so a
 # digest must be pinned before first use, and a new build needs a new digest here.
-digest: sha256:5c675f44f1c4860bdea0db95803fd3de9f4015be42c649172b89c7a040a6b204
+digest: sha256:064391fc834e2089006c953793363df140bca3b13166f454b9b735a8b65b4884
 # The CUDA 13 base image sets NVIDIA_REQUIRE_CUDA, so the host driver must support
 # CUDA 13. Vast reports the highest CUDA version a host supports in the offer
 # field cuda_max_good, and the search sends cuda_max_good >= this value.
