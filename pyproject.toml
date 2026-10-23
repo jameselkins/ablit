@@ -93,10 +93,9 @@ warn_unused_ignores = false
 check_untyped_defs = false
 
 # Each override below silences one known finding in one module. The findings are
-# listed here so they can be fixed and the override removed. Source edits wait
-# because other branches are changing backends/ and runs/commands.py.
+# listed here so they can be fixed and the override removed.
 [[tool.mypy.overrides]]
-module = ["ablit.engines", "ablit.runs.commands"]
+module = ["ablit.engines", "ablit.runs.up"]
 # repo_root() is typed Path | None, and these callers use it without a check.
 disable_error_code = ["operator"]
 
