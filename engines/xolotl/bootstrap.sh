@@ -363,7 +363,7 @@ wait_for_listener() {
     waited=$((waited + poll))
     [ "$waited" -lt "$ABLIT_READY_TIMEOUT_S" ] \
       || ablit_fail "health_timeout" "the engine did not open its port within ${ABLIT_READY_TIMEOUT_S}s"
-    sleep "$poll"
+    sleep "${ABLIT_LISTENER_SLEEP_S:-$poll}"
   done
 }
 

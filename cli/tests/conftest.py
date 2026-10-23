@@ -62,6 +62,10 @@ def isolated_run_state(tmp_path, monkeypatch):
     monkeypatch.setattr(VastBackend, "inventory_interval", 0)
     from ablit.backends.clore import CloreBackend
     monkeypatch.setattr(CloreBackend, "request_interval", 0)
+    from ablit.backends.runpod import RunPodBackend
+    for backend_class in (VastBackend, RunPodBackend, CloreBackend):
+        # Retry backoff waits up to 30 seconds, so tests never wait for it.
+        monkeypatch.setattr(backend_class, "_sleep", staticmethod(lambda seconds: None))
     credentials.SESSION.clear()
     yield backend
     credentials.SESSION.clear()
