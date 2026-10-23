@@ -13,7 +13,8 @@ import respx
 from ablit import credentials as keys
 from ablit.backends.clore import API_ROOT, CloreBackend
 from ablit.cli import main
-from ablit.runs import RunStore, commands
+from ablit.runs import RunStore
+from ablit.runs import monitor as monitor_mod, up as up_mod
 from ablit.runs.lifecycle import local_stop_needed
 from ablit.runs.ssh import SSH
 from ablit.watchdog import ablit_watchdog as watchdog
@@ -29,9 +30,9 @@ CLORE_ENV = {"CLORE_API_KEY": "invented-clore-key"}
 
 def launch_environment(monkeypatch):
     tty(monkeypatch)
-    monkeypatch.setattr(commands.engines, "check_artifacts", lambda entry: None)
+    monkeypatch.setattr(up_mod.engines, "check_artifacts", lambda entry: None)
     monkeypatch.setattr(SSH, "identity_public", lambda self: "ssh-ed25519 invented-public-content")
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
     monkeypatch.setattr(CloreBackend, "_sleep", staticmethod(lambda seconds: None))
     monkeypatch.setattr(CloreBackend, "request_interval", 0)
@@ -111,11 +112,11 @@ def test_a_clore_key_alone_searches_clore_alone_and_with_runpod_it_searches_both
     launch_environment(monkeypatch)
     keys.secret_set("accounts/clore", "invented-clore-key")
     keys.secret_set("accounts/runpod", "invented-runpod-key")
-    assert commands.choose_backends(type("A", (), {"backends": None})(), {}) == ["runpod", "clore"]
+    assert up_mod.choose_backends(type("A", (), {"backends": None})(), {}) == ["runpod", "clore"]
     keys.secret_delete("accounts/runpod")
-    assert commands.choose_backends(type("A", (), {"backends": None})(), {}) == ["clore"]
+    assert up_mod.choose_backends(type("A", (), {"backends": None})(), {}) == ["clore"]
     keys.secret_set("accounts/vast", "invented-vast-key")
-    assert commands.choose_backends(type("A", (), {"backends": None})(), {}) == ["vast", "clore"]
+    assert up_mod.choose_backends(type("A", (), {"backends": None})(), {}) == ["vast", "clore"]
 
 
 def test_a_price_change_between_quote_and_rent_cancels_a_clore_run(monkeypatch, capsys):
@@ -222,20 +223,20 @@ def test_status_reports_an_absent_order_and_cleans_up(capsys):
 
 def monitor_run(monkeypatch, store, run, listed, cancel):
     """Run the real monitor loop once, with the start deadline already passed."""
-    monkeypatch.setattr(commands.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(monitor_mod.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(CloreBackend, "_sleep", staticmethod(lambda seconds: None))
     monkeypatch.setattr(CloreBackend, "request_interval", 0)
     driver = CloreBackend(httpx.Client(), store=store)
     with respx.mock as router:
         router.get(ORDERS).mock(side_effect=listed)
         router.post(CANCEL).mock(side_effect=cancel)
-        return commands.monitor(store, run, driver, keys.credentials("clore", CLORE_ENV), want_ready=True)
+        return monitor_mod.monitor(store, run, driver, keys.credentials("clore", CLORE_ENV), want_ready=True)
 
 
 def test_a_clore_run_with_no_endpoint_at_the_deadline_is_cancelled_and_exits_6(monkeypatch):
     store = RunStore()
     run = saved_clore_run(store, state="creating", ssh_host=None, ssh_port=None, ready=False,
-                          started_at=time.time() - commands.START_DEADLINE_SECONDS - 60)
+                          started_at=time.time() - monitor_mod.START_DEADLINE_SECONDS - 60)
     keys.secret_set(run["run_id"], "invented-endpoint-key")
     # The order has no forwarded SSH port yet. After the cancel it is gone from the list.
     answers = iter([orders(order(9001, pub_cluster=None, tcp_ports=None)), orders(), orders()])
@@ -247,7 +248,7 @@ def test_a_clore_run_with_no_endpoint_at_the_deadline_is_cancelled_and_exits_6(m
 def test_a_clore_run_whose_cancel_is_not_confirmed_exits_7(monkeypatch):
     store = RunStore()
     run = saved_clore_run(store, state="creating", ssh_host=None, ssh_port=None, ready=False,
-                          started_at=time.time() - commands.START_DEADLINE_SECONDS - 60)
+                          started_at=time.time() - monitor_mod.START_DEADLINE_SECONDS - 60)
     keys.secret_set(run["run_id"], "invented-endpoint-key")
     code = monitor_run(monkeypatch, store, run, lambda request: orders(order(9001, pub_cluster=None, tcp_ports=None)),
                        lambda request: httpx.Response(500, json={"code": 1}))

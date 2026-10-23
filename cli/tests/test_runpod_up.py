@@ -10,7 +10,8 @@ import respx
 from ablit import credentials as keys
 from ablit.backends.runpod import RunPodBackend
 from ablit.cli import main
-from ablit.runs import RunStore, commands
+from ablit.runs import RunStore
+from ablit.runs import up as up_mod
 from ablit.runs.lifecycle import local_stop_needed
 from ablit.runs.ssh import SSH
 from ablit.watchdog import ablit_watchdog as watchdog
@@ -23,9 +24,9 @@ MODEL = "llama31-8b-abliterated-q4km"
 
 def launch_environment(monkeypatch):
     tty(monkeypatch)
-    monkeypatch.setattr(commands.engines, "check_artifacts", lambda entry: None)
+    monkeypatch.setattr(up_mod.engines, "check_artifacts", lambda entry: None)
     monkeypatch.setattr(SSH, "identity_public", lambda self: "ssh-ed25519 invented-public-content")
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
 
 
@@ -265,7 +266,7 @@ def test_a_runpod_offer_with_no_advertised_speed_does_not_break_the_cap_math():
     req = request_from_entry(entry, 10.0)
     from dataclasses import replace
     offer = replace(OFFER, download_mbps=None)
-    assert commands.minimum_cap(offer, req, 500.0) > 0
+    assert up_mod.minimum_cap(offer, req, 500.0) > 0
 
 
 def test_plan_adds_the_local_check_note_when_runpod_is_chosen_and_not_otherwise(capsys):

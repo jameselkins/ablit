@@ -11,7 +11,7 @@ from ablit import credentials as keys
 from ablit.backends import Creds
 from ablit.cli import main
 from ablit.runs import RunStore
-from ablit.runs import commands
+from ablit.runs import monitor as monitor_mod
 from test_run_commands import saved_run
 
 CREDS = Creds("invented-account-key")
@@ -40,7 +40,7 @@ def test_status_shows_the_saved_state_while_another_command_holds_the_lock(monke
 
 def test_monitor_skips_a_pass_when_the_lock_is_busy_and_does_not_stop_the_run(monkeypatch, capsys):
     store, run = prepared(monkeypatch, marketplace_state="running")
-    monkeypatch.setattr(commands, "MONITOR_LOCK_WAIT_SECONDS", 0)
+    monkeypatch.setattr(monitor_mod, "MONITOR_LOCK_WAIT_SECONDS", 0)
     held = contextlib.ExitStack()
     held.enter_context(store.lock(run["run_id"]))
     refreshed = []
@@ -49,26 +49,26 @@ def test_monitor_skips_a_pass_when_the_lock_is_busy_and_does_not_stop_the_run(mo
         refreshed.append(True)
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(commands, "refresh", refresh)
-    monkeypatch.setattr(commands.time, "sleep", lambda seconds: held.close())
-    monkeypatch.setattr(commands, "down", lambda *a: pytest.fail("a busy lock must not destroy the run"))
-    assert commands.monitor(store, run, None, CREDS) == 0
+    monkeypatch.setattr(monitor_mod, "refresh", refresh)
+    monkeypatch.setattr(monitor_mod.time, "sleep", lambda seconds: held.close())
+    monkeypatch.setattr(monitor_mod, "down", lambda *a: pytest.fail("a busy lock must not destroy the run"))
+    assert monitor_mod.monitor(store, run, None, CREDS) == 0
     out = capsys.readouterr().out
     assert "Skipping this check" in out and "stopping the run" not in out
     assert refreshed == [True]
 
 
 def test_a_machine_that_never_reaches_running_is_destroyed_with_exit_6(monkeypatch, capsys):
-    store, run = prepared(monkeypatch, started_at=time.time() - commands.START_DEADLINE_SECONDS - 60)
+    store, run = prepared(monkeypatch, started_at=time.time() - monitor_mod.START_DEADLINE_SECONDS - 60)
 
     def refresh(store_, record, driver, creds):
         record.update(marketplace_state="loading", spend_estimate_usd=0.01)
         store_.save(record)
 
     destroyed = []
-    monkeypatch.setattr(commands, "refresh", refresh)
-    monkeypatch.setattr(commands, "down", lambda *a: destroyed.append(True) or 0)
-    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 6
+    monkeypatch.setattr(monitor_mod, "refresh", refresh)
+    monkeypatch.setattr(monitor_mod, "down", lambda *a: destroyed.append(True) or 0)
+    assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 6
     assert destroyed == [True]
     assert "the marketplace did not start the machine in time" in capsys.readouterr().out
 
@@ -80,10 +80,10 @@ def test_a_machine_still_loading_inside_the_deadline_is_left_alone(monkeypatch):
         record.update(marketplace_state="loading", spend_estimate_usd=0.01)
         store_.save(record)
 
-    monkeypatch.setattr(commands, "refresh", refresh)
-    monkeypatch.setattr(commands, "down", lambda *a: pytest.fail("inside the deadline"))
-    monkeypatch.setattr(commands.time, "sleep", lambda seconds: (_ for _ in ()).throw(KeyboardInterrupt))
-    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 7
+    monkeypatch.setattr(monitor_mod, "refresh", refresh)
+    monkeypatch.setattr(monitor_mod, "down", lambda *a: pytest.fail("inside the deadline"))
+    monkeypatch.setattr(monitor_mod.time, "sleep", lambda seconds: (_ for _ in ()).throw(KeyboardInterrupt))
+    assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 7
 
 
 def test_tunnel_on_a_creating_run_says_how_to_resume(monkeypatch, capsys):
@@ -116,41 +116,41 @@ class StubDriver:
 
 
 def never_starts(monkeypatch):
-    store, run = prepared(monkeypatch, started_at=time.time() - commands.START_DEADLINE_SECONDS - 60,
+    store, run = prepared(monkeypatch, started_at=time.time() - monitor_mod.START_DEADLINE_SECONDS - 60,
                           watchdog_key_id=None, watchdog_key_sent=False)
 
     def refresh(store_, record, driver, creds):
         record.update(marketplace_state="starting", spend_estimate_usd=0.01)
         store_.save(record)
 
-    monkeypatch.setattr(commands, "refresh", refresh)
+    monkeypatch.setattr(monitor_mod, "refresh", refresh)
     return store, run
 
 
 def test_start_deadline_with_confirmed_cleanup_exits_6(monkeypatch):
     store, run = never_starts(monkeypatch)
-    assert commands.monitor(store, run, StubDriver(), CREDS, want_ready=True) == 6
+    assert monitor_mod.monitor(store, run, StubDriver(), CREDS, want_ready=True) == 6
     assert store.load(run["run_id"])["state"] == "billing_stopped_confirmed"
 
 
 def test_start_deadline_with_unconfirmed_cleanup_exits_7(monkeypatch):
     store, run = never_starts(monkeypatch)
-    assert commands.monitor(store, run, StubDriver(fail=True), CREDS, want_ready=True) == 7
+    assert monitor_mod.monitor(store, run, StubDriver(fail=True), CREDS, want_ready=True) == 7
 
 
 def test_a_run_stopped_by_another_command_before_ready_exits_6(monkeypatch, capsys):
     store, run = prepared(monkeypatch, state="billing_stopped_confirmed")
-    monkeypatch.setattr(commands, "refresh", lambda *a: pytest.fail("the run is already stopped"))
-    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 6
+    monkeypatch.setattr(monitor_mod, "refresh", lambda *a: pytest.fail("the run is already stopped"))
+    assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 6
     assert "stopped before the engine was ready" in capsys.readouterr().out
 
 
 def test_a_stopped_run_is_still_a_clean_exit_for_tunnel_and_status(monkeypatch):
     store, run = prepared(monkeypatch, state="billing_stopped_confirmed")
-    assert commands.monitor(store, run, None, CREDS) == 0
+    assert monitor_mod.monitor(store, run, None, CREDS) == 0
 
 
 def test_ctrl_c_before_the_endpoint_is_ready_does_not_exit_0(monkeypatch):
     store, run = prepared(monkeypatch, started_at=time.time(), marketplace_state="starting")
-    monkeypatch.setattr(commands, "refresh", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt))
-    assert commands.monitor(store, run, None, CREDS, want_ready=True) == 7
+    monkeypatch.setattr(monitor_mod, "refresh", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt))
+    assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 7

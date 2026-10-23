@@ -356,7 +356,7 @@ def _cmd_selection(
             return exitcodes.USAGE
     if command == "plan":
         return _cmd_plan(args, entry, backends, environ)
-    from ablit.runs.commands import up
+    from ablit.runs.up import up
     opts = _plan_options(args)
     if isinstance(opts, str):
         print(f"ablit up: {opts}", file=sys.stderr)
@@ -395,7 +395,7 @@ def _main(
     if args.command in ("plan", "up"):
         return _cmd_selection(args, args.command, backends, environ)
     from ablit.credentials import setup_clore, setup_runpod, setup_vast
-    from ablit.runs.commands import existing
+    from ablit.runs.existing import existing
     available = default_backends() if backends is None else backends
     try:
         if args.command == "setup":
