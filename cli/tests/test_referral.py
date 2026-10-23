@@ -32,13 +32,13 @@ def test_every_disclosure_says_how_to_hide_paid_links():
         assert "ablit setup --no-referral" in text
 
 
-def test_vast_disclosure_matches_the_specification_exactly(repo_root: Path):
-    build = (repo_root / "BUILD.md").read_text(encoding="utf-8")
-    assert referral.VAST_DISCLOSURE in build, "the Vast disclosure differs from BUILD.md"
+def test_vast_disclosure_matches_the_policy_exactly(repo_root: Path):
+    policy = (repo_root / "POLICY.md").read_text(encoding="utf-8")
+    assert referral.VAST_DISCLOSURE in policy, "the Vast disclosure differs from POLICY.md"
 
 
-def test_spend_cap_notice_matches_the_specification_exactly(repo_root: Path):
-    assert SPEND_CAP_NOTICE in (repo_root / "BUILD.md").read_text(encoding="utf-8")
+def test_spend_cap_notice_matches_the_documentation_exactly(repo_root: Path):
+    assert SPEND_CAP_NOTICE in (repo_root / "docs" / "cli-reference.md").read_text(encoding="utf-8")
     assert SPEND_CAP_NOTICE in (repo_root / "README.md").read_text(encoding="utf-8")
 
 
@@ -142,8 +142,6 @@ def test_every_referral_link_sits_next_to_the_disclosure(repo_root: Path):
         lines = text.splitlines()
         for index, line in enumerate(lines):
             if pattern.search(line):
-                if path.name == "BUILD.md" and "://" not in line:
-                    continue  # a sentence that names the parameter, not a link
                 found += 1
                 window = lines[max(0, index - 8): index + 1]
                 assert any("Paid link:" in w for w in window), f"{path}:{index + 1} has a referral link with no disclosure"

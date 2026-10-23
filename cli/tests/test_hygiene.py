@@ -96,7 +96,9 @@ def test_license_files_are_unmodified_standard_texts(repo_root: Path):
 
 
 def test_documentation_files_exist(repo_root: Path):
-    for name in ("README.md", "LICENSE", "NOTICE", "POLICY.md", "SECURITY.md", "CONTRIBUTING.md", "BUILD.md",
+    for name in ("README.md", "LICENSE", "NOTICE", "POLICY.md", "SECURITY.md", "CONTRIBUTING.md",
+                 "docs/README.md", "docs/architecture.md", "docs/cli-reference.md", "docs/catalog-format.md",
+                 "docs/design-decisions.md",
                  ".gitignore", "catalog/VERSION", "catalog/LICENSE", "catalog/schema/v1.json",
                  "tools/verify_entry.py", "tools/build_catalog.py",
                  "backends/vast.md", "backends/runpod.md", "backends/clore.md",

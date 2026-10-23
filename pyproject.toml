@@ -56,7 +56,8 @@ packages = ["cli/ablit"]
 
 [tool.hatch.build.targets.sdist]
 include = ["cli/ablit", "cli/tests", "catalog/models", "catalog/schema", "catalog/VERSION",
-           "catalog/LICENSE", "engines", "tools", ".importlinter", "LICENSE", "NOTICE", "README.md"]
+           "catalog/LICENSE", "engines", "tools", ".importlinter", "LICENSE", "NOTICE", "README.md",
+           "AGENTS.md", "CONTRIBUTING.md", "POLICY.md", "SECURITY.md", "docs", "backends"]
 
 [tool.pytest.ini_options]
 testpaths = ["cli/tests"]
