@@ -24,7 +24,6 @@ The lifecycle has synthetic tests and is untested on a rented machine.
 from __future__ import annotations
 
 import math
-import os
 import time
 from collections.abc import Callable
 from dataclasses import replace
@@ -33,18 +32,18 @@ from typing import Any
 import httpx
 
 from ablit import __version__
-from ablit.backends.base import (Allocation, BillingEvidence, BootSpec, Capabilities, Creds,
-                                 Inventory, Observation, OfferSearch, TerminationResult,
-                                 UnwrittenBackend, WatchdogCred)
+from ablit.backends.base import (Allocation, BootSpec, Capabilities, Creds,
+                                 Inventory, Observation, OfferSearch, WatchdogCred)
 from ablit.backends.errors import (
     CredentialsRejected,
     RequestRejected,
     ResponseNotRecognized,
     UnknownFieldType,
     UnknownUnit,
-    CreateUncertain,
 )
 from ablit.backends import fields
+from ablit.backends.rental import RentalBackend
+from ablit.backends.transport import backoff, pace, refuse_redirect, send_with_retry
 from ablit.select.cost import total_cost
 from ablit.select.filters import apply_filter_chain, floor_for
 from ablit.select.search import PAGE_SIZE, FilterRejected, search
@@ -215,7 +214,7 @@ def retry_delay(response: httpx.Response, attempt: int) -> float:
         wait = -1.0
     if 0 < wait <= 60:
         return wait + 0.5
-    return min(2.0 * 2 ** attempt, 30.0)
+    return backoff(attempt)
 
 
 def build_body(
@@ -360,24 +359,16 @@ class _BundleStream:
         return page
 
 
-class VastBackend(UnwrittenBackend):
+class VastBackend(RentalBackend):
     name = "vast"
     inventory_interval = 1.1
+    refused_statuses = (400, 401, 403, 404, 410)
     _sleep = staticmethod(time.sleep)
 
     def __init__(self, client: httpx.Client | None = None, url: str = BUNDLES_URL, *, store=None) -> None:
-        self._client = client
-        self._owns_client = client is None
+        super().__init__(client, store=store)
         self._url = url
-        self.store = store
-        self.denied_host_ids: set[str] = set()
         self._inventory_at: float | None = None
-
-    def close(self) -> None:
-        """Close the HTTP client when this driver created it."""
-        if self._owns_client and self._client is not None:
-            self._client.close()
-            self._client = None
 
     def capabilities(self) -> Capabilities:
         return Capabilities(search=True, rent=True, scoped_watchdog_credential=True)
@@ -388,10 +379,8 @@ class VastBackend(UnwrittenBackend):
         headers = {"Content-Type": "application/json", "User-Agent": f"ablit/{__version__}"}
         if creds is not None:
             headers["Authorization"] = f"Bearer {creds.api_key}"
-        if self._client is None:
-            self._client = httpx.Client(timeout=httpx.Timeout(30.0))
         # https://docs.vast.ai/api-reference/search/search-offers
-        response = self._client.post(self._url, json=body, headers=headers)
+        response = self._http().post(self._url, json=body, headers=headers)
         status = response.status_code
         if status in (401, 403):
             raise CredentialsRejected(self.name, status, "the API key was refused")
@@ -499,14 +488,9 @@ class VastBackend(UnwrittenBackend):
 
     def _request(self, method: str, path: str, creds: Creds, *, body=None, params=None, missing_ok=False, missing_error=None):
         """Send one request without retrying a mutation or echoing an error body."""
-        if self._client is None:
-            self._client = httpx.Client(timeout=30)
+        client = self._http()
         if method == "GET" and path == "/api/v1/instances/":
-            if self._inventory_at is not None:
-                pause = self.inventory_interval - (time.monotonic() - self._inventory_at)
-                if pause > 0:
-                    time.sleep(pause)
-            self._inventory_at = time.monotonic()
+            self._inventory_at = pace(self._inventory_at, self.inventory_interval, time.sleep)
         # Vast answers a path without its trailing slash with a 301 redirect, and
         # a redirected DELETE or PUT is not resent. Every path ends with a slash,
         # and redirects are refused rather than followed.
@@ -515,21 +499,11 @@ class VastBackend(UnwrittenBackend):
         # Reads and deletes are safe to repeat, so they wait and retry when Vast
         # rate-limits (429) or has a server error. Creates are never resent.
         attempts = 5 if method in ("GET", "DELETE") else 1
-        for attempt in range(attempts):
-            try:
-                response = self._client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
-                                                headers={"Authorization": f"Bearer {creds.api_key}"},
-                                                json=body, params=params)
-            except httpx.TransportError:
-                # A network failure before any answer. Only safe requests retry.
-                if attempt + 1 >= attempts:
-                    raise
-                self._sleep(min(2.0 * 2 ** attempt, 30.0))
-                continue
-            if response.status_code != 429 and response.status_code < 500:
-                break
-            if attempt + 1 < attempts:
-                self._sleep(retry_delay(response, attempt))
+        response = send_with_retry(
+            lambda: client.request(method, "https://console.vast.ai" + path, follow_redirects=False,
+                                   headers={"Authorization": f"Bearer {creds.api_key}"},
+                                   json=body, params=params),
+            attempts=attempts, sleep=self._sleep, delay=retry_delay)
         if response.status_code == 404 and missing_ok:
             return None
         if response.status_code == 400 and missing_error:
@@ -541,8 +515,7 @@ class VastBackend(UnwrittenBackend):
                 return None
         if response.status_code in (401, 403):
             raise CredentialsRejected("vast", response.status_code, "the API key or its permissions were refused")
-        if response.is_redirect:
-            raise RequestRejected("vast", response.status_code, "the API redirected the request; ablit does not follow it")
+        refuse_redirect(self.name, response)
         if not response.is_success:
             raise RequestRejected("vast", response.status_code, "the request failed; check the Vast console")
         try:
@@ -595,61 +568,28 @@ class VastBackend(UnwrittenBackend):
             seen.add(token)
             params["after_token"] = token
 
-    @staticmethod
-    def label(run_id: str) -> str:
-        return f"ablit-{run_id}"
-
     def reconcile(self, run_id: str, creds: Creds) -> Inventory:
         rows = [r for r in self.instances(creds) if r.get("label") == self.label(run_id)]
         for row in rows:
             if row.get("volume_info"):
                 raise ResponseNotRecognized("vast: this run never requests volumes; unexpected volume_info needs console review")
-        return Inventory(run_id, self.name, [str(r["id"]) for r in rows])
+        return self._inventory(run_id, rows)
 
-    def create(self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds) -> Allocation:
-        """Journal the attempt before sending it. A run gets at most one create."""
-        from ablit.runs import RunStore
-        store = self.store or RunStore()
-        with store.lock(run_id + ".create"):
-            record = store.load(run_id)
-            if record.get("create_sent"):
-                found = self.reconcile(run_id, creds)
-                if len(found.resource_ids) == 1:
-                    return Allocation(run_id, self.name, found.resource_ids, offer.hourly_all_in)
-                raise CreateUncertain("Create was already sent. Re-run down to reconcile; no second create is allowed.")
-            if "@sha256:" not in boot.image:
-                raise ResponseNotRecognized("vast: an image digest is required")
-            if boot.env:
-                raise ResponseNotRecognized("vast: credentials and engine config must travel over SSH")
-            record["create_sent"] = True
-            record["started_at"] = time.time()
-            store.save(record)
-            body = {"image": boot.image, "disk": boot.disk_gb, "label": self.label(run_id),
-                    "runtype": "ssh", "target_state": "running", "onstart": boot.onstart,
-                    "cancel_unavail": True}
-            # The operation schema specifies PUT; its shared introduction says POST.
-            # https://docs.vast.ai/api-reference/instances/create-instance
-            try:
-                data = self._success(self._request("PUT", f"/api/v0/asks/{int(offer.offer_id)}/", creds, body=body))
-            except RequestRejected as error:
-                if error.status in (400, 401, 403, 404, 410):
-                    record["create_rejected"] = True
-                    store.save(record)
-                raise
-            if os.environ.get("ABLIT_FAULT") == "drop-create-response":
-                raise CreateUncertain("The create response was dropped by ABLIT_FAULT. Re-run up or down to find the label.")
-            instance = str(fields.integer(data, "new_contract", backend="vast", minimum=1))
-            record["resource_ids"] = [instance]
-            store.save(record)
-            return Allocation(run_id, self.name, [instance], offer.hourly_all_in)
+    def _send_create(self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds, prepared: Any) -> Any:
+        body = {"image": boot.image, "disk": boot.disk_gb, "label": self.label(run_id),
+                "runtype": "ssh", "target_state": "running", "onstart": boot.onstart,
+                "cancel_unavail": True}
+        # The operation schema specifies PUT; its shared introduction says POST.
+        # https://docs.vast.ai/api-reference/instances/create-instance
+        return self._success(self._request("PUT", f"/api/v0/asks/{int(offer.offer_id)}/", creds, body=body))
+
+    def _read_created(self, data: Any, record: dict[str, Any], creds: Creds) -> list[str]:
+        return [str(fields.integer(data, "new_contract", backend="vast", minimum=1))]
 
     def observe(self, alloc: Allocation, creds: Creds) -> Observation:
-        rows = [r for r in self.instances(creds) if str(r["id"]) in alloc.resource_ids]
-        if not rows:
-            return Observation(time.time(), "absent")
-        if len(rows) != 1:
-            raise ResponseNotRecognized("vast: expected exactly one instance")
-        row = rows[0]
+        row = self._one([r for r in self.instances(creds) if str(r["id"]) in alloc.resource_ids], "instance")
+        if row is None:
+            return self._absent()
         status = fields.text(row, "actual_status", backend="vast", nullable=True)
         # ablit always asks for "running". When Vast itself gives up on starting
         # an instance, for example after a failed image pull, it sets the
@@ -673,22 +613,17 @@ class VastBackend(UnwrittenBackend):
         # are kept apart.
         return Observation(time.time(), status or "starting", hourly_rate=rate, allocation=found)
 
-    def destroy(self, inv: Inventory, creds: Creds) -> TerminationResult:
-        terminated = []
-        for instance in inv.resource_ids:
-            # https://docs.vast.ai/api-reference/instances/destroy-instance
-            data = self._request("DELETE", f"/api/v0/instances/{int(instance)}/", creds, missing_ok=True)
-            if data is not None:
-                self._success(data)
-            terminated.append(instance)
-        return TerminationResult(True, terminated)
+    def _terminate(self, resource_id: str, creds: Creds) -> None:
+        # https://docs.vast.ai/api-reference/instances/destroy-instance
+        data = self._request("DELETE", f"/api/v0/instances/{int(resource_id)}/", creds, missing_ok=True)
+        if data is not None:
+            self._success(data)
 
-    def verify_billing_stopped(self, inv: Inventory, creds: Creds) -> BillingEvidence:
+    def _still_billable(self, inv: Inventory, creds: Creds) -> list[str]:
         # https://docs.vast.ai/api-reference/instances/show-instances
         rows = self.instances(creds)
-        remaining = [str(r["id"]) for r in rows
-                     if str(r["id"]) in inv.resource_ids or r.get("label") == self.label(inv.run_id)]
-        return BillingEvidence(time.time(), remaining)
+        return [str(r["id"]) for r in rows
+                if str(r["id"]) in inv.resource_ids or r.get("label") == self.label(inv.run_id)]
 
     def watchdog_credential(self, alloc: Allocation, creds: Creds) -> WatchdogCred:
         if len(alloc.resource_ids) != 1:
