@@ -49,7 +49,7 @@ POLL_SECONDS = 10
 MONITOR_LOCK_WAIT_SECONDS = 10
 # The longest a machine may take to reach the "running" state, counted from the create. Vast shows
 # "loading" while it pulls the image, and one instance stayed there for over 32 minutes. After this
-# many seconds ablit destroys the run. Documented in BUILD.md.
+# many seconds ablit destroys the run. Documented in docs/architecture.md.
 START_DEADLINE_SECONDS = 20 * 60
 # How long the machine may be "running" before ablit has uploaded the bootstrap. Vast bills from
 # "running", and sshd normally answers within a minute or two, so five minutes is a generous

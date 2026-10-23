@@ -1,6 +1,6 @@
 # Using ablit from an agent
 
-This file is for coding agents and scripts that drive the `ablit` command. Contributors working on the code should read CONTRIBUTING.md and BUILD.md.
+This file is for coding agents and scripts that drive the `ablit` command. Contributors working on the code should read [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/architecture.md](docs/architecture.md). The [command reference](docs/cli-reference.md) lists every flag.
 
 ## What an agent can do alone
 

@@ -31,6 +31,22 @@ A change that breaks any of these tests must not be merged, even if the change l
 7. `ablit setup --no-referral`, `ABLIT_NO_REFERRAL=1` and `referral = false` in the config file each turn off all referral links, and the setting is saved.
 8. The README section named "Paid links" lists the commission rate and the date it was checked for each marketplace where ablit has a referral ID. The maintainer checks the rates on the program pages before each release.
 
+## The disclosure text
+
+`ablit setup` lists marketplaces alphabetically and asks "Do you already have an account at <Marketplace>?" A user with an account enters a key, which ablit tests with one read-only call, and sees no referral link. A user without one sees the disclosure and three choices of equal weight, which are `[1] Sign up with the paid link`, `[2] Sign up directly` and `[3] Skip`. The Vast disclosure reads as follows, and a test checks that this text matches `cli/ablit/referral/__init__.py` exactly.
+
+```
+Paid link: if you create a new Vast.ai account through the first link below,
+the ablit maintainer earns 3% of what you spend there for the life of your
+account, paid by Vast as credits. ablit adds nothing to your prices.
+Commissions never affect which machine ablit picks. To hide paid links, run
+`ablit setup --no-referral`.
+  Sign up (paid link):   https://cloud.vast.ai/?ref_id=<ID>
+  Sign up (no referral): https://cloud.vast.ai/
+```
+
+The RunPod and Clore disclosures use the same wording with each marketplace's own terms, and they are in the same file of the referral package. The RunPod terms are 3% of Pod spend and 5% of Serverless spend, paid in RunPod credits for 6 months, for accounts that sign up with Google sign-in. The Clore terms are a share of the fees Clore charges the new account, which Clore states as 15%, or 50% during a promotion with no end date, and its page does not say how long a referral lasts. Clore and RunPod have no project ID yet, so only the direct signup and skip choices appear for them. Before each release, the maintainer checks the rates on the program pages and updates the date in the README.
+
 ## Reporting a violation
 
 If you find a code path where a commission can change a ranking, open an issue, or use the private reporting route in SECURITY.md if you prefer.
