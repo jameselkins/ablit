@@ -11,13 +11,13 @@ These commands spend nothing:
 3. `ablit plan <model> --json` searches the marketplaces and prints the chosen offer, the next four and their full cost.
 4. `ablit status --all --json` prints every local run and its state.
 
-`plan` reads public offer lists from Vast, RunPod and Clore, and needs no key.
+`plan` reads public offer lists from Vast, RunPod, Clore and Lium, and needs no key.
 
 ## Renting
 
 `ablit up` rents a machine and costs money. In a terminal it asks the user to type `rent`. An agent passes `--yes` to approve the quote without the prompt.
 
-`ablit up` rents on Vast, RunPod and Clore. With no `--backends`, it searches Vast, and also RunPod and Clore when `RUNPOD_API_KEY`, `CLORE_API_KEY` or a saved key for them exists, and it rents where the chosen offer is. Pass `--backends runpod` or `--backends clore` to rent on one only. RunPod renting is untested on a rented machine. It uses Secure Cloud offers only, because Community Cloud pods may have no public IP for SSH. `plan` shows the Community offers with that drop reason. When the chosen offer is on RunPod, the quote adds a note that the spend cap relies on the check that runs on this computer, so tell the user before they rent. Clore renting is untested on a rented machine. Clore has no scoped key, so when the chosen offer is on Clore the quote adds a note that the cap relies on the check on this computer and on the account balance, so tell the user before they rent. If the computer is off, nothing cancels a Clore order until the balance runs out. `ablit setup runpod` and `ablit setup clore` save a key.
+`ablit up` rents on Vast, RunPod, Clore and Lium. With no `--backends`, it searches Vast, and also RunPod, Clore and Lium when `RUNPOD_API_KEY`, `CLORE_API_KEY`, `LIUM_API_KEY` or a saved key for them exists, and it rents where the chosen offer is. Pass `--backends runpod` or `--backends clore` to rent on one only. RunPod renting is untested on a rented machine. It uses Secure Cloud offers only, because Community Cloud pods may have no public IP for SSH. `plan` shows the Community offers with that drop reason. When the chosen offer is on RunPod, the quote adds a note that the spend cap relies on the check that runs on this computer, so tell the user before they rent. Clore renting is untested on a rented machine. Clore has no scoped key, so when the chosen offer is on Clore the quote adds a note that the cap relies on the check on this computer and on the account balance, so tell the user before they rent. If the computer is off, nothing cancels a Clore order until the balance runs out. Lium renting is untested on a rented machine. A Lium key made with the user's key cannot be limited to one machine, so when the chosen offer is on Lium the quote adds a note that the cap relies on the check on this computer, and on Lium deleting the pod after a whole number of hours that ablit sets from the cap, so tell the user before they rent. `ablit setup runpod`, `ablit setup clore` and `ablit setup lium` save a key.
 
 Every paid `up` needs `--max-spend <USD>`, and the watchdog destroys the run when spend reaches it. `--yes` skips only the prompt. ablit still refuses a cap too small to cover setup and ten minutes of use (exit 5), and it cancels if the price changes between the quote and the rental (exit 5). Add `--untested` for an entry whose status is `unverified`.
 
@@ -54,7 +54,7 @@ Messages and errors go to standard error as plain sentences.
 
 ## Secrets
 
-The marketplace key lives in the OS keyring, or in `VAST_API_KEY` (Vast), `RUNPOD_API_KEY` (RunPod) or `CLORE_API_KEY` (Clore). ablit reads it, and an agent never needs to. Do not print, read or copy it.
+The marketplace key lives in the OS keyring, or in `VAST_API_KEY` (Vast), `RUNPOD_API_KEY` (RunPod) or `CLORE_API_KEY` (Clore) or `LIUM_API_KEY` (Lium). ablit reads it, and an agent never needs to. Do not print, read or copy it.
 
 `ablit status --show-key` prints the endpoint key for a run. Use it only when the user asks for the key.
 

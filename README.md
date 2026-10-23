@@ -91,7 +91,7 @@ The cap counts compute, disk, the model download and transfer charges. If the ca
 | `ds41-september-gsq-uncensored` on Xolotl | Yes, on Vast on 2026-10-21, on a 98 GB card |
 | `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22 on a 32 GB RTX 5090 (about 33 tokens per second), and on 2026-10-23 with the newer engine pin on a 98 GB card (about 52 tokens per second) |
 | The watchdog destroying a run at its cap, and recovery of a lost create response | Yes, on Vast on 2026-10-21 |
-| vLLM entries, spot machines, public endpoints, Clore rentals | No |
+| vLLM entries, spot machines, public endpoints, Clore and Lium rentals | No |
 
 The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, and `ablit up` refuses them until their image is pinned and tested.
 
@@ -102,6 +102,7 @@ The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, a
 | [Vast.ai](https://vast.ai) | Yes, without a key | Yes, tested. A watchdog key limited to the one machine enforces the cap on the machine. |
 | [RunPod](https://www.runpod.io) | Yes, without a key | Yes, tested on Secure Cloud. Community Cloud pods may get no public IP for SSH, so paid runs use Secure Cloud only. |
 | [Clore.ai](https://clore.ai) | Yes | Connected with `--backends clore`, and untested on a rented machine. Clore has no scoped keys, and the marketplace does not say which servers allow SSH, so ablit cancels a server that has no SSH port at the start deadline and skips it after that. |
+| [Lium](https://lium.io) | Yes, without a key | Connected with `--backends lium`, and untested on a rented machine. Keys made with your key cannot be limited to one machine, so the cap relies on the check on this computer and on Lium deleting the pod after a whole number of hours. Notes and sources are in `backends/lium.md`. |
 
 ## Catalog
 
@@ -131,7 +132,7 @@ A runtime, or engine, is the server program that loads the model on the rented m
 
 | Command | What it does |
 |---|---|
-| `ablit setup [vast\|runpod\|clore]` | Enters a key with hidden input, tests it, and can save it in the OS keyring |
+| `ablit setup [vast\|runpod\|clore\|lium]` | Enters a key with hidden input, tests it, and can save it in the OS keyring |
 | `ablit plan <model>` | Shows the chosen offer and the next four, with totals, and why other offers were dropped. Rents nothing. |
 | `ablit up <model>` | Plans, asks you to type `rent` (or takes `--yes`), rents the machine, and keeps the tunnel open |
 | `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup |
@@ -148,7 +149,7 @@ The engine on the rented machine listens on `127.0.0.1` only, and ablit reaches 
 
 ## Paid links
 
-ablit has a referral ID for Vast.ai and none for RunPod or Clore. If you have no Vast account, `ablit setup vast` shows a disclosure and offers the paid link, a plain link, or skip. The commission never changes your prices or which machine ablit picks, and `ablit setup --no-referral` turns the links off. POLICY.md has the full rules and the tests that enforce them.
+ablit has a referral ID for Vast.ai and none for RunPod or Clore. It has none for Lium either. If you have no Vast account, `ablit setup vast` shows a disclosure and offers the paid link, a plain link, or skip. The commission never changes your prices or which machine ablit picks, and `ablit setup --no-referral` turns the links off. POLICY.md has the full rules and the tests that enforce them.
 
 | Marketplace | Commission the maintainer earns from a new account | Checked |
 |---|---|---|

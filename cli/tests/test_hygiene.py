@@ -101,7 +101,7 @@ def test_documentation_files_exist(repo_root: Path):
                  "docs/design-decisions.md",
                  ".gitignore", "catalog/VERSION", "catalog/LICENSE", "catalog/schema/v1.json",
                  "tools/verify_entry.py", "tools/build_catalog.py",
-                 "backends/vast.md", "backends/runpod.md", "backends/clore.md",
+                 "backends/vast.md", "backends/runpod.md", "backends/clore.md", "backends/lium.md",
                  ".github/workflows/ci.yml", ".github/workflows/weekly-catalog.yml",
                  ".github/workflows/release.yml", "pyproject.toml", ".importlinter", "AGENTS.md"):
         assert (repo_root / name).is_file(), name

@@ -117,7 +117,8 @@ class WatchdogCred:
 
 
 # Environment variables that hold a marketplace key. A key found here wins over the keyring.
-ENV_KEY_NAMES = {"vast": "VAST_API_KEY", "runpod": "RUNPOD_API_KEY", "clore": "CLORE_API_KEY"}
+ENV_KEY_NAMES = {"vast": "VAST_API_KEY", "runpod": "RUNPOD_API_KEY", "clore": "CLORE_API_KEY",
+                  "lium": "LIUM_API_KEY"}
 
 
 def creds_from_env(backend: str, environ: Mapping[str, str] | None = None) -> Creds | None:

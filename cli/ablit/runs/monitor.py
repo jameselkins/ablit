@@ -101,7 +101,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     print(f"{run_id}: the marketplace did not start the machine in time "
                           f"(state {record['marketplace_state']!r} after {START_DEADLINE_SECONDS // 60} minutes). "
                           "Destroying the run.", flush=True)
-                    if record.get("backend") == "clore" and record.get("host_id") and not record.get("ssh_host"):
+                    if record.get("backend") in ("clore", "lium") and record.get("host_id") and not record.get("ssh_host"):
                         # Clore listed no public SSH port for this server, so it cannot be reached. Skip it next time.
                         store.deny(record["host_id"], "Clore listed no SSH port before the start deadline")
                     code = down(store, record, driver, creds)

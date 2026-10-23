@@ -17,6 +17,6 @@ Other documentation sits next to what it describes.
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to add a catalog entry, record a boot test, or change the code |
 | [../POLICY.md](../POLICY.md) | The referral rules, the disclosure text and the tests that enforce them |
 | [../SECURITY.md](../SECURITY.md) | How to report a problem, and what ablit does with secrets |
-| [../backends/](../backends) | Notes on the Vast, RunPod and Clore APIs, with sources |
+| [../backends/](../backends) | Notes on the Vast, RunPod, Clore and Lium APIs, with sources |
 | [../engines/xolotl/image/README.md](../engines/xolotl/image/README.md) | How the Xolotl image is built |
 | [../catalog/boot-tests/](../catalog/boot-tests) | Records of real boot tests |

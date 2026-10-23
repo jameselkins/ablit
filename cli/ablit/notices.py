@@ -19,6 +19,14 @@ LOCAL_CAP_NOTES = {
         "also tries to destroy itself with the key RunPod puts in it, and that has not been tested. "
         "Keep in your RunPod account only an amount you are willing to spend."
     ),
+    "lium": (
+        "On Lium, a key made with your key cannot be limited to one machine, because Lium makes keys only from a "
+        "signed-in session, so the machine does not get one and cannot delete its own pod. The cap on this "
+        "machine relies on the check that runs on this computer. Lium also deletes the pod after a whole number "
+        "of hours that ablit sets from your cap, and that works if this computer is off, but it counts whole "
+        "hours and has not been tested. For a hard limit, make a Lium key with a daily budget and use it. "
+        "Lium deletes the pods of a key that reaches its budget."
+    ),
     "clore": (
         "On Clore, a key cannot be limited to one machine, so the machine does not get one and cannot "
         "cancel its own order. The cap on this machine relies on the check that runs on this computer. "

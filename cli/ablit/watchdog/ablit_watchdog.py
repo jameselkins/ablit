@@ -152,6 +152,10 @@ def destroy_instance(reason: str, config_path: str = RUN_FILE) -> None:
         # Clore documents no key limited to one order, and ablit never puts the account key on the machine.
         # https://docs.clore.ai/for-hosts/api
         raise RuntimeError("Clore has no key limited to one order, so the machine cannot cancel it")
+    if data.get("backend") == "lium":
+        # A Lium key cannot be limited to one pod, and ablit never puts the account key on the machine.
+        # https://docs.lium.io/pod-users/api-keys
+        raise RuntimeError("Lium has no key limited to one pod, so the machine cannot delete it")
     instance = data["instance_id"]
     if isinstance(instance, bool) or not isinstance(instance, int) or instance <= 0:
         raise ValueError("Invalid instance ID")

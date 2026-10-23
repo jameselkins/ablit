@@ -25,13 +25,14 @@ from ablit.backends.base import (
 )
 from ablit.backends.clore import CloreBackend
 from ablit.backends.errors import BackendError
+from ablit.backends.lium import LiumBackend
 from ablit.backends.runpod import RunPodBackend
 from ablit.backends.vast import VastBackend
 
 
 def default_backends(client: httpx.Client | None = None) -> dict[str, Backend]:
     """Return the backends that can search, by name. Tests pass a client to control the HTTP calls."""
-    return {"clore": CloreBackend(client), "runpod": RunPodBackend(client), "vast": VastBackend(client)}
+    return {"clore": CloreBackend(client), "lium": LiumBackend(client), "runpod": RunPodBackend(client), "vast": VastBackend(client)}
 
 
 __all__ = [
@@ -44,6 +45,7 @@ __all__ = [
     "CloreBackend",
     "Creds",
     "Inventory",
+    "LiumBackend",
     "Observation",
     "OfferSearch",
     "TerminationResult",
