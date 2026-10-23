@@ -269,7 +269,7 @@ class Backend(Protocol):
     def watchdog_credential(self, alloc: Allocation, creds: Creds) -> WatchdogCred | None: ...
 ```
 
-Drivers are modules inside the package, with no plugin discovery. `OfferSearch` says whether the search was complete. `BillingEvidence` holds the check time, the resources still billable, and the final cost if reported. A capability counts as present only after a test shows it works. Offers and drivers have no referral fields. Drivers refuse response shapes and units they don't recognize.
+Drivers are modules inside the package, with no plugin discovery. A driver that rents machines subclasses `RentalBackend` in `backends/rental.py`, which holds the HTTP client, the create journal that allows one create per run, the destroy loop and the billing check. The retry, pacing and redirect helpers are in `backends/transport.py`. A new driver writes only its marketplace's calls and field mapping. `OfferSearch` says whether the search was complete. `BillingEvidence` holds the check time, the resources still billable, and the final cost if reported. A capability counts as present only after a test shows it works. Offers and drivers have no referral fields. Drivers refuse response shapes and units they don't recognize.
 
 | Backend | v1 | Notes |
 |---|---|---|
