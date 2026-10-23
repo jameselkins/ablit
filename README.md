@@ -27,9 +27,10 @@ ablit is for cases where you want control over the model more than the lowest pr
 | [abliteration.ai](https://abliteration.ai) | API and chat, per token or $20 to $200 a month ([pricing](https://abliteration.ai/pricing)) | Content is not stored, and token counts and timestamps are kept ([data handling](https://abliteration.ai/data-handling)) | Yes ([terms](https://abliteration.ai/terms-of-service)) |
 | [Experiential Labs](https://experientiallabs.ai/) | A model gateway with uncensored GLM-5.3 Flash and DeepSeek V4.1 Flash, per token ([uncensored](https://experientiallabs.ai/uncensored)) | The DeepSeek model is "not zero retention", and the standard service keeps prompts for 30 days ([privacy](https://experientiallabs.ai/privacy)) | Yes ([terms](https://experientiallabs.ai/terms)) |
 | [Morph](https://morphllm.com) | DeepSeek V4.1 Flash 1017 Abliterated through its model API, open only to customers who pass KYC and explain their purpose ([announcement](https://x.com/morphllm/status/2113174908167712865)). Its docs list the regular 1017 model at $0.12 in and $0.80 out per million tokens ([docs](https://docs.morphllm.com/llms.txt)), and the abliterated price is not listed. | Not checked | Not checked |
+| [Lyber](https://www.lyber.ai/) | One OpenAI-compatible API that routes to five uncensored or abliterated models (Qwen 3.8 27B, DeepSeek V4.1 Flash, GLM 5.3 Full, GLM 5.3 Flash and Kimi K3), on prepaid per-token credit, listed from $0.25 to $5.00 per million input tokens and $1.00 to $15.00 per million output tokens. It is in early access, and you request access ([models and pricing](https://www.lyber.ai/)). | Not checked | Not checked |
 | ablit | Rents a machine on your own Vast or RunPod account and runs a pinned build | The engine runs on the rented machine with its text log turned off, and ablit has no telemetry | No, the build is pinned by revision and hash |
 
-The services' details come from their own pages, read on 2026-10-22, and ablit has not tested them. A rented machine is not private from the marketplace or the machine's owner, because Vast and RunPod hosts run the hardware and can see what runs on it. A 552B model on one card is also slower than a hosted model on a large cluster.
+The services' details come from their own pages, read on 2026-10-22 (Lyber on 2026-10-23), and ablit has not tested them. A rented machine is not private from the marketplace or the machine's owner, because Vast and RunPod hosts run the hardware and can see what runs on it. A 552B model on one card is also slower than a hosted model on a large cluster.
 
 ## Why Xolotl, and what it is good for
 
@@ -115,6 +116,8 @@ The catalog is a folder of YAML files in `catalog/models/`, one per model build,
 | `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The newer 1017 checkpoint on one GPU. The author reports it trails the September build on the hardest agentic tasks. |
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | unverified | The abliterated 1017 model at full FP8 precision |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | unverified | An unmodified 70B model, kept as a cheaper first test of vLLM |
+| `ornith15-122b-uncensored-iq2xxs` | llama.cpp | One 48 GB GPU, 64 GB RAM | unverified | Ornith-1.5-122B with refusals removed, in the 44 GB 2-bit build. Text only, and the publisher reports it complies more often but scores lower on MMLU than the Q4_K_M build. |
+| `ornith15-122b-uncensored-q4km` | llama.cpp | One 84 GB GPU, 96 GB RAM | unverified | The same model in the 79 GB Q4_K_M build, which the publisher reports keeps more of the base model's MMLU score. Text only. |
 
 The quality claims in the table come from the model authors, and ablit has not checked them. CONTRIBUTING.md explains how to add an entry.
 

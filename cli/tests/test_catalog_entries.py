@@ -19,6 +19,8 @@ SEED_IDS = {
     "ds41-1017-xq-v3-uncensored",
     "llama33-70b-fp8-dynamic",
     "llama31-8b-abliterated-q4km",
+    "ornith15-122b-uncensored-iq2xxs",
+    "ornith15-122b-uncensored-q4km",
 }
 
 BOOT_TESTED = {"llama31-8b-abliterated-q4km", "ds41-september-gsq-uncensored", "ds41-1017-xq-v3-uncensored"}
@@ -57,7 +59,7 @@ def test_verify_entry_refuses_fill_without_the_network(repo_root: Path):
     assert result.returncode != 0
 
 
-def test_the_seven_seed_entries_exist(entry_files):
+def test_the_seed_entries_exist(entry_files):
     assert {p.stem for p in entry_files} == SEED_IDS
 
 

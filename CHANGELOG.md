@@ -11,6 +11,7 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 - A pinned Xolotl `03be8a6` image digest in the engine lock, with the conversation cache set to 4096 MiB.
 - A boot test record for the Xolotl entry on `03be8a6`, and an 8B RunPod boot test record.
 - A comparison of Morph with the other hosted services in the documentation.
+- Two unverified llama.cpp entries for Ornith-1.5-122B UNCENSORED (IQ2_XXS and Q4_K_M, text only), the qwen35moe architecture in the llama.cpp engine lock, and Lyber in the hosted service comparison.
 - A ruff check, a mypy check, Python 3.13 in the CI matrix, a Dependabot configuration, a pre-commit configuration with ruff and gitleaks, and this changelog.
 
 ### Changed
