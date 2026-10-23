@@ -20,10 +20,10 @@ from ablit.backends.base import ENV_KEY_NAMES, BootSpec
 from ablit.backends.runpod import RUNPOD_START
 from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
 from ablit.catalog.loader import repo_root
-from ablit.credentials import CredentialError, credentials, secret_get, secret_set, setup_vast
+from ablit.credentials import CredentialError, credentials, secret_get, secret_set
 from ablit.plan import report_json, run_plan
 from ablit.plan_text import render
-from ablit.runs import RunBusy, RunError, RunStore
+from ablit.runs import RunBusy, RunError
 from ablit.runs.lifecycle import allocation, down, local_stop_needed, reason, refresh, run_redactor, save_remote_logs
 from ablit.runs.ssh import SSH
 from ablit.select.cost import total_cost
@@ -82,7 +82,7 @@ def make_intent(store, entry, offer, report, args, lock) -> dict:
     catalog_files = sorted((root / "catalog" / "models").glob("*.yaml"))
     catalog_digest = hashlib.sha256(b"".join(p.read_bytes() for p in catalog_files)).hexdigest()
     record = {
-        "schema": 1, "run_id": run_id, "model_id": entry.id, "state": "creating", "backend": "vast",
+        "schema": 1, "run_id": run_id, "model_id": entry.id, "state": "creating",
         "backend": offer.backend,
         "quote": report_json(report), "offer": asdict(offer), "cap_usd": args.max_spend,
         "entry": entry.model_dump(), "catalog_sha256": catalog_digest,
@@ -518,7 +518,7 @@ def existing(args, driver, environ, store, drivers=None):
                     redactor = run_redactor(record, creds)
                     def status_down():
                         with contextlib.redirect_stdout(sys.stderr):
-                            return down(store, record, driver, creds)
+                            return down(store, record, driver, creds)  # noqa: B023 (called only within this iteration)
                     if locked and record["state"] != "billing_stopped_confirmed":
                         if record.get("create_sent") and not record.get("resource_ids"):
                             found = driver.reconcile(record["run_id"], creds)

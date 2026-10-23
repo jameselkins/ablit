@@ -49,7 +49,6 @@ from ablit.backends.errors import (
     RequestRejected,
     ResponseNotRecognized,
     UnknownFieldType,
-    UnknownUnit,
 )
 from ablit.backends.runpod_gpus import compute_capability_for
 from ablit.select.types import HardwareRequest, Offer, PlanOptions

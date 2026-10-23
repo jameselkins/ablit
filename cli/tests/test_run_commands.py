@@ -3,7 +3,6 @@
 import io
 import json
 import sys
-from dataclasses import asdict, replace
 from types import SimpleNamespace
 
 import httpx
@@ -18,7 +17,7 @@ from ablit.runs import RunStore
 from ablit.runs import commands
 from ablit.runs.ssh import SSH
 from market_fixtures import FakeVast, vast_row, VAST_URL
-from test_vast_lifecycle import ROOT, RUN, page, instance
+from test_vast_lifecycle import ROOT, page, instance
 
 MODEL = "llama31-8b-abliterated-q4km"
 

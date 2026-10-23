@@ -162,7 +162,7 @@ def fill_entry(data: dict[str, Any], client: HFClient) -> dict[str, Any]:
     # A join writes one file of exactly the size of its inputs. Fill it in when
     # the entry left the number out. Other steps keep the number the entry gives.
     entry = Entry.from_dict(out)
-    for step_data, step in zip(out["staging"], entry.staging):
+    for step_data, step in zip(out["staging"], entry.staging, strict=False):
         if step.step == "join" and step.output_bytes is None:
             total = 0
             for selector in step.inputs or []:

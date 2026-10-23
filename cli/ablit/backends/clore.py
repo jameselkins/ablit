@@ -634,7 +634,7 @@ class CloreBackend(UnwrittenBackend):
             return Allocation(run_id, self.name, [str(row["id"])], offer.hourly_all_in, host_id=offer.host_id)
 
     def _wait_for_order(self, record: Mapping[str, Any], creds: Creds, attempts: int = 3) -> dict[str, Any]:
-        for attempt in range(attempts):
+        for _ in range(attempts):
             rows = self._run_orders(record, self._orders(creds))
             if len(rows) == 1:
                 return rows[0]

@@ -9,7 +9,6 @@ import httpx
 import pytest
 import respx
 
-from ablit.backends import Creds
 from ablit.backends.vast import VastBackend
 from ablit.runs import RunError, RunStore
 from ablit.runs.lifecycle import down, local_stop_needed
@@ -174,7 +173,7 @@ def test_no_key_revocation_when_billing_check_times_out(tmp_path):
     driver._sleep = lambda seconds: None
     with respx.mock(assert_all_called=False) as router:
         # Reads retry after a timeout, so every retry of the billing check times out too.
-        listing = router.get(ROOT + "/api/v1/instances/").mock(
+        router.get(ROOT + "/api/v1/instances/").mock(
             side_effect=[page([instance()])] + [httpx.ReadTimeout("invented")] * 5)
         router.delete(ROOT + "/api/v0/instances/7201/").respond(200, json={"success": True})
         revoke = router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
