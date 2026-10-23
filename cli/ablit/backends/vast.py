@@ -43,7 +43,6 @@ from ablit.backends.errors import (
     UnknownFieldType,
     UnknownUnit,
     CreateUncertain,
-    WorkloadRejected,
 )
 from ablit.backends import fields
 from ablit.select.cost import total_cost

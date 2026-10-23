@@ -2,7 +2,6 @@
 
 import json
 import sys
-from types import SimpleNamespace
 
 import httpx
 import pytest

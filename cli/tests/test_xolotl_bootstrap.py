@@ -126,7 +126,7 @@ class Box:
         part_names = parts or PARTS
         sizes = [60_000] * (len(part_names) - 1) + [20_000] if len(part_names) > 1 else [50_000]
         self.files: dict[str, tuple[bytes, str]] = {}
-        for name, size in zip(part_names, sizes):
+        for name, size in zip(part_names, sizes, strict=False):
             self.files[name] = (payload(name, size), "weight")
         self.files["v/experts.json"] = (payload("experts", 700), "expert-map")
         self.files["v/SHA256SUMS"] = (payload("sums", 300), "checksum")

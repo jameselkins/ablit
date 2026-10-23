@@ -17,7 +17,7 @@ from ablit.runs import RunStore, commands
 from ablit.runs.lifecycle import local_stop_needed
 from ablit.runs.ssh import SSH
 from ablit.watchdog import ablit_watchdog as watchdog
-from market_fixtures import RUNPOD_URL, VAST_URL, FakeRunPod, FakeVast, runpod_type, vast_row
+from market_fixtures import VAST_URL, FakeVast, vast_row
 from test_clore import server
 from test_clore_lifecycle import CANCEL, CREATE, ORDERS, OFFER, OK, order, orders
 from test_run_commands import tty

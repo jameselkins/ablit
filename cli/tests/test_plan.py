@@ -18,7 +18,7 @@ from ablit.catalog import load_catalog, resolve
 from ablit.cli import main
 from ablit.notices import UNTESTED_NOTICE
 from ablit.plan import JSON_SCHEMA_VERSION
-from ablit.select import PlanOptions, rank_offers, total_cost
+from ablit.select import PlanOptions, rank_offers
 from ablit.select.request import request_from_entry
 from market_fixtures import (
     RUNPOD_URL,

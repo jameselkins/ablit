@@ -4,7 +4,6 @@ import json
 import sys
 
 import httpx
-import pytest
 import respx
 
 from ablit import credentials as keys
