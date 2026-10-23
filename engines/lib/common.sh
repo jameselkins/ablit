@@ -461,7 +461,7 @@ ablit_wait_jobs() {
       index=$((index + 1))
     done
     [ "$pending" = 1 ] || return 0
-    sleep 1
+    sleep "${ABLIT_WAIT_POLL_S:-1}"
   done
 }
 
@@ -472,7 +472,7 @@ ablit_wait_for_files() {
   for file in "$@"; do
     while [ ! -e "$file" ]; do
       [ ! -f "$ABLIT_STATE_DIR/failed.json" ] || exit "$BOOTSTRAP_FAILED"
-      sleep 1
+      sleep "${ABLIT_WAIT_POLL_S:-1}"
     done
   done
 }
@@ -591,7 +591,7 @@ ablit_health_check() {
     fi
     waited=$((waited + poll))
     [ "$waited" -lt "$timeout" ] || ablit_fail "health_timeout" "GET /v1/models returned $code after ${timeout}s"
-    sleep "$poll"
+    sleep "${ABLIT_HEALTH_SLEEP_S:-$poll}"
   done
 
   # The engine must listen on the loopback address only.

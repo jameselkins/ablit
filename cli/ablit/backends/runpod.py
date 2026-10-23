@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import re
 import time
 from typing import Any
@@ -32,26 +31,23 @@ from ablit import __version__
 from ablit.backends import fields
 from ablit.backends.base import (
     Allocation,
-    BillingEvidence,
     BootSpec,
     Capabilities,
     Creds,
     Inventory,
     Observation,
     OfferSearch,
-    TerminationResult,
-    UnwrittenBackend,
     WatchdogCred,
 )
 from ablit.backends.errors import (
-    CreateUncertain,
     CredentialsRejected,
     RequestRejected,
     ResponseNotRecognized,
     UnknownFieldType,
-    UnknownUnit,
 )
+from ablit.backends.rental import RentalBackend
 from ablit.backends.runpod_gpus import compute_capability_for
+from ablit.backends.transport import backoff, refuse_redirect, send_with_retry
 from ablit.select.types import HardwareRequest, Offer, PlanOptions
 
 GRAPHQL_URL = "https://api.runpod.io/graphql"
@@ -103,6 +99,15 @@ TIER_ANY = "any"
 TIER_SECURE = "secure"
 
 VENDOR_BY_ID_PREFIX = (("NVIDIA", "nvidia"), ("Tesla", "nvidia"), ("AMD", "amd"))
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    """Seconds to wait before a retry. 429 answers carry a Retry-After header.
+
+    https://docs.runpod.io/api-reference-v2/migrate-from-v1
+    """
+    wait = response.headers.get("Retry-After", "")
+    return min(float(wait), 60.0) if wait.isdigit() else backoff(attempt)
 
 
 def volume_disk_hourly(disk_gb: float) -> float:
@@ -209,27 +214,22 @@ def offers_from_data(
     return offers, unpriced
 
 
-class RunPodBackend(UnwrittenBackend):
+class RunPodBackend(RentalBackend):
     name = "runpod"
 
     inventory_interval = 0.5
+    # 400 (rule or no capacity), 401, 402, 403, 404 and 422 prove nothing was created.
+    # 429 and 5xx do not prove it.
+    refused_statuses = (400, 401, 402, 403, 404, 422)
+    fault_find = "pod name"
     _sleep = staticmethod(time.sleep)
 
     def __init__(
         self, client: httpx.Client | None = None, url: str = GRAPHQL_URL, *, rest_root: str = REST_ROOT, store=None
     ) -> None:
-        self._client = client
-        self._owns_client = client is None
+        super().__init__(client, store=store)
         self._url = url
         self._rest_root = rest_root.rstrip("/")
-        self.store = store
-        self.denied_host_ids: set[str] = set()
-
-    def close(self) -> None:
-        """Close the HTTP client when this driver created it."""
-        if self._owns_client and self._client is not None:
-            self._client.close()
-            self._client = None
 
     def capabilities(self) -> Capabilities:
         # Search works against live data. Renting stays False until a paid test shows it works.
@@ -241,9 +241,7 @@ class RunPodBackend(UnwrittenBackend):
         headers = {"Content-Type": "application/json", "User-Agent": f"ablit/{__version__}"}
         if creds is not None:
             headers["Authorization"] = f"Bearer {creds.api_key}"
-        if self._client is None:
-            self._client = httpx.Client(timeout=httpx.Timeout(30.0))
-        response = self._client.post(self._url, json={"query": query}, headers=headers)
+        response = self._http().post(self._url, json={"query": query}, headers=headers)
         status = response.status_code
         if status in (401, 403):
             raise CredentialsRejected(self.name, status, "the API key was refused")
@@ -318,32 +316,16 @@ class RunPodBackend(UnwrittenBackend):
         params: dict[str, Any] | None = None, missing_ok: bool = False,
     ) -> Any:
         """Send one REST request. Reads and deletes retry on 429 and 5xx. A create is never resent."""
-        if self._client is None:
-            self._client = httpx.Client(timeout=httpx.Timeout(30.0))
+        client = self._http()
         headers = {"Authorization": f"Bearer {creds.api_key}", "User-Agent": f"ablit/{__version__}"}
-        attempts = 5 if method in ("GET", "DELETE") else 1
-        response: httpx.Response | None = None
-        for attempt in range(attempts):
-            try:
-                response = self._client.request(
-                    method, self._rest_root + path, headers=headers, json=body, params=params,
-                    follow_redirects=False,
-                )
-            except httpx.TransportError:
-                if attempt + 1 >= attempts:
-                    raise
-                self._sleep(min(2.0 * 2 ** attempt, 30.0))
-                continue
-            if response.status_code != 429 and response.status_code < 500:
-                break
-            if attempt + 1 < attempts:
-                # 429 answers carry a Retry-After header. https://docs.runpod.io/api-reference-v2/migrate-from-v1
-                wait = response.headers.get("Retry-After", "")
-                self._sleep(min(float(wait), 60.0) if wait.isdigit() else min(2.0 * 2 ** attempt, 30.0))
-        assert response is not None
+        response = send_with_retry(
+            lambda: client.request(
+                method, self._rest_root + path, headers=headers, json=body, params=params,
+                follow_redirects=False,
+            ),
+            attempts=5 if method in ("GET", "DELETE") else 1, sleep=self._sleep, delay=_retry_delay)
         status = response.status_code
-        if response.is_redirect:
-            raise RequestRejected(self.name, status, "the API redirected the request; ablit does not follow it")
+        refuse_redirect(self.name, response)
         if status == 404 and missing_ok:
             return None
         if status in (401, 403):
@@ -366,11 +348,6 @@ class RunPodBackend(UnwrittenBackend):
             return "the request failed"
         detail = data.get("detail") if isinstance(data, dict) else None
         return detail[:200] if isinstance(detail, str) and detail else "the request failed"
-
-    @staticmethod
-    def label(run_id: str) -> str:
-        """The pod name. The create request has no tag field, so the name is how a run finds its pod."""
-        return f"ablit-{run_id}"
 
     def test_credentials(self, creds: Creds) -> None:
         """One read-only call. It needs the pods:read scope, so a key without it is refused."""
@@ -417,60 +394,36 @@ class RunPodBackend(UnwrittenBackend):
 
     # --- create -------------------------------------------------------------
 
-    def create(self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds) -> Allocation:
-        """Journal the attempt before sending it. A run gets at most one create."""
-        from ablit.runs import RunStore
+    def _prepare_create(self, offer: Offer, boot: BootSpec, run_id: str) -> dict[str, Any]:
+        # The pod name is the label. The create request has no tag field, so the name is how a run finds its pod.
+        key = boot.ssh_public_key
+        if key is None or not SSH_KEY_PATTERN.match(key) or "\n" in key:
+            raise ValueError("runpod: the SSH public key is missing, too long, or has characters the driver refuses")
+        gpu_id, count, tier = parse_offer_id(offer.offer_id)
+        return {
+            "name": self.label(run_id),
+            "image": boot.image,
+            # The offer ID names one GPU type and count. The create call places that GPU type only.
+            "gpu": {"id": gpu_id, "count": count, "minRamPerGpu": max(1, int(offer.host_ram_gb // count))},
+            # An offer that is not from the Secure Cloud query beat the Secure Cloud price, so it is a community offer.
+            "cloud": "SECURE" if tier == TIER_SECURE else "COMMUNITY",
+            # Container disk, with no persistent volume. The quote prices the same GB at the same rate.
+            "disk": boot.disk_gb,
+            "ports": ["22/tcp"],
+            "env": {PUBLIC_KEY_VARIABLE: key},
+            "entrypoint": ["/bin/bash", "-c"],
+            "cmd": [boot.onstart],
+        }
 
-        store = self.store or RunStore()
-        with store.lock(run_id + ".create"):
-            record = store.load(run_id)
-            if record.get("create_sent"):
-                found = self.reconcile(run_id, creds)
-                if len(found.resource_ids) == 1:
-                    return Allocation(run_id, self.name, found.resource_ids, offer.hourly_all_in)
-                raise CreateUncertain("Create was already sent. Re-run down to reconcile; no second create is allowed.")
-            if "@sha256:" not in boot.image:
-                raise ResponseNotRecognized("runpod: an image digest is required")
-            if boot.env:
-                raise ResponseNotRecognized("runpod: credentials and engine config must travel over SSH")
-            key = boot.ssh_public_key
-            if key is None or not SSH_KEY_PATTERN.match(key) or "\n" in key:
-                raise ValueError("runpod: the SSH public key is missing, too long, or has characters the driver refuses")
-            gpu_id, count, tier = parse_offer_id(offer.offer_id)
-            body = {
-                "name": self.label(run_id),
-                "image": boot.image,
-                # The offer ID names one GPU type and count. The create call places that GPU type only.
-                "gpu": {"id": gpu_id, "count": count, "minRamPerGpu": max(1, int(offer.host_ram_gb // count))},
-                # An offer that is not from the Secure Cloud query beat the Secure Cloud price, so it is a community offer.
-                "cloud": "SECURE" if tier == TIER_SECURE else "COMMUNITY",
-                # Container disk, with no persistent volume. The quote prices the same GB at the same rate.
-                "disk": boot.disk_gb,
-                "ports": ["22/tcp"],
-                "env": {PUBLIC_KEY_VARIABLE: key},
-                "entrypoint": ["/bin/bash", "-c"],
-                "cmd": [boot.onstart],
-            }
-            record["create_sent"] = True
-            record["started_at"] = time.time()
-            store.save(record)
-            try:
-                # https://api.runpod.io/v2/openapi.json (createPod)
-                data = self._request("POST", PODS_PATH, creds, body=body)
-            except RequestRejected as error:
-                # 400 (rule or no capacity), 401, 402, 403, 404 and 422 prove nothing was created.
-                # 429 and 5xx do not prove it.
-                if error.status in (400, 401, 402, 403, 404, 422):
-                    record["create_rejected"] = True
-                    store.save(record)
-                raise
-            if os.environ.get("ABLIT_FAULT") == "drop-create-response":
-                raise CreateUncertain("The create response was dropped by ABLIT_FAULT. Re-run up or down to find the pod name.")
-            pod = self._pod(data)
-            record["resource_ids"] = [str(pod["id"])]
-            store.save(record)
-            self.check_against_quote(pod, offer, boot)
-            return Allocation(run_id, self.name, [str(pod["id"])], offer.hourly_all_in)
+    def _send_create(self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds, prepared: dict[str, Any]) -> Any:
+        # https://api.runpod.io/v2/openapi.json (createPod)
+        return self._request("POST", PODS_PATH, creds, body=prepared)
+
+    def _read_created(self, data: Any, record: dict[str, Any], creds: Creds) -> list[str]:
+        return [str(self._pod(data)["id"])]
+
+    def _verify_created(self, data: Any, offer: Offer, boot: BootSpec) -> None:
+        self.check_against_quote(self._pod(data), offer, boot)
 
     def check_against_quote(self, pod: dict[str, Any], offer: Offer, boot: BootSpec) -> None:
         """Refuse a created pod that differs from the approved quote. The caller then destroys the run."""
@@ -503,16 +456,13 @@ class RunPodBackend(UnwrittenBackend):
     def reconcile(self, run_id: str, creds: Creds) -> Inventory:
         """Find the run's pods by name. The pod name is the only tag a create request can carry."""
         rows = [r for r in self.pods(creds) if r.get("name") == self.label(run_id) and r["status"] != "TERMINATED"]
-        return Inventory(run_id, self.name, [str(r["id"]) for r in rows])
+        return self._inventory(run_id, rows)
 
     def observe(self, alloc: Allocation, creds: Creds) -> Observation:
         rows = [r for r in self.pods(creds) if str(r["id"]) in alloc.resource_ids]
-        rows = [r for r in rows if r["status"] != "TERMINATED"]
-        if not rows:
-            return Observation(time.time(), "absent")
-        if len(rows) != 1:
-            raise ResponseNotRecognized("runpod: expected exactly one pod")
-        row = rows[0]
+        row = self._one([r for r in rows if r["status"] != "TERMINATED"], "pod")
+        if row is None:
+            return self._absent()
         where = f"pod {row['id']}"
         status = row["status"]
         cost = fields.number(row, "cost", backend=self.name, where=where, nullable=True, minimum=0)
@@ -546,14 +496,10 @@ class RunPodBackend(UnwrittenBackend):
             raise UnknownFieldType(f"runpod: invalid SSH host or port in {where}")
         return host, port
 
-    def destroy(self, inv: Inventory, creds: Creds) -> TerminationResult:
-        """Terminate each pod. Terminate deletes the pod and its disks. A stopped pod still bills for its volume."""
-        terminated = []
-        for pod in inv.resource_ids:
-            # https://api.runpod.io/v2/openapi.json (deletePod). 204 means deleted, 404 means already gone.
-            self._request("DELETE", f"{PODS_PATH}/{self._pod_path(pod)}", creds, missing_ok=True)
-            terminated.append(pod)
-        return TerminationResult(True, terminated)
+    def _terminate(self, resource_id: str, creds: Creds) -> None:
+        """Terminate a pod. Terminate deletes the pod and its disks. A stopped pod still bills for its volume."""
+        # https://api.runpod.io/v2/openapi.json (deletePod). 204 means deleted, 404 means already gone.
+        self._request("DELETE", f"{PODS_PATH}/{self._pod_path(resource_id)}", creds, missing_ok=True)
 
     @staticmethod
     def _pod_path(pod: str) -> str:
@@ -561,15 +507,14 @@ class RunPodBackend(UnwrittenBackend):
             raise ValueError(f"runpod: {pod!r} is not a pod ID")
         return pod
 
-    def verify_billing_stopped(self, inv: Inventory, creds: Creds) -> BillingEvidence:
+    def _still_billable(self, inv: Inventory, creds: Creds) -> list[str]:
         # A pod that is absent from the list, or listed as TERMINATED, no longer bills. An EXITED pod
         # still bills for its volume disk, so it counts as billing. https://docs.runpod.io/pods/pricing
         rows = self.pods(creds)
-        remaining = [
+        return [
             str(r["id"]) for r in rows
             if r["status"] != "TERMINATED" and (str(r["id"]) in inv.resource_ids or r.get("name") == self.label(inv.run_id))
         ]
-        return BillingEvidence(time.time(), remaining)
 
     def watchdog_credential(self, alloc: Allocation, creds: Creds) -> WatchdogCred | None:
         # RunPod documents no API key limited to one pod. Restricted keys are set per resource family

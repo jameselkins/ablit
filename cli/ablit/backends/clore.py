@@ -29,7 +29,6 @@ The lifecycle has synthetic tests and is untested on a rented machine.
 from __future__ import annotations
 
 import math
-import os
 import re
 import time
 from collections import Counter
@@ -42,15 +41,12 @@ from ablit import __version__
 from ablit.backends import fields
 from ablit.backends.base import (
     Allocation,
-    BillingEvidence,
     BootSpec,
     Capabilities,
     Creds,
     Inventory,
     Observation,
     OfferSearch,
-    TerminationResult,
-    UnwrittenBackend,
     WatchdogCred,
 )
 from ablit.backends.clore_gpus import compute_capability_for
@@ -62,6 +58,8 @@ from ablit.backends.errors import (
     UnknownFieldType,
     UnknownUnit,
 )
+from ablit.backends.rental import RentalBackend
+from ablit.backends.transport import pace, refuse_redirect, send_with_retry
 from ablit.select.types import HardwareRequest, Offer, PlanOptions
 
 # Base URL for every endpoint. https://docs.clore.ai/for-hosts/api
@@ -312,24 +310,16 @@ def _plural(count: int, reason: str) -> str:
     return f"{count} {reason}"
 
 
-class CloreBackend(UnwrittenBackend):
+class CloreBackend(RentalBackend):
     name = "clore"
     request_interval = REQUEST_INTERVAL_SECONDS
+    fault_find = "order"
     _sleep = staticmethod(time.sleep)
 
     def __init__(self, client: httpx.Client | None = None, root: str = API_ROOT, *, store=None) -> None:
-        self._client = client
-        self._owns_client = client is None
+        super().__init__(client, store=store)
         self._root = root.rstrip("/")
-        self.store = store
-        self.denied_host_ids: set[str] = set()
         self._last_request_at: float | None = None
-
-    def close(self) -> None:
-        """Close the HTTP client when this driver created it."""
-        if self._owns_client and self._client is not None:
-            self._client.close()
-            self._client = None
 
     def capabilities(self) -> Capabilities:
         # Search works against live data. Renting is connected to `ablit up`, but the flag stays False
@@ -340,11 +330,17 @@ class CloreBackend(UnwrittenBackend):
     # --- HTTP -------------------------------------------------------------
 
     def _pace(self) -> None:
-        if self._last_request_at is not None:
-            wait = self.request_interval - (time.monotonic() - self._last_request_at)
-            if wait > 0:
-                self._sleep(wait)
-        self._last_request_at = time.monotonic()
+        self._last_request_at = pace(self._last_request_at, self.request_interval, self._sleep)
+
+    @staticmethod
+    def _code_is_rate_limit(response: httpx.Response) -> bool:
+        """Clore answers code 5 above its request limit, and 429 or a server error also mean wait."""
+        if response.status_code == 429 or response.status_code >= 500:
+            return True
+        try:
+            return response.json().get("code") == 5
+        except (ValueError, AttributeError):
+            return False
 
     def _call(
         self,
@@ -364,40 +360,20 @@ class CloreBackend(UnwrittenBackend):
         error. A create is never resent, because a lost answer to a create is
         handled by looking for the order in the list.
         """
-        if self._client is None:
-            self._client = httpx.Client(timeout=httpx.Timeout(timeout))
+        client = self._http(timeout)
         headers = {"User-Agent": f"ablit/{__version__}"}
         if creds is not None:
             # The API reads the key from a header named "auth", not from Authorization.
             # https://docs.clore.ai/for-hosts/api
             headers["auth"] = creds.api_key
-        attempts = 5 if retry else 1
-        response: httpx.Response | None = None
-        for attempt in range(attempts):
-            self._pace()
-            try:
-                response = self._client.request(
-                    method, f"{self._root}/{endpoint}", headers=headers, json=body, params=params,
-                    follow_redirects=False, timeout=timeout,
-                )
-            except httpx.TransportError:
-                if attempt + 1 >= attempts:
-                    raise
-                self._sleep(min(2.0 * 2 ** attempt, 30.0))
-                continue
-            limited = response.status_code == 429 or response.status_code >= 500
-            if not limited:
-                try:
-                    limited = response.json().get("code") == 5
-                except (ValueError, AttributeError):
-                    pass
-            if not limited or attempt + 1 >= attempts:
-                break
-            self._sleep(min(2.0 * 2 ** attempt, 30.0))
-        assert response is not None
+        response = send_with_retry(
+            lambda: client.request(
+                method, f"{self._root}/{endpoint}", headers=headers, json=body, params=params,
+                follow_redirects=False, timeout=timeout,
+            ),
+            attempts=5 if retry else 1, sleep=self._sleep, limited=self._code_is_rate_limit, before=self._pace)
         status = response.status_code
-        if response.is_redirect:
-            raise RequestRejected(self.name, status, "the API redirected the request; ablit does not follow it")
+        refuse_redirect(self.name, response)
         try:
             data = response.json()
         except ValueError:
@@ -569,72 +545,55 @@ class CloreBackend(UnwrittenBackend):
         if record is None or not (record.get("create_sent") or record.get("resource_ids")):
             return Inventory(run_id, self.name, [])
         rows = self._run_orders(record, self._orders(creds))
-        return Inventory(run_id, self.name, [str(row["id"]) for row in rows])
+        return self._inventory(run_id, rows)
 
-    def create(
-        self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds
-    ) -> Allocation:
-        """Journal the attempt before sending it. A run gets at most one create."""
-        from ablit.runs import RunStore
+    def _allocation(self, run_id: str, resource_ids: list[str], offer: Offer) -> Allocation:
+        return Allocation(run_id, self.name, resource_ids, offer.hourly_all_in, host_id=offer.host_id)
 
-        store = self.store or RunStore()
-        with store.lock(run_id + ".create"):
-            record = store.load(run_id)
-            if record.get("create_sent"):
-                found = self.reconcile(run_id, creds)
-                if len(found.resource_ids) == 1:
-                    return Allocation(run_id, self.name, found.resource_ids, offer.hourly_all_in,
-                                      host_id=offer.host_id)
-                raise CreateUncertain("Create was already sent. Re-run down to reconcile; no second create is allowed.")
-            if "@sha256:" not in boot.image:
-                raise ResponseNotRecognized("clore: an image digest is required")
-            if boot.env:
-                raise ResponseNotRecognized("clore: credentials and engine config must travel over SSH")
-            key = boot.ssh_public_key
-            if key is None or len(key) > SSH_KEY_MAX_CHARS or not SSH_KEY_PATTERN.match(key):
-                raise ValueError("clore: the SSH public key is missing, too long, or has characters create_order refuses")
-            if offer.sticker_hourly is None:
-                raise ValueError("clore: the offer has no listed price, so it cannot be rented")
-            server = int(offer.offer_id)
-            record["create_sent"] = True
-            record["started_at"] = time.time()
-            record["clore_create"] = {"server_id": server, "image": boot.image, "sent_at": int(time.time())}
-            store.save(record)
-            body = {
-                "currency": CURRENCY,
-                "image": boot.image,
-                "renting_server": server,
-                "type": "on-demand",
-                # Only the SSH port is forwarded. The engine is reached through an SSH tunnel.
-                "ports": {"22": "tcp"},
-                "ssh_key": key,
-                # Clore's own entrypoint starts an SSH server and runs a start script.
-                "autossh_entrypoint": True,
-                "command": boot.onstart,
-                # The order does not start if the host raised the price after the quote.
-                "required_price": round(offer.sticker_hourly * HOURS_PER_DAY, 8),
-            }
-            try:
-                # https://docs.clore.ai/for-hosts/api (create_order)
-                self._call("POST", "create_order", creds, body=body)
-            except RequestRejected as error:
-                refused = isinstance(error, CredentialsRejected) or (
-                    isinstance(error, CloreRejected) and error.definitive
-                ) or error.status in (400, 401, 403, 404)
-                if refused:
-                    record["create_rejected"] = True
-                    store.save(record)
-                raise
-            if os.environ.get("ABLIT_FAULT") == "drop-create-response":
-                raise CreateUncertain("The create response was dropped by ABLIT_FAULT. Re-run up or down to find the order.")
-            # The reference documents only the code field in the answer, so the order is found in the list.
-            row = self._wait_for_order(record, creds)
-            record["resource_ids"] = [str(row["id"])]
-            store.save(record)
-            return Allocation(run_id, self.name, [str(row["id"])], offer.hourly_all_in, host_id=offer.host_id)
+    def _prepare_create(self, offer: Offer, boot: BootSpec, run_id: str) -> tuple[int, str]:
+        key = boot.ssh_public_key
+        if key is None or len(key) > SSH_KEY_MAX_CHARS or not SSH_KEY_PATTERN.match(key):
+            raise ValueError("clore: the SSH public key is missing, too long, or has characters create_order refuses")
+        if offer.sticker_hourly is None:
+            raise ValueError("clore: the offer has no listed price, so it cannot be rented")
+        return int(offer.offer_id), key
+
+    def _journal_create(self, record: dict[str, Any], offer: Offer, boot: BootSpec, prepared: tuple[int, str]) -> None:
+        record["clore_create"] = {"server_id": prepared[0], "image": boot.image, "sent_at": int(time.time())}
+
+    def _send_create(self, offer: Offer, boot: BootSpec, run_id: str, creds: Creds, prepared: tuple[int, str]) -> Any:
+        server, key = prepared
+        assert offer.sticker_hourly is not None
+        body = {
+            "currency": CURRENCY,
+            "image": boot.image,
+            "renting_server": server,
+            "type": "on-demand",
+            # Only the SSH port is forwarded. The engine is reached through an SSH tunnel.
+            "ports": {"22": "tcp"},
+            "ssh_key": key,
+            # Clore's own entrypoint starts an SSH server and runs a start script.
+            "autossh_entrypoint": True,
+            "command": boot.onstart,
+            # The order does not start if the host raised the price after the quote.
+            "required_price": round(offer.sticker_hourly * HOURS_PER_DAY, 8),
+        }
+        # https://docs.clore.ai/for-hosts/api (create_order)
+        return self._call("POST", "create_order", creds, body=body)
+
+    def _create_refused(self, error: RequestRejected) -> bool:
+        return (
+            isinstance(error, CredentialsRejected)
+            or (isinstance(error, CloreRejected) and error.definitive)
+            or error.status in (400, 401, 403, 404)
+        )
+
+    def _read_created(self, data: Any, record: dict[str, Any], creds: Creds) -> list[str]:
+        # The reference documents only the code field in the answer, so the order is found in the list.
+        return [str(self._wait_for_order(record, creds)["id"])]
 
     def _wait_for_order(self, record: Mapping[str, Any], creds: Creds, attempts: int = 3) -> dict[str, Any]:
-        for attempt in range(attempts):
+        for _ in range(attempts):
             rows = self._run_orders(record, self._orders(creds))
             if len(rows) == 1:
                 return rows[0]
@@ -643,14 +602,9 @@ class CloreBackend(UnwrittenBackend):
         raise CreateUncertain("The order is not in the order list yet. Re-run up or down; no second create is allowed.")
 
     def observe(self, alloc: Allocation, creds: Creds) -> Observation:
-        rows = [r for r in self._orders(creds) if str(r["id"]) in alloc.resource_ids]
-        if not rows:
-            return Observation(time.time(), "absent")
-        if len(rows) != 1:
-            raise ResponseNotRecognized("clore: expected exactly one order")
-        row = rows[0]
-        if row.get("expired") is True:
-            return Observation(time.time(), "absent")
+        row = self._one([r for r in self._orders(creds) if str(r["id"]) in alloc.resource_ids], "order")
+        if row is None or row.get("expired") is True:
+            return self._absent()
         where = f"order {row['id']}"
         currency = fields.text(row, "currency", backend=self.name, where=where)
         if currency != CURRENCY:
@@ -696,25 +650,20 @@ class CloreBackend(UnwrittenBackend):
                 port = public
         return (host, port) if host and port else (None, None)
 
-    def destroy(self, inv: Inventory, creds: Creds) -> TerminationResult:
-        terminated = []
-        for order in inv.resource_ids:
-            # An order that already ended answers order_not_active, which is a finished cancel.
-            # https://docs.clore.ai/for-hosts/api (cancel_order)
-            # https://docs.clore.ai/dev/reference/error-codes
-            self._call("POST", "cancel_order", creds, body={"id": int(order)}, retry=True,
-                       tolerate=("order_not_active",))
-            terminated.append(order)
-        return TerminationResult(True, terminated)
+    def _terminate(self, resource_id: str, creds: Creds) -> None:
+        # An order that already ended answers order_not_active, which is a finished cancel.
+        # https://docs.clore.ai/for-hosts/api (cancel_order)
+        # https://docs.clore.ai/dev/reference/error-codes
+        self._call("POST", "cancel_order", creds, body={"id": int(resource_id)}, retry=True,
+                   tolerate=("order_not_active",))
 
-    def verify_billing_stopped(self, inv: Inventory, creds: Creds) -> BillingEvidence:
+    def _still_billable(self, inv: Inventory, creds: Creds) -> list[str]:
         rows = self._orders(creds)
         record = self._record(inv.run_id)
         mine = {str(r["id"]) for r in self._run_orders(record, rows)} | set(inv.resource_ids)
         # Absence from the active list, or an expired flag, is the evidence. A cancel
         # acknowledgement alone is not. The list gives no final cost the driver can trust.
-        remaining = [str(r["id"]) for r in rows if str(r["id"]) in mine and r.get("expired") is not True]
-        return BillingEvidence(time.time(), remaining)
+        return [str(r["id"]) for r in rows if str(r["id"]) in mine and r.get("expired") is not True]
 
     def watchdog_credential(self, alloc: Allocation, creds: Creds) -> WatchdogCred | None:
         # Clore documents no API key limited to one order or one server. The key that

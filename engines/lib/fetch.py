@@ -62,7 +62,6 @@ import http.client
 import json
 import os
 import random
-import socket
 import ssl
 import sys
 import threading

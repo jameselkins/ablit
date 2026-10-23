@@ -47,14 +47,33 @@ A weekly job runs check 2 again on every entry, and it fails when an artifact ha
 | Status | Meaning |
 |---|---|
 | `unverified` | The entry passed the checks and a maintainer merged it. Nobody has booted it. `ablit up` needs `--untested` to launch it, and the quote says "Nobody has booted this entry yet. The engine may fail to start, and you pay for the time until ablit destroys the run." |
-| `boot-tested` | The `tests` list holds a record with a log from a real run of that exact profile. `ablit up --report` writes such a log on your computer with secrets removed, and you decide whether to share it. |
+| `boot-tested` | The `tests` list holds a record with a log from a real run of that exact profile. You write the record from the output of `ablit logs`, which removes secrets, and you decide whether to share it. The `--report` flag of `ablit up` is accepted but does not write a log yet. |
 | `removed` | An artifact has disappeared or the entry is withdrawn. ablit refuses to launch it. |
 
 Before it rents anything, ablit also checks that every artifact of the entry is still public at its pinned revision.
 
+## Recording a boot test
+
+A boot test is a real run of an entry's exact profile, paid for from your own marketplace account. It is the second most useful contribution, and it needs a budget that you approve yourself, because CI never rents anything.
+
+1. Run `ablit up <id> --untested --max-spend <USD>` for an `unverified` entry, and send a request through the tunnel to check that it answers.
+2. Save the bootstrap log with `ablit logs --stage bootstrap`, and note the machine's GPU, the stage times, the measured download speed, the speed of a chat completion in tokens per second, and whether `ablit down` confirmed that billing stopped.
+3. Write a record in `catalog/boot-tests/<id>-<date>.md`, in the layout of the existing records there. Leave out host IDs, offer IDs, prices and keys.
+4. Add `{backend: <name>, date: "<YYYY-MM-DD>", log: boot-tests/<file>}` to the entry's `tests` list, set `status: boot-tested`, and open a pull request.
+
 ## Improving the code
 
-Run the tests before you open a pull request. The five tests that enforce the rule against steering by commission are in `cli/tests/test_steering.py`, and POLICY.md explains them. A change that lets referral data reach the planner will not be accepted.
+The Python package is in `cli/ablit/`, and [docs/architecture.md](docs/architecture.md) explains how its parts fit together. [docs/cli-reference.md](docs/cli-reference.md) lists the commands and flags, [docs/catalog-format.md](docs/catalog-format.md) describes the entry format, and [docs/design-decisions.md](docs/design-decisions.md) gives the reasons for the main choices. Change the matching page when a change alters what it says.
+
+Run the tests before you open a pull request. CI also runs `ruff check` and `mypy`, and `.pre-commit-config.yaml` runs ruff and gitleaks before each commit when you install it with `pip install pre-commit && pre-commit install`. The five tests that enforce the rule against steering by commission are in `cli/tests/test_steering.py`, and POLICY.md explains them. A change that lets referral data reach the planner will not be accepted.
+
+Engine scripts live in `engines/<name>/` with shared code in `engines/lib/`. They follow these rules, and `cli/tests/test_hygiene.py` checks most of them.
+
+1. Each script starts with `#!/usr/bin/env bash` and sets `set -euo pipefail`.
+2. The engine listens on `127.0.0.1` and never on `0.0.0.0`.
+3. The endpoint key arrives only as an environment variable. It is never put on a command line, echoed or written to a file.
+4. Each bootstrap stage writes a marker under `/ablit/stages/`, so a restart skips finished stages.
+5. A lock file names its image by digest, and ablit refuses to rent when the digest is null.
 
 Scripts that have not run on a rented machine say `untested on a rented machine`. Synthetic coverage does not change a catalog entry to `boot-tested`.
 

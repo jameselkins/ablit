@@ -32,7 +32,7 @@ def status(args, records, drivers, environ, store):
                 redactor = run_redactor(record, creds)
                 def status_down():
                     with contextlib.redirect_stdout(sys.stderr):
-                        return down(store, record, driver, creds)
+                        return down(store, record, driver, creds)  # noqa: B023 (called only within this iteration)
                 if locked and record["state"] != "billing_stopped_confirmed":
                     if record.get("create_sent") and not record.get("resource_ids"):
                         found = driver.reconcile(record["run_id"], creds)

@@ -15,6 +15,8 @@ classifiers = [
     "Environment :: Console",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "httpx",
@@ -30,6 +32,11 @@ test = [
     "hypothesis",
     "respx",
     "import-linter",
+]
+lint = [
+    "ruff>=0.11",
+    "mypy>=1.10",
+    "types-PyYAML",
 ]
 
 [project.urls]
@@ -56,8 +63,59 @@ packages = ["cli/ablit"]
 
 [tool.hatch.build.targets.sdist]
 include = ["cli/ablit", "cli/tests", "catalog/models", "catalog/schema", "catalog/VERSION",
-           "catalog/LICENSE", "engines", "tools", ".importlinter", "LICENSE", "NOTICE", "README.md"]
+           "catalog/LICENSE", "engines", "tools", ".importlinter", "LICENSE", "NOTICE", "README.md",
+           "AGENTS.md", "CONTRIBUTING.md", "POLICY.md", "SECURITY.md", "docs", "backends"]
 
 [tool.pytest.ini_options]
 testpaths = ["cli/tests"]
 addopts = "-q"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["uv.lock"]
+
+[tool.ruff.lint]
+# E9 and F find syntax errors and unused or undefined names. B finds likely bugs.
+# B904 stays off because adding "from" to a raise changes the traceback that users see.
+# The I, UP and SIM sets are not on yet. They would touch most files, so they wait
+# until the parallel branches have merged.
+select = ["E9", "F", "B"]
+ignore = ["B904"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["cli/ablit"]
+mypy_path = "cli"
+explicit_package_bases = true
+ignore_missing_imports = true
+warn_unused_ignores = false
+check_untyped_defs = false
+
+# Each override below silences one known finding in one module. The findings are
+# listed here so they can be fixed and the override removed. Source edits wait
+# because other branches are changing backends/ and runs/commands.py.
+[[tool.mypy.overrides]]
+module = ["ablit.engines", "ablit.runs.commands"]
+# repo_root() is typed Path | None, and these callers use it without a check.
+disable_error_code = ["operator"]
+
+[[tool.mypy.overrides]]
+module = "ablit.runs.ssh"
+# Popen.stdout is Optional, and logs() reads it after opening it with a pipe.
+disable_error_code = ["union-attr"]
+
+[[tool.mypy.overrides]]
+module = "ablit.runs.lifecycle"
+# An earlier except clause deletes the name error, and a later loop reuses the name.
+disable_error_code = ["misc"]
+
+[[tool.mypy.overrides]]
+module = "ablit.backends.vast"
+# The rate can be None in a partial listing, and Allocation types the rate as float.
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "ablit.cli"
+# Backend has no close() in its protocol, and the list of active runs holds None on error.
+disable_error_code = ["attr-defined", "list-item"]

@@ -1,7 +1,6 @@
 """Lifecycle HTTP tests use invented IDs, keys and prices only."""
 
 import json
-from dataclasses import asdict
 
 import httpx
 import pytest

@@ -140,7 +140,7 @@ A runtime, or engine, is the server program that loads the model on the rented m
 | `ablit down [run]` | Destroys the machine, confirms it is gone, and revokes run credentials. Run it again if it exits with code 7. |
 | `ablit catalog list`, `show <id>`, `validate <file>` | Lists entries, explains one, or checks a contributor's file |
 
-Agents and scripts should read AGENTS.md, which covers `--json` output, exit codes, and renting with `--yes`. BUILD.md is the full specification.
+Agents and scripts should read [AGENTS.md](AGENTS.md), which covers `--json` output, exit codes, and renting with `--yes`. The [command reference](docs/cli-reference.md) lists every flag.
 
 ## The endpoint and your keys
 
@@ -158,11 +158,14 @@ ablit has a referral ID for Vast.ai and none for RunPod or Clore. If you have no
 
 | File | Contents |
 |---|---|
-| AGENTS.md | Using ablit from an agent or script |
-| BUILD.md | The full specification of commands, flags, planner, drivers and engines |
-| CONTRIBUTING.md | How to add a catalog entry or record a boot test |
-| POLICY.md | The referral rules and their tests |
-| SECURITY.md | How to report a problem, and what ablit does with secrets |
+| [AGENTS.md](AGENTS.md) | Using ablit from an agent or script |
+| [docs/cli-reference.md](docs/cli-reference.md) | Every command and flag, the quote, and the exit codes |
+| [docs/architecture.md](docs/architecture.md) | How the planner, the spend cap, the drivers and the engine bootstrap work |
+| [docs/catalog-format.md](docs/catalog-format.md) | The catalog entry format and the rules for entry status |
+| [docs/design-decisions.md](docs/design-decisions.md) | Why ablit works the way it does, and what it leaves out |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to add a catalog entry, record a boot test, or change the code |
+| [POLICY.md](POLICY.md) | The referral rules and their tests |
+| [SECURITY.md](SECURITY.md) | How to report a problem, and what ablit does with secrets |
 
 ## License
 

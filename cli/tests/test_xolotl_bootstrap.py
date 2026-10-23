@@ -126,7 +126,7 @@ class Box:
         part_names = parts or PARTS
         sizes = [60_000] * (len(part_names) - 1) + [20_000] if len(part_names) > 1 else [50_000]
         self.files: dict[str, tuple[bytes, str]] = {}
-        for name, size in zip(part_names, sizes):
+        for name, size in zip(part_names, sizes, strict=False):
             self.files[name] = (payload(name, size), "weight")
         self.files["v/experts.json"] = (payload("experts", 700), "expert-map")
         self.files["v/SHA256SUMS"] = (payload("sums", 300), "checksum")
@@ -159,6 +159,8 @@ class Box:
             "ABLIT_SERVED_NAME": "invented-model", "ABLIT_CONTEXT_TOKENS": "4096",
             "ABLIT_READY_TIMEOUT_S": "30", "ABLIT_DELETE_PARTS": "1",
             "ABLIT_DOWNLOAD_LOG_SECONDS": "5",
+            "ABLIT_WAIT_POLL_S": "0.1", "ABLIT_LISTENER_SLEEP_S": "0.1", "ABLIT_HEALTH_SLEEP_S": "0.1",
+            "ABLIT_ENGINE_START_CHECK_S": "1",
             "FAKE_RECORD": str(self.record), "FAKE_EXTRACT_STARTED": str(self.extract_started),
             "FAKE_SHARDS": ",".join(SHARDS),
             **(extra or {}),
