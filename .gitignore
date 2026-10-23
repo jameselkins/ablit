@@ -28,3 +28,6 @@ catalog/dist/
 # Local secrets
 .env
 .env.*
+.claude/settings.local.json*
+trajector-doctor-*.tar.gz
+trajector-doctor-*/
