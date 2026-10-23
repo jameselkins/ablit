@@ -159,6 +159,8 @@ class Box:
             "ABLIT_SERVED_NAME": "invented-model", "ABLIT_CONTEXT_TOKENS": "4096",
             "ABLIT_READY_TIMEOUT_S": "30", "ABLIT_DELETE_PARTS": "1",
             "ABLIT_DOWNLOAD_LOG_SECONDS": "5",
+            "ABLIT_WAIT_POLL_S": "0.1", "ABLIT_LISTENER_SLEEP_S": "0.1", "ABLIT_HEALTH_SLEEP_S": "0.1",
+            "ABLIT_ENGINE_START_CHECK_S": "1",
             "FAKE_RECORD": str(self.record), "FAKE_EXTRACT_STARTED": str(self.extract_started),
             "FAKE_SHARDS": ",".join(SHARDS),
             **(extra or {}),
