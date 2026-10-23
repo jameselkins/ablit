@@ -54,7 +54,7 @@ Before it rents anything, ablit also checks that every artifact of the entry is 
 
 ## Improving the code
 
-Run the tests before you open a pull request. The five tests that enforce the rule against steering by commission are in `cli/tests/test_steering.py`, and POLICY.md explains them. A change that lets referral data reach the planner will not be accepted.
+Run the tests before you open a pull request. CI also runs `ruff check` and `mypy`, and `.pre-commit-config.yaml` runs ruff and gitleaks before each commit when you install it with `pip install pre-commit && pre-commit install`. The five tests that enforce the rule against steering by commission are in `cli/tests/test_steering.py`, and POLICY.md explains them. A change that lets referral data reach the planner will not be accepted.
 
 Scripts that have not run on a rented machine say `untested on a rented machine`. Synthetic coverage does not change a catalog entry to `boot-tested`.
 
