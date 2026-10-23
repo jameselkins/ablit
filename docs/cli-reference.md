@@ -8,7 +8,7 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 |---|---|
 | `ablit setup [backend]` | First-run account flow. Keys go to the OS keyring, or are kept for the session only. ablit never writes a plaintext key without asking. |
 | `ablit plan <model>` | Resolves the model to one catalog entry, filters and ranks offers from every enabled backend, and prints the chosen offer, the next four, and why other backends or offers were dropped. Rents nothing. |
-| `ablit up <model>` | Runs `plan`, shows the quote, and asks the user to type `rent`. It then re-queries the offer, writes a local intent record, rents, starts the watchdog, bootstraps the engine, checks health, and prints the endpoint. It rents on Vast, RunPod and Clore. With no `--backends` it searches Vast, and also RunPod and Clore when a key for them exists, and rents where the chosen offer is. With no Vast key it searches only the backends that have a key. |
+| `ablit up <model>` | Runs `plan`, shows the quote, and asks the user to type `rent`. It then re-queries the offer, writes a local intent record, rents, starts the watchdog, bootstraps the engine, checks health, and prints the endpoint. It rents on Vast, RunPod, Clore and Lium. With no `--backends` it searches Vast, and also RunPod, Clore and Lium when a key for them exists, and rents where the chosen offer is. With no Vast key it searches only the backends that have a key. |
 | `ablit status [run]` | Run state, resource IDs, time of the last marketplace check, spend against the cap, bootstrap stage, and pending cleanup. Supports `--all`, `--json`, `--watch` and `--show-key`. |
 | `ablit logs [run] [--stage bootstrap\|engine\|watchdog] [-f]` | Streams logs from the machine over SSH, with secrets removed. |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel to a running endpoint. |
@@ -25,9 +25,9 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `--hours N` | 1 | Session length used to rank offers. It doesn't stop the run. |
 | `--spot` | off | Reserved for interruptible offers. The flag is refused until a spot round trip has been tested. |
 | `--min-download MBPS` | the entry's value, or 500 | Floor on download speed |
-| `--trust any\|verified` | `any` | `verified` keeps only Vast verified hosts and RunPod Secure Cloud. Clore has no verification, so `verified` drops every Clore offer. `any` shows the status without filtering. RunPod Community Cloud offers are dropped from every paid run, with the reason "Community Cloud pods may have no public IP for SSH". |
+| `--trust any\|verified` | `any` | `verified` keeps only Vast verified hosts and RunPod Secure Cloud. Clore has no verification, so `verified` drops every Clore offer. On Lium it keeps secure nodes and drops spot nodes. `any` shows the status without filtering. RunPod Community Cloud offers are dropped from every paid run, with the reason "Community Cloud pods may have no public IP for SSH". |
 | `--min-reliability`, `--region`, `--max-price-hr` | none | Optional user filters |
-| `--backends vast,runpod,clore` | all enabled backends with keys | Limits the search. Output lists the backends left out and why. |
+| `--backends vast,runpod,clore,lium` | all enabled backends with keys | Limits the search. Output lists the backends left out and why. |
 | `--variant ID` | none | Picks a build when a repo has several |
 | `--endpoint tunnel\|public` | `tunnel` | A paid `up` accepts only `tunnel`. See "Endpoint" below. |
 | `--untested` | off | Required to run `up` on an `unverified` entry |

@@ -18,11 +18,13 @@ from ablit.watchdog.ablit_watchdog import Config, reserve
 
 CONSOLE = "https://cloud.vast.ai/instances/"
 KEYS = "https://cloud.vast.ai/manage-keys/"
-CONSOLES = {"vast": CONSOLE, "runpod": "https://console.runpod.io/pods", "clore": "https://clore.ai/"}
-DISPLAY = {"vast": "Vast", "runpod": "RunPod", "clore": "Clore"}
+CONSOLES = {"vast": CONSOLE, "runpod": "https://console.runpod.io/pods", "clore": "https://clore.ai/",
+            "lium": "https://lium.io/"}
+DISPLAY = {"vast": "Vast", "runpod": "RunPod", "clore": "Clore", "lium": "Lium"}
 LISTS = {"vast": "Instances are still in the user's instance list.",
          "runpod": "Pods are still in the user's pod list.",
-         "clore": "Orders are still in the user's order list."}
+         "clore": "Orders are still in the user's order list.",
+         "lium": "Pods are still in the user's pod list."}
 UNRECOVERED = {"vast": "Create was sent but no ID has been recovered. Check the run label in the console.",
                "clore": "Create was sent but no order ID has been recovered. Clore orders carry no label, so check "
                         "My Orders in the Clore console for an order on the rented server."}

@@ -19,7 +19,7 @@ cli/ablit/
   plan.py         the plan command and its JSON output
   catalog/        load, validate, resolve and compute staging for catalog entries
   select/         filter chain, cost model, search rule (cannot import referral)
-  backends/       vast.py, runpod.py, clore.py
+  backends/       vast.py, runpod.py, clore.py, lium.py
   engines/        renders the engine files and configuration for the machine
   runs/           run files, locks, lifecycle, deny list, SSH and tunnel
   referral/       ids.toml, disclosure text, setup choices
@@ -118,6 +118,7 @@ Each marketplace has a note under `backends/` that lists every API call, its doc
 | Vast, see [backends/vast.md](../backends/vast.md) | Yes | Tested on a rented machine |
 | RunPod, see [backends/runpod.md](../backends/runpod.md) | Yes | Tested on Secure Cloud only |
 | Clore, see [backends/clore.md](../backends/clore.md) | Yes | Connected to `ablit up`, and untested on a rented machine |
+| Lium, see [backends/lium.md](../backends/lium.md) | Yes | Connected to `ablit up`, and untested on a rented machine |
 
 ## Engine templates
 

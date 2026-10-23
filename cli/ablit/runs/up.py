@@ -15,6 +15,7 @@ import httpx
 
 from ablit import engines
 from ablit.backends.base import ENV_KEY_NAMES, BootSpec
+from ablit.backends.lium import LIUM_START
 from ablit.backends.runpod import RUNPOD_START
 from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
 from ablit.catalog.loader import repo_root
@@ -107,9 +108,9 @@ def prepare(store, record, entry, driver, creds):
     return record
 
 
-RENTABLE = ("clore", "runpod", "vast")
+RENTABLE = ("clore", "lium", "runpod", "vast")
 # Backends with no key limited to one machine. The local cap check carries the cap on these.
-LOCAL_CAP_BACKENDS = ("clore", "runpod")
+LOCAL_CAP_BACKENDS = ("clore", "lium", "runpod")
 
 
 def has_key(backend: str, environ) -> bool:
@@ -123,16 +124,16 @@ def has_key(backend: str, environ) -> bool:
 def choose_backends(args, environ) -> list[str]:
     """Return the backends a paid `up` searches.
 
-    With no `--backends`, ablit searches Vast as it always has, and also RunPod and Clore
-    when a key for them exists. Keys for RunPod or Clore with no Vast key search those alone.
+    With no `--backends`, ablit searches Vast as it always has, and also RunPod, Clore and Lium
+    when a key for them exists. Keys for those with no Vast key search those alone.
     """
     wanted = [n.strip() for n in (args.backends or "").split(",") if n.strip()]
     if args.backends and (not wanted or any(n not in RENTABLE for n in wanted)):
-        raise RunError("Paid launches support only --backends vast, runpod, clore, or a comma-separated mix of them.")
+        raise RunError("Paid launches support only --backends vast, runpod, clore, lium, or a comma-separated mix of them.")
     if wanted:
         return sorted(set(wanted))
     names = ["vast"]
-    others = [n for n in ("runpod", "clore") if has_key(n, environ)]
+    others = [n for n in ("runpod", "clore", "lium") if has_key(n, environ)]
     if others:
         names = names + others if has_key("vast", environ) else others
     return names
@@ -141,7 +142,7 @@ def choose_backends(args, environ) -> list[str]:
 
 def _up(args, entry, opts, driver, environ, store, drivers=None):
     if entry.profile.engine not in engines.LAUNCHABLE_ENGINES or args.endpoint != "tunnel":
-        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast, RunPod and Clore through an SSH tunnel.")
+        raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast, RunPod, Clore and Lium through an SSH tunnel.")
     drivers = drivers or {"vast": driver}
     names = choose_backends(args, environ)
     missing = [n for n in names if n not in drivers]
@@ -227,7 +228,7 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
                     record["ssh_key_id"] = use_driver.register_ssh_key(public, use_creds)
                     store.save(record)
                 # Clore runs this as the order's `command`, with its own entrypoint providing sshd. UNVERIFIED.
-                boot = BootSpec(record["image"], RUNPOD_START if offer.backend == "runpod" else ONSTART,
+                boot = BootSpec(record["image"], {"runpod": RUNPOD_START, "lium": LIUM_START}.get(offer.backend, ONSTART),
                                 math.ceil(offer.allocated_disk_gb), ssh_public_key=public)
                 try:
                     alloc = use_driver.create(offer, boot, record["run_id"], use_creds)

@@ -7,6 +7,7 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 ### Added
 
 - Clore renting in `ablit up`, connected to the Clore driver.
+- The Lium marketplace backend, with keyless search, renting in `ablit up`, setup and `backends/lium.md`. Renting is untested on a rented machine.
 - A pinned Xolotl `03be8a6` image digest in the engine lock, with the conversation cache set to 4096 MiB.
 - A boot test record for the Xolotl entry on `03be8a6`, and an 8B RunPod boot test record.
 - A comparison of Morph with the other hosted services in the documentation.

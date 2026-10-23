@@ -59,6 +59,7 @@ _SETUP = {
     "vast": {"display": "Vast.ai", "short": "Vast", "direct": "https://cloud.vast.ai/"},
     "clore": {"display": "Clore.ai", "short": "Clore", "direct": "https://clore.ai/"},
     "runpod": {"display": "RunPod", "short": "RunPod", "direct": "https://www.runpod.io/"},
+    "lium": {"display": "Lium", "short": "Lium", "direct": "https://lium.io/"},
 }
 
 
@@ -120,3 +121,8 @@ def setup_clore(driver, store, no_referral: bool, environ=None) -> int:
 def setup_runpod(driver, store, no_referral: bool, environ=None) -> int:
     """Same flow as Vast. The key test is one read-only call that lists pods, and it has no referral ID."""
     return _setup("runpod", driver, store, no_referral, environ)
+
+
+def setup_lium(driver, store, no_referral: bool, environ=None) -> int:
+    """Same flow as Vast. The key test is one read-only call to the account, and Lium has no referral ID."""
+    return _setup("lium", driver, store, no_referral, environ)

@@ -57,13 +57,15 @@ def isolated_run_state(tmp_path, monkeypatch):
     monkeypatch.delenv("VAST_API_KEY", raising=False)
     monkeypatch.delenv("RUNPOD_API_KEY", raising=False)
     monkeypatch.delenv("CLORE_API_KEY", raising=False)
+    monkeypatch.delenv("LIUM_API_KEY", raising=False)
     monkeypatch.delenv("ABLIT_FAULT", raising=False)
     from ablit.backends.vast import VastBackend
     monkeypatch.setattr(VastBackend, "inventory_interval", 0)
     from ablit.backends.clore import CloreBackend
     monkeypatch.setattr(CloreBackend, "request_interval", 0)
     from ablit.backends.runpod import RunPodBackend
-    for backend_class in (VastBackend, RunPodBackend, CloreBackend):
+    from ablit.backends.lium import LiumBackend
+    for backend_class in (VastBackend, RunPodBackend, CloreBackend, LiumBackend):
         # Retry backoff waits up to 30 seconds, so tests never wait for it.
         monkeypatch.setattr(backend_class, "_sleep", staticmethod(lambda seconds: None))
     credentials.SESSION.clear()

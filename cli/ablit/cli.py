@@ -53,7 +53,7 @@ def _add_selection_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--min-reliability", type=float, metavar="X")
     parser.add_argument("--region", metavar="REGION")
     parser.add_argument("--max-price-hr", type=float, metavar="USD")
-    parser.add_argument("--backends", metavar="vast,runpod,clore",
+    parser.add_argument("--backends", metavar="vast,runpod,clore,lium",
                         help="limit the search to these backends. Output lists the backends left out and why.")
     parser.add_argument("--variant", metavar="ID", help="pick a build when a repo has several")
     parser.add_argument("--endpoint", choices=("tunnel", "public"), default="tunnel")
@@ -69,13 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ablit",
         description="Find the cheapest rented GPU machine that can run a model, "
                     "show the full cost, and start it on your own marketplace account.",
-        epilog="Paid launches support the llama.cpp and Xolotl entries on Vast, RunPod and Clore. Other entries can be planned.",
+        epilog="Paid launches support the llama.cpp and Xolotl entries on Vast, RunPod, Clore and Lium. Other entries can be planned.",
     )
     parser.add_argument("--version", action="version", version=f"ablit {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     setup = sub.add_parser("setup", help="first-run account flow")
-    setup.add_argument("backend", nargs="?", help="a marketplace: vast, runpod or clore")
+    setup.add_argument("backend", nargs="?", help="a marketplace: vast, runpod, clore or lium")
     setup.add_argument("--no-referral", action="store_true",
                        help="turn off all referral links, and save the setting")
 
@@ -394,18 +394,20 @@ def _main(
         return exitcodes.USAGE
     if args.command in ("plan", "up"):
         return _cmd_selection(args, args.command, backends, environ)
-    from ablit.credentials import setup_clore, setup_runpod, setup_vast
+    from ablit.credentials import setup_clore, setup_lium, setup_runpod, setup_vast
     from ablit.runs.existing import existing
     available = default_backends() if backends is None else backends
     try:
         if args.command == "setup":
-            if args.backend not in (None, "vast", "clore", "runpod"):
+            if args.backend not in (None, "vast", "clore", "runpod", "lium"):
                 return _not_implemented("setup " + args.backend)
             if not sys.stdin.isatty():
                 print("ablit setup needs a terminal.", file=sys.stderr)
                 return 2
             if args.backend == "clore":
                 return setup_clore(available["clore"], RunStore(), args.no_referral, environ)
+            if args.backend == "lium":
+                return setup_lium(available["lium"], RunStore(), args.no_referral, environ)
             if args.backend == "runpod":
                 return setup_runpod(available["runpod"], RunStore(), args.no_referral, environ)
             return setup_vast(available["vast"], RunStore(), args.no_referral, environ)
