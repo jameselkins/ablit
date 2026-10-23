@@ -15,7 +15,7 @@ from ablit.backends.vast import VastBackend
 from ablit.catalog import load_catalog, resolve
 from ablit.cli import main
 from ablit.runs import RunStore
-from ablit.runs import commands
+from ablit.runs import down as down_mod, monitor as monitor_mod, up as up_mod
 from ablit.runs.ssh import SSH
 from market_fixtures import FakeVast, vast_row, VAST_URL
 from test_vast_lifecycle import ROOT, RUN, page, instance
@@ -30,7 +30,7 @@ def tty(monkeypatch):
 
 def launch_environment(monkeypatch):
     tty(monkeypatch)
-    monkeypatch.setattr(commands.engines, "check_artifacts", lambda entry: None)
+    monkeypatch.setattr(up_mod.engines, "check_artifacts", lambda entry: None)
     monkeypatch.setattr(SSH, "identity_public", lambda self: "ssh-ed25519 invented-public-content")
     keys.secret_set("accounts/vast", "invented-account-key")
 
@@ -66,7 +66,7 @@ def test_too_small_cap_exits_5_with_a_minimum_and_no_prompt(monkeypatch, capsys)
 
 def test_null_digest_is_refused_before_search(monkeypatch):
     launch_environment(monkeypatch)
-    monkeypatch.setattr(commands.engines, "engine_lock", lambda e: {"digest": None})
+    monkeypatch.setattr(up_mod.engines, "engine_lock", lambda e: {"digest": None})
     with respx.mock:
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 5
 
@@ -79,7 +79,7 @@ def xolotl_launch(monkeypatch, rows, budget="50", extra=()):
     """Run `up` for a Xolotl entry against invented offers and return the exit code and the create calls."""
     launch_environment(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     with respx.mock(assert_all_called=False) as router:
         create, scoped = launch_routes(router)
         fake = FakeVast(rows)
@@ -94,7 +94,7 @@ def test_up_accepts_a_xolotl_entry_and_rents_with_the_pinned_image_and_enough_di
     code, create, fake = xolotl_launch(monkeypatch, [vast_row(7101, host_id=7301, cuda_max_good=13.0)])
     assert code == 0 and create.call_count == 1
     body = json.loads(create.calls[0].request.content)
-    lock = commands.engines.engine_lock(resolve(load_catalog().entries, XOLOTL))
+    lock = up_mod.engines.engine_lock(resolve(load_catalog().entries, XOLOTL))
     assert body["image"] == f"{lock['image']}@{lock['digest']}"
     # The staging peak, the image, the join margin and the room for the fallback extraction all have to fit.
     assert body["disk"] >= 604 and body["runtype"] == "ssh"
@@ -108,8 +108,8 @@ def test_up_accepts_a_xolotl_entry_and_rents_with_the_pinned_image_and_enough_di
 
 def test_up_refuses_a_xolotl_lock_without_a_pinned_digest(monkeypatch, capsys):
     launch_environment(monkeypatch)
-    real = commands.engines.engine_lock
-    monkeypatch.setattr(commands.engines, "engine_lock", lambda e: {**real(e), "digest": None})
+    real = up_mod.engines.engine_lock
+    monkeypatch.setattr(up_mod.engines, "engine_lock", lambda e: {**real(e), "digest": None})
     monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("cannot ask rent without a digest"))
     with respx.mock(assert_all_called=False) as router:
         router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search without a digest"))
@@ -145,8 +145,8 @@ def test_up_still_refuses_an_engine_that_cannot_launch_yet(monkeypatch):
     launch_environment(monkeypatch)
     with respx.mock(assert_all_called=False) as router:
         router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search for an engine that cannot launch"))
-        with pytest.raises(commands.RunError, match="llama.cpp and Xolotl entries on Vast"):
-            commands._up(SimpleNamespace(endpoint="tunnel", backends=None),
+        with pytest.raises(up_mod.RunError, match="llama.cpp and Xolotl entries on Vast"):
+            up_mod._up(SimpleNamespace(endpoint="tunnel", backends=None),
                          resolve(load_catalog().entries, "ds41-1017-abl-fp8"), None, None, {}, None)
 
 
@@ -154,17 +154,17 @@ def test_progress_lines_report_each_ten_percent_once():
     shown = {}
     record = {"progress": {"download": {"bytes_done": 55e9, "bytes_total": 100e9, "mbps": 940.4},
                            "join": {"bytes_done": 0, "bytes_total": 0}}}
-    first = commands.progress_lines(record, shown)
+    first = monitor_mod.progress_lines(record, shown)
     assert first == ["download 50 percent, 55.0 of 100.0 GB, 940 Mbps"]
-    assert commands.progress_lines(record, shown) == []
+    assert monitor_mod.progress_lines(record, shown) == []
     record["progress"]["download"]["bytes_done"] = 100e9
-    assert commands.progress_lines(record, shown) == ["download 100 percent, 100.0 of 100.0 GB, 940 Mbps"]
+    assert monitor_mod.progress_lines(record, shown) == ["download 100 percent, 100.0 of 100.0 GB, 940 Mbps"]
 
 
 def test_typed_rent_creates_and_saves_only_nonsecret_records(monkeypatch):
     launch_environment(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     with respx.mock(assert_all_called=False) as router:
         create, scoped = launch_routes(router)
         # Reconciliation uses the generated run label, rather than a fixture ID.
@@ -188,7 +188,7 @@ def test_yes_rents_without_a_terminal_or_a_prompt(monkeypatch, capsys):
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False, raising=False)
     monkeypatch.setattr(sys.stdout, "isatty", lambda: False, raising=False)
     monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("--yes must not prompt"))
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     with respx.mock(assert_all_called=False) as router:
         create, scoped = launch_routes(router)
         def listing(request):
@@ -211,7 +211,7 @@ def test_yes_still_refuses_a_cap_too_small_for_setup(monkeypatch):
 def test_second_run_requires_another_and_creating_run_recovers(monkeypatch):
     launch_environment(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     with respx.mock(assert_all_called=False) as router:
         create, scoped = launch_routes(router)
         def listing(request):
@@ -258,13 +258,13 @@ def saved_run(store):
     from ablit.select.types import PlanOptions
     entry = resolve(load_catalog().entries, MODEL)
     offer = __import__("test_vast_lifecycle").OFFER
-    lock = commands.engines.engine_lock(entry)
+    lock = up_mod.engines.engine_lock(entry)
     from ablit.plan import PlanReport
     req = request_from_entry(entry, lock["image_gb"])
     from ablit.select import rank_offers
     report = PlanReport(entry, req, PlanOptions(), 5, rank_offers([offer], req, PlanOptions()).ranked,
                         [], [], 1, True, "invented-check", lock["digest"])
-    data = commands.make_intent(store, entry, offer, report, SimpleNamespace(max_spend=5, min_download=None), lock)
+    data = up_mod.make_intent(store, entry, offer, report, SimpleNamespace(max_spend=5, min_download=None), lock)
     data.update(state="running", resource_ids=["7201"], ssh_host="ssh.example.invalid", ssh_port=2201,
                 watchdog_key_id="7401", watchdog_key_sent=True, create_sent=True)
     store.save(data)
@@ -378,12 +378,12 @@ def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billin
     def refreshed(store, record, driver, creds):
         record.update(ready=True, marketplace_state="running", stages=["09-ready.done"], spend_estimate_usd=0.01)
         store.save(record)
-    monkeypatch.setattr(commands, "SSH", Remote)
-    monkeypatch.setattr(commands, "refresh", refreshed)
-    monkeypatch.setattr(commands.engines, "health", lambda *args: events.append("health"))
+    monkeypatch.setattr(monitor_mod, "SSH", Remote)
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod.engines, "health", lambda *args: events.append("health"))
     def interrupt(seconds): raise KeyboardInterrupt
-    monkeypatch.setattr(commands.time, "sleep", interrupt)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
     assert events == ["tools", "upload", "start", "tunnel", "health", "tunnel-closed"]
     out = capsys.readouterr().out
     assert "Endpoint: http://127.0.0.1:18001/v1" in out and "Billing continues" in out
@@ -397,12 +397,12 @@ def test_up_observes_watchdog_decision_and_absence_before_exit_8(monkeypatch):
     def refreshed(store, record, driver, creds):
         record.update(stop_reason="watchdog_cap", marketplace_state="absent")
         store.save(record)
-    monkeypatch.setattr(commands, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
     with respx.mock as router:
         router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
         router.delete(ROOT + "/api/v0/instances/7201/").respond(404)
         router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(200, json="Successfully Deleted API Key")
-        assert commands.monitor(store, r, VastBackend(httpx.Client()), Creds("invented-account-key"), want_ready=True) == 8
+        assert monitor_mod.monitor(store, r, VastBackend(httpx.Client()), Creds("invented-account-key"), want_ready=True) == 8
     assert store.load(r["run_id"])["state"] == "billing_stopped_confirmed"
 
 
@@ -429,7 +429,7 @@ def test_down_while_locked_returns_cleanup_pending_without_confirmation(monkeypa
     store = RunStore()
     r = saved_run(store)
     keys.secret_set("accounts/vast", "invented-account-key")
-    monkeypatch.setattr(commands, "LOCK_WAIT_SECONDS", 0.5)
+    monkeypatch.setattr(down_mod, "LOCK_WAIT_SECONDS", 0.5)
     with store.lock(r["run_id"]), respx.mock:
         assert main(["down", r["run_id"]], environ={}) == 7
 
@@ -459,7 +459,7 @@ def test_down_waits_for_an_attached_up_to_release_the_lock(monkeypatch):
 def test_reliability_and_speed_drift_keep_the_confirmation(monkeypatch):
     launch_environment(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda prompt: "rent")
-    monkeypatch.setattr(commands, "monitor", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
     with respx.mock(assert_all_called=False) as router:
         create, scoped = launch_routes(router)
         router.post(VAST_URL).mock(side_effect=[
@@ -479,15 +479,15 @@ def test_a_new_instance_without_a_status_is_not_destroyed(monkeypatch):
     def refreshed(store, record, driver, creds):
         record.update(marketplace_state="starting", spend_estimate_usd=0.0)
         store.save(record)
-    monkeypatch.setattr(commands, "refresh", refreshed)
-    monkeypatch.setattr(commands, "down", lambda *args: pytest.fail("a starting instance must not be destroyed"))
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: pytest.fail("a starting instance must not be destroyed"))
     class NotReady:
         def __init__(self, *args): pass
-        def run(self, command): raise commands.RunError("SSH is not up yet")
-    monkeypatch.setattr(commands, "SSH", NotReady)
+        def run(self, command): raise monitor_mod.RunError("SSH is not up yet")
+    monkeypatch.setattr(monitor_mod, "SSH", NotReady)
     def interrupt(seconds): raise KeyboardInterrupt
-    monkeypatch.setattr(commands.time, "sleep", interrupt)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
 
 
 def test_a_refused_watchdog_key_cleans_up_without_a_lost_key_warning(monkeypatch):
@@ -519,10 +519,10 @@ def test_a_run_vast_stopped_is_destroyed_and_its_host_denied(monkeypatch):
     def refreshed(store, record, driver, creds):
         record.update(marketplace_state="stopped_by_marketplace", spend_estimate_usd=0.0)
         store.save(record)
-    monkeypatch.setattr(commands, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
     downs = []
-    monkeypatch.setattr(commands, "down", lambda *args: downs.append(1) or 0)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 6
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: downs.append(1) or 0)
+    assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 6
     assert downs == [1] and "7301" in store.denied_hosts()
 
 
@@ -536,8 +536,8 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
         if len(calls) == 1:
             raise httpx.ConnectError("invented outage")
         raise KeyboardInterrupt
-    monkeypatch.setattr(commands, "refresh", refreshed)
-    monkeypatch.setattr(commands, "down", lambda *args: pytest.fail("a short outage must not destroy the run"))
-    monkeypatch.setattr(commands.time, "sleep", lambda seconds: None)
-    assert commands.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: pytest.fail("a short outage must not destroy the run"))
+    monkeypatch.setattr(monitor_mod.time, "sleep", lambda seconds: None)
+    assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
