@@ -13,7 +13,7 @@ from ablit import exitcodes
 from ablit.cli import build_parser, main
 from ablit.runs import RunStore
 from ablit.select import PlanOptions, apply_filter_chain
-from ablit.select.gpu_names import gpu_matches, gpu_name_words, parse_gpu_names
+from ablit.select.gpu_names import gpu_matches, gpu_name_key, parse_gpu_names
 from helpers import OPTS, REQ, make_offer
 from market_fixtures import RUNPOD_URL, FakeRunPod, FakeVast, runpod_type
 from test_plan import ALLOCATED, run_plan, vast_row
@@ -39,7 +39,8 @@ def test_both_commands_accept_the_flags_repeated():
         assert args.gpu == ["5090", "a40,h100"] and args.exclude_gpu == ["v100"]
 
 
-@pytest.mark.parametrize("flags", [["--gpu", ""], ["--gpu", " , "], ["--exclude-gpu", ","], ["--gpu", "nvidia"]])
+@pytest.mark.parametrize("flags", [["--gpu", ""], ["--gpu", " , "], ["--exclude-gpu", ","], ["--gpu", "nvidia"],
+                                   ["--gpu", "80GB"]])
 def test_an_empty_or_vendor_only_name_is_a_usage_error(capsys, flags):
     code, out, err = run_plan(capsys, *flags, runpod=FakeRunPod([]), vast=FakeVast([]))
     assert code == exitcodes.USAGE
@@ -76,15 +77,56 @@ def test_editions_are_told_apart_when_named():
     assert gpu_matches("RTX PRO 6000 Blackwell Max-Q Workstation Edition", ["RTX PRO 6000 MaxQ"])
 
 
-def test_whole_words_only():
-    assert not gpu_matches("RTX 6000 Ada Generation", ["RTX PRO 6000"])
-    assert not gpu_matches("RTX PRO 6000 WS", ["RTX 6000"])
+def test_a_short_name_never_matches_a_different_model():
+    assert not gpu_matches("L40S", ["L40"]) and not gpu_matches("L40", ["L40S"])
+    assert not gpu_matches("RTX A1000", ["A100"]) and not gpu_matches("A100 80GB PCIe", ["A1000"])
+    assert not gpu_matches("RTX 4090 D", ["4090"]) and not gpu_matches("RTX 4090D", ["RTX 4090"])
+    assert gpu_matches("RTX 4090D", ["4090 D"]) and gpu_matches("NVIDIA GeForce RTX 4090 D", ["4090D"])
+    assert not gpu_matches("RTX 4070 Ti", ["4070"]) and not gpu_matches("RTX 4080 SUPER", ["4080"])
     assert not gpu_matches("A100 80GB PCIe", ["A10"])
     assert not gpu_matches("RTX 5080", ["5090"])
-    assert gpu_matches("Tesla V100SXM216GB", ["V100"])      # Clore
-    assert gpu_matches("Tesla V100-SXM2-16GB", ["v100"])    # RunPod
-    assert gpu_matches("L40S", ["L40"]) and not gpu_matches("L40", ["L40S"])
-    assert gpu_name_words("NVIDIA GeForce RTX 5090") == ("rtx", "5090")
+    assert not gpu_matches("RTX 5090 Laptop GPU", ["5090"])
+    assert not gpu_matches("RTX 6000 Ada Generation", ["RTX PRO 6000"])
+    assert not gpu_matches("RTX PRO 6000 WS", ["RTX 6000"])
+    assert not gpu_matches("H100 NVL", ["H100"])
+
+
+@pytest.mark.parametrize(("name", "model"), [
+    ("A100", "A100 80GB PCIe"),                 # RunPod
+    ("A100", "A100-SXM4-40GB"),                 # RunPod
+    ("A100", "A100SXM440GB"),                   # Clore, glued
+    ("A100 80GB", "A100 80GB PCIe"),
+    ("A100 SXM", "NVIDIA A100-SXM4-80GB"),
+    ("V100", "Tesla V100SXM216GB"),             # Clore, glued
+    ("V100", "Tesla V100-PCIE-16GB"),           # RunPod
+    ("V100 16GB", "Tesla V100-SXM2-16GB"),
+    ("H100", "H100 80GB HBM3"),                 # RunPod and Lium
+    ("H100", "H100 SXM"),                       # Vast
+    ("H100 PCIe", "NVIDIA H100 PCIe"),
+    ("RTX 4000 Ada", "RTX 4000 SFF Ada Generation"),
+    ("RTX A6000", "A6000"),
+    ("L40", "L40"),
+    ("rtx pro 6000 max-q", "RTX PRO 6000 Blackwell MaxQ Works"),
+])
+def test_edition_and_form_words_are_optional(name, model):
+    assert gpu_matches(model, [name])
+
+
+@pytest.mark.parametrize(("name", "model"), [
+    ("A100 80GB", "A100-SXM4-40GB"),
+    ("A100 PCIe", "A100SXM440GB"),
+    ("V100 32GB", "Tesla V100SXM216GB"),
+    ("RTX PRO 6000 Server", "RTX PRO 6000 WS"),
+])
+def test_a_form_word_the_user_gives_must_be_in_the_offer(name, model):
+    assert not gpu_matches(model, [name])
+
+
+def test_the_key_splits_model_words_from_form_words():
+    assert gpu_name_key("NVIDIA GeForce RTX 5090") == (("5090",), frozenset())
+    assert gpu_name_key("Tesla V100SXM216GB") == (("v", "100"), frozenset({"sxm", "16gb"}))
+    assert gpu_name_key("RTX PRO 6000 Blackwell Max-Q Workstation Edition") == (
+        ("pro", "6000"), frozenset({"maxq", "workstation"}))
 
 
 # --- the filter step -------------------------------------------------------
