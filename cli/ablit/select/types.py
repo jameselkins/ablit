@@ -86,6 +86,9 @@ class PlanOptions:
     region: str | None = None
     max_price_hr: float | None = None
     min_download_mbps: float | None = None  # overrides the profile floor when set
+    # GPU model names from --gpu and --exclude-gpu, matched by ablit.select.gpu_names.
+    gpu: tuple[str, ...] = ()
+    exclude_gpu: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -24,10 +24,11 @@ from ablit.backends import Backend, default_backends
 from ablit.catalog.models import Entry
 from ablit.catalog.staging import StagingError, compute_staging
 from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
-from ablit.plan import UnknownBackend, report_json, run_plan
+from ablit.plan import UnknownBackend, gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
 from ablit.select import PlanOptions
 from ablit.runs import RunError, RunStore
+from ablit.select.gpu_names import parse_gpu_names
 from ablit.select.request import request_from_entry
 
 CONTRIBUTING_URL = "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md"
@@ -53,6 +54,11 @@ def _add_selection_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--min-reliability", type=float, metavar="X")
     parser.add_argument("--region", metavar="REGION")
     parser.add_argument("--max-price-hr", type=float, metavar="USD")
+    parser.add_argument("--gpu", action="append", metavar="MODEL[,MODEL]",
+                        help="keep only these GPU models, e.g. 5090 or 'RTX PRO 6000'. Comma separated or "
+                             "repeated. Case and the marketplaces' spellings do not matter.")
+    parser.add_argument("--exclude-gpu", action="append", metavar="MODEL[,MODEL]",
+                        help="drop these GPU models. Matched the same way as --gpu.")
     parser.add_argument("--backends", metavar="vast,runpod,clore,lium",
                         help="limit the search to these backends. Output lists the backends left out and why.")
     parser.add_argument("--variant", metavar="ID", help="pick a build when a repo has several")
@@ -279,6 +285,14 @@ def _plan_options(args: argparse.Namespace) -> PlanOptions | str:
             return f"{flag} must be above zero"
     if args.min_reliability is not None and not 0 <= args.min_reliability <= 1:
         return "--min-reliability must be between 0 and 1"
+    try:
+        gpu = parse_gpu_names(args.gpu)
+        exclude_gpu = parse_gpu_names(args.exclude_gpu)
+    except ValueError as error:
+        return f"--gpu and --exclude-gpu need GPU model names, and {error}"
+    for flag, given, names in (("--gpu", args.gpu, gpu), ("--exclude-gpu", args.exclude_gpu, exclude_gpu)):
+        if given is not None and not names:
+            return f"{flag} needs at least one GPU model name"
     return PlanOptions(
         hours=args.hours,
         spot=False,
@@ -287,6 +301,8 @@ def _plan_options(args: argparse.Namespace) -> PlanOptions | str:
         region=args.region.upper() if args.region else None,
         max_price_hr=args.max_price_hr,
         min_download_mbps=args.min_download,
+        gpu=gpu,
+        exclude_gpu=exclude_gpu,
     )
 
 
@@ -323,6 +339,9 @@ def _cmd_plan(
         print(json.dumps(report_json(report), indent=2))
     else:
         print(render(report), end="")
+    message = gpu_filter_message(report)
+    if message:
+        print(f"ablit plan: {message}", file=sys.stderr)
     return exitcodes.OK if report.ranked else exitcodes.NOT_SUPPORTED
 
 

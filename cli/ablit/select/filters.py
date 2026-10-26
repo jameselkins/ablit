@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable
 
+from ablit.select.gpu_names import gpu_matches
 from ablit.select.types import FilterResult, HardwareRequest, Offer, PlanOptions, StepReport
 
 Check = Callable[[Offer], str | None]
@@ -101,6 +102,10 @@ def user_filters(opts: PlanOptions) -> Check:
             return "outside --region"
         if opts.max_price_hr is not None and offer.hourly_all_in > opts.max_price_hr:
             return "above --max-price-hr"
+        if opts.gpu and not gpu_matches(offer.gpu_model, opts.gpu):
+            return "GPU model not named in --gpu"
+        if opts.exclude_gpu and gpu_matches(offer.gpu_model, opts.exclude_gpu):
+            return "GPU model named in --exclude-gpu"
         return None
 
     return check

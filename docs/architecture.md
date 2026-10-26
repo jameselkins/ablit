@@ -61,7 +61,7 @@ The planner applies these steps in order and records how many offers each step r
 2. Disk floor. Free disk must be at least the staging peak, plus the engine image, plus the lock's `disk_margin_gb` and `extract_disk_gb`. On Vast the search sends `disk_space >= N` and `allocated_storage = N`, so the price includes the disk.
 3. Download speed floor. Vast's per-host `inet_down` must meet the floor. RunPod reports no per-host speed, so its offers are kept, labeled "speed not advertised, measured after boot", and ranked as if they ran exactly at the floor.
 4. Rental type and availability. Offers are on demand, Vast `rentable = true`, RunPod `stockStatus` not null, and Clore `rented = false` with every GPU free, because ablit rents whole Clore servers only. The remaining rental duration must be at least the startup estimate plus `--hours`. For Clore the duration is the host's `mrl`, in hours.
-5. User filters, only when set.
+5. User filters, only when set. These include `--gpu` and `--exclude-gpu`, which compare GPU names with `cli/ablit/select/gpu_names.py`, so one function matches every marketplace's spelling.
 6. Rank by total cost, using the search rule below.
 
 Ties break on backend name, then on offer ID, alphabetically.
