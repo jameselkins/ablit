@@ -8,7 +8,7 @@ These commands spend nothing:
 
 1. `ablit catalog list` prints every entry and its test status.
 2. `ablit catalog show <id>` explains one entry: hardware floors, sizes, sources and notes.
-3. `ablit plan <model> --json` searches the marketplaces and prints the chosen offer, the next four and their full cost.
+3. `ablit plan <model> --json` searches the marketplaces and prints the chosen offer, the next four and their full cost. Add `--gpu <name>` to keep only offers with that GPU model.
 4. `ablit status --all --json` prints every local run and its state.
 
 `plan` reads public offer lists from Vast, RunPod, Clore and Lium, and needs no key.
@@ -23,9 +23,10 @@ Every paid `up` needs `--max-spend <USD>`, and the watchdog destroys the run whe
 
 A typical flow:
 
-1. Run `ablit plan <model> --json` and read `chosen`, `hourly_all_in_usd` and `totals`.
-2. Start `ablit up <model> --max-spend <USD> --yes` in a managed process. It prints the endpoint block when the endpoint answers, and stays running to keep the SSH tunnel open and check spending. Do not wait for it to exit as a readiness signal.
-3. Use `ablit status --json` from another process to follow the run. The endpoint is ready when the run has `state: "running"` and a `local_port`. Use `ablit logs` to read the logs.
+1. Run `ablit plan <model> --json` and read `chosen`, `hourly_all_in_usd` and `totals`. `qualified_gpu_models` lists the GPU models that passed every other filter.
+2. To pay more for a faster GPU, or to avoid one that failed, run `plan` again with `--gpu <name>` or `--exclude-gpu <name>`. Both take several names, comma separated or repeated, and match the marketplaces' spellings, so `--gpu 5090` matches "RTX 5090" and "GeForce RTX 5090". If no offer matches, `plan` exits 3 and names the GPU models that did qualify.
+3. Start `ablit up <model> --max-spend <USD> --yes` in a managed process, with the same `--gpu` and `--exclude-gpu` flags. `up` applies them before it quotes. It prints the endpoint block when the endpoint answers, and stays running to keep the SSH tunnel open and check spending. Do not wait for it to exit as a readiness signal.
+4. Use `ablit status --json` from another process to follow the run. The endpoint is ready when the run has `state: "running"` and a `local_port`. Use `ablit logs` to read the logs.
 
 Interrupting `up` closes its tunnel and stops its local spending check, and billing continues. Use `ablit tunnel <run>` to reconnect, or `ablit down <run>` to stop billing.
 
@@ -39,7 +40,7 @@ A paid `up` holds a lock while it quotes and rents. A second `up` waits up to 15
 
 `plan` and `status` accept `--json`. `up` prints text, so follow it with `ablit status --json`. Every JSON document has a `schema` field, now `1`. A change that breaks the shape raises that number. `catalog` and `logs` print text only.
 
-Top-level keys of `plan --json`: `schema`, `command`, `checked_at`, `result`, `complete`, `incomplete_label`, `model`, `request`, `options`, `chosen`, `next`, `qualified_count`, `checked_count`, `filter_steps`, `backends`, `notices`. When `complete` is false, at least one marketplace did not answer, and the ranking may miss offers.
+Top-level keys of `plan --json`: `schema`, `command`, `checked_at`, `result`, `complete`, `incomplete_label`, `model`, `request`, `options`, `chosen`, `next`, `qualified_count`, `checked_count`, `qualified_gpu_models`, `filter_steps`, `backends`, `notices`. When `complete` is false, at least one marketplace did not answer, and the ranking may miss offers.
 
 Messages and errors go to standard error as plain sentences.
 

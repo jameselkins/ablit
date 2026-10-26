@@ -119,6 +119,10 @@ def render(report: PlanReport) -> str:
         f"at least {req.disk_gb:,.1f} GB free disk (the staging peak plus the allowances in the engine lock)"
     )
     needs.append(f"download of {req.download_gb:,.1f} GB at a speed floor of {_floor(report):g} Mbps")
+    if opts.gpu:
+        needs.append(f"a GPU model that matches --gpu: {', '.join(opts.gpu)}")
+    if opts.exclude_gpu:
+        needs.append(f"a GPU model that does not match --exclude-gpu: {', '.join(opts.exclude_gpu)}")
     lines.append("What the machine needs")
     lines += [f"  {item}" for item in needs]
     lines.append(f"  Offers are ranked by total cost for a session of {_count(opts.hours, 'hour')}.")

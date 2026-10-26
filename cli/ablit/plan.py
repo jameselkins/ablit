@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any
 
@@ -73,6 +73,8 @@ class PlanReport:
     complete: bool
     checked_at: str
     image_digest: str | None
+    # The GPU models of the offers that pass every filter except --gpu and --exclude-gpu.
+    qualified_gpu_models: list[str] = field(default_factory=list)
 
     @property
     def label(self) -> str | None:
@@ -180,6 +182,8 @@ def run_plan(
     reports.sort(key=lambda r: r.name)
 
     result = rank_offers(all_offers, req, opts)
+    without_gpu = replace(opts, gpu=(), exclude_gpu=())
+    models = sorted({o.gpu_model for o in apply_filter_chain(all_offers, req, without_gpu).kept})
     return PlanReport(
         entry=entry,
         req=req,
@@ -192,6 +196,19 @@ def run_plan(
         complete=complete and not any(b.status in (STATUS_FAILED, STATUS_TIMED_OUT) for b in reports),
         checked_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         image_digest=image_digest(entry),
+        qualified_gpu_models=models,
+    )
+
+
+def gpu_filter_message(report: PlanReport) -> str | None:
+    """Explain an empty result that only --gpu or --exclude-gpu caused, or return None."""
+    opts = report.opts
+    if report.ranked or not (opts.gpu or opts.exclude_gpu) or not report.qualified_gpu_models:
+        return None
+    flags = " and ".join(flag for flag, names in (("--gpu", opts.gpu), ("--exclude-gpu", opts.exclude_gpu)) if names)
+    return (
+        f"No offer qualified with the GPU models that {flags} allow. "
+        f"These GPU models qualified before that filter: {', '.join(report.qualified_gpu_models)}."
     )
 
 
@@ -326,11 +343,14 @@ def report_json(report: PlanReport) -> dict[str, Any]:
             "max_price_hr": opts.max_price_hr,
             "min_download_mbps": opts.min_download_mbps,
             "max_spend": report.max_spend,
+            "gpu": list(opts.gpu),
+            "exclude_gpu": list(opts.exclude_gpu),
         },
         "chosen": offer_json(chosen, report, 1) if chosen else None,
         "next": [offer_json(r, report, i) for i, r in enumerate(others, start=2)],
         "qualified_count": len(report.ranked),
         "checked_count": report.checked,
+        "qualified_gpu_models": list(report.qualified_gpu_models),
         "filter_steps": [_step_json(s) for s in report.steps],
         "backends": [
             {

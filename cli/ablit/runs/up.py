@@ -21,7 +21,7 @@ from ablit.backends.runpod import RUNPOD_START
 from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
 from ablit.catalog.loader import repo_root
 from ablit.credentials import CredentialError, credentials, secret_set
-from ablit.plan import report_json, run_plan
+from ablit.plan import gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
 from ablit.runs import RunBusy, RunError
 from ablit.runs.lifecycle import allocation, down
@@ -268,6 +268,7 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
                               max_spend=args.max_spend,
                               environ={ENV_KEY_NAMES[name]: all_creds[name].api_key for name in names},
                               strict_credentials=True)
+            gpu_message = gpu_filter_message(report)
             denied = {name: store.denied_hosts(name) for name in names}
             report = replace(report, ranked=[r for r in report.ranked if r.offer.host_id not in denied[r.offer.backend]])
             print(render(report), end="")
@@ -275,6 +276,8 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
                 print("The quote is incomplete. No machine was rented. Retry or limit --backends.", file=sys.stderr)
                 return 5
             if not report.ranked:
+                if gpu_message:
+                    print(f"ablit up: {gpu_message}", file=sys.stderr)
                 return 3
             offer = report.ranked[0].offer
             use_driver, use_creds = drivers[offer.backend], all_creds[offer.backend]
