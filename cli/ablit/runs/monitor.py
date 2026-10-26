@@ -144,8 +144,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         # A backend with no scoped key (RunPod) has no watchdog key to send.
                         scoped = bool(record.get("watchdog_key_id"))
                         watchdog = secret_get("watchdog/" + run_id) if scoped else ""
-                        if not key or (scoped and not watchdog):
-                            raise CredentialError("A run secret is missing from the OS keyring. Run down.")
+                        if not key or watchdog is None or (scoped and not watchdog):
+                            raise CredentialError("A run secret is missing from the OS keyring.")
                         backend = record.get("backend", "vast")
                         config = {"run_id": run_id, "model_id": record["model_id"], "backend": backend,
                                   "instance_id": int(record["resource_ids"][0]) if backend == "vast" else record["resource_ids"][0],
@@ -178,6 +178,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 if want_ready and record.get("ready") and tunnel is None:
                     tunnel, port = SSH(store, record).open_tunnel(record["entry"]["profile"]["port"])
                     key = secret_get(run_id)
+                    if not key:
+                        raise CredentialError("The endpoint key is missing from the OS keyring.")
                     engines.health(f"http://127.0.0.1:{port}", key, record["model_id"])
                     record.update(state="running", local_port=port)
                     store.save(record)
@@ -199,7 +201,9 @@ def monitor(store, record, driver, creds, *, want_ready=False):
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
         # Leaving before there is an endpoint is not a success. Billing is not confirmed stopped.
         return 7 if want_ready and tunnel is None else 0
-    except (BackendError, RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError) as error:
+    # A keyring error is a CredentialError. It must stop the run here, or `main` reports a key
+    # problem while the machine keeps billing.
+    except (BackendError, CredentialError, RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError) as error:
         print(f"{run_id}: stopping the run because of {reason(error)}", flush=True)
         save_remote_logs(store, store.load(run_id), creds)
         with store.lock(run_id):
