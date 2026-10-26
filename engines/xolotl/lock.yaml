@@ -13,7 +13,7 @@ image: ghcr.io/jameselkins/ablit-xolotl
 tag: 961d390
 # The digest of the pushed image. ablit refuses to rent with a null digest, so a
 # digest must be pinned before first use, and a new build needs a new digest here.
-digest: null
+digest: sha256:5d36c97c39cd195723a9a1f7a1a0c8875ab2a87551d0ab2db4efb68a20e0fb69
 # The CUDA 13 base image sets NVIDIA_REQUIRE_CUDA, so the host driver must support
 # CUDA 13. Vast reports the highest CUDA version a host supports in the offer
 # field cuda_max_good, and the search sends cuda_max_good >= this value.
