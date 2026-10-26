@@ -17,13 +17,18 @@ SEED_IDS = {
     "ds41-1017-abl-fp8",
     "ds41-september-gsq-uncensored",
     "ds41-1017-xq-v3-uncensored",
+    "ds41-1017-xq-v4-uncensored",
     "llama33-70b-fp8-dynamic",
     "llama31-8b-abliterated-q4km",
     "ornith15-122b-uncensored-iq2xxs",
     "ornith15-122b-uncensored-q4km",
+    "nanbeige43-33b-uncensored-q4km",
 }
 
-BOOT_TESTED = {"llama31-8b-abliterated-q4km", "ds41-september-gsq-uncensored", "ds41-1017-xq-v3-uncensored"}
+BOOT_TESTED = {
+    "llama31-8b-abliterated-q4km", "ds41-september-gsq-uncensored", "ds41-1017-xq-v3-uncensored",
+    "nanbeige43-33b-uncensored-q4km",
+}
 
 
 def _entry_params():

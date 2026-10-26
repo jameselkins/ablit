@@ -49,14 +49,16 @@ profile:
   host_ram_gb: 90
   host_ram_gb_recommended: 256
   storage: {random_read_required: true}
-  context_tokens: 4096
+  context_tokens: 131072
   concurrency: 1
   port: 8150
   startup_hours_estimate: 0.3
   min_download_mbps: 1000
 sources:
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/63fc34c6ea839d3e78e765b3e3aa72173116d352/README.md", covers: ["profile.gpu.*", profile.host_ram_gb, profile.host_ram_gb_recommended, profile.port], note: "Author's README at the pinned engine commit. The figures come from one machine the author measured."}
-  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate.}
+  - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/engine/ds41_dense.cpp", covers: [profile.context_tokens], note: "Ds41Dense sizes the caches from --ctx. With --kv-fp4 the compressed KV and indexer keys cost about 890 bytes a position, about 111 MiB at 131072 tokens, so the context adds no hardware floor."}
+  - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/serve/strata-ds41.json", covers: [profile.context_tokens], note: "The author's server config for this model family, with --ctx 524288 on a 24 GB card."}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: "Figures chosen by ablit. The context is 131072 tokens so that Claude Code fits, and it is below the 524288 the author runs. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate."}
   - https://huggingface.co/IndrasMirror/DeepSeek-V4.1-Flash-GSQ-Uncensored/blob/0ae18f838e103fb03d952fa8ed73c7aa9c34002f/README.md
   - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
 tests:
@@ -72,3 +74,4 @@ notes:
   - The startup estimate is 0.3 hours after the download ends. It is 0.25 hours (the startup figure of the boot-tested llama.cpp entry, which covers the image pull, the container start and the health check) plus 92 seconds for the engine load (the longest time the model cards report) plus 60 seconds for the last join and checksum after the final byte. The total is 0.292 hours, rounded up. It has not been measured for this image.
   - The engine is single-developer research code, and its speed numbers come from one machine.
   - This is the September V4.1 build, not the 1017 refresh. Its Engram tables must come from the September checkpoint, because the 1017 shards have different hashes. The pre-extracted tables in the kaushikvira repo are for the 1017 refresh and do not fit this entry.
+  - The context was raised from 4096 to 131072 tokens on 2026-10-26, together with the move to Xolotl 961d390. The earlier boot tests ran with 4096 tokens on Xolotl 63fc34c and 03be8a6. With --kv-fp4 the compressed KV and indexer keys take about 111 MiB at 131072 tokens (about 890 bytes a position), and the engine sizes its VRAM expert cache from what is left, so the hardware floors stay as they were. The author runs 524288 tokens on a 24 GB card.
