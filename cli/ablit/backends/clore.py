@@ -610,7 +610,11 @@ class CloreBackend(RentalBackend):
         if currency != CURRENCY:
             raise UnknownUnit(f"clore: {where} is billed in {currency!r}, but the driver prices only {CURRENCY}")
         price = fields.number(row, "price", backend=self.name, where=where, minimum=0)
-        fee = fields.number(row, "fee", backend=self.name, where=where, minimum=0)
+        # A live order list read on 2026-10-26 had no fee field, although the API reference shows one.
+        # Without it the driver adds the renter's documented 5%, which matched that order's quote.
+        fee = fields.number(row, "fee", backend=self.name, where=where, nullable=True, minimum=0) if "fee" in row else None
+        if fee is None:
+            fee = RENTER_BASE_FEE_PERCENT
         spend = fields.number(row, "spend", backend=self.name, where=where, nullable=True, minimum=0)
         assert price is not None and fee is not None
         # The order price is per day, and the fee is a percentage of it.

@@ -313,7 +313,7 @@ def test_a_missing_or_expired_order_is_absent(driver, rows):
 @pytest.mark.parametrize("change,error", [
     ({"currency": "bitcoin"}, UnknownUnit),
     ({"price": "4.8"}, UnknownFieldType),
-    ({"fee": None}, UnknownFieldType),
+    ({"fee": "5"}, UnknownFieldType),
     ({"tcp_ports": ["ssh"]}, UnknownFieldType),
     ({"tcp_ports": "22:10022"}, UnknownFieldType),
     ({"pub_cluster": ["bad host!"]}, UnknownFieldType),
@@ -394,3 +394,15 @@ def test_there_is_no_scoped_watchdog_credential_and_the_driver_says_so(driver):
     assert capabilities.search is True
     assert capabilities.scoped_watchdog_credential is False
     assert capabilities.rent is False  # not true until a rented machine has worked
+
+
+@pytest.mark.parametrize("missing", [True, False])
+def test_observe_adds_the_documented_renter_fee_when_the_order_has_none(driver, missing):
+    # A live order list read on 2026-10-26 had no fee field.
+    row = order(fee=None)
+    if missing:
+        del row["fee"]
+    with respx.mock as router:
+        router.get(ORDERS).mock(return_value=orders(row))
+        observation = driver.observe(ALLOC, KEY)
+    assert observation.hourly_rate == pytest.approx(4.8 * 1.05 / 24)
