@@ -54,11 +54,25 @@ Messages and errors go to standard error as plain sentences.
 | 8 | Cap reached, and the watchdog destroyed the run |
 | 9 | The marketplace rejected the workload. ablit cleans up and doesn't retry elsewhere. |
 
+## Using the endpoint with Claude Code
+
+For an engine that answers the Anthropic Messages API, `ablit up` prints a block of `export` lines after the curl example. Today that means llama.cpp and Xolotl, and not vLLM. The lines set:
+
+```
+export ANTHROPIC_BASE_URL=http://127.0.0.1:<local port>
+export ANTHROPIC_AUTH_TOKEN="$(ablit status <run> --key-only)"
+export ANTHROPIC_MODEL=<served name>
+```
+
+They also set `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_FABLE_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL` to the served name, and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`. The base URL has no `/v1`, because Claude Code adds `/v1/messages` itself. Use the block as printed, so the key is read from the keyring and never shown.
+
+Claude Code's system prompt and tools take about 15K to 25K tokens. An entry whose context limit is smaller will refuse Claude Code's requests, and the block says so when the entry serves fewer than 25,000 tokens. Check the context limit with `ablit catalog show <id>` before you rent for Claude Code.
+
 ## Secrets
 
 The marketplace key lives in the OS keyring, or in `VAST_API_KEY` (Vast), `RUNPOD_API_KEY` (RunPod) or `CLORE_API_KEY` (Clore) or `LIUM_API_KEY` (Lium). ablit reads it, and an agent never needs to. Do not print, read or copy it.
 
-`ablit status --show-key` prints the endpoint key for a run. Use it only when the user asks for the key.
+`ablit status --show-key` prints the endpoint key for a run. Use it only when the user asks for the key. `ablit status <run> --key-only` prints the key alone, for a shell to capture with `$(...)`. It reads the keyring and contacts no marketplace. Use it inside a command, as the Claude Code block does, and do not print its output.
 
 ## Spend cap
 

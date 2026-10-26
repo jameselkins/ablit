@@ -9,6 +9,9 @@ digest: null
 min_version: "0.31.0"
 bind: 127.0.0.1
 api_key_variable: VLLM_API_KEY
+# Nobody has checked /v1/messages on this version, so `ablit up` prints no Claude
+# Code block. Set this to true once a run confirms it.
+anthropic_messages: false
 variables:
   - ABLIT_RUN_ID
   - ABLIT_MODEL_ID

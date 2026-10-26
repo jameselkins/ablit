@@ -18,6 +18,9 @@ compressed_bytes: 2594121813
 image_gb: 10.0
 bind: 127.0.0.1
 api_key_variable: LLAMA_API_KEY
+# The server answers the Anthropic Messages API at /v1/messages on the same port, so
+# `ablit up` prints a Claude Code block. Checked against this build on 2026-10-26.
+anthropic_messages: true
 # Only the architectures used by catalog entries are claimed here. The ornith15-122b entries use qwen35moe.
 # https://github.com/ggml-org/llama.cpp/blob/1d88cb05f1a257f90741538ca3aca6c1b015c6d3/src/llama-arch.cpp
 supported_architectures: [llama, qwen35moe]

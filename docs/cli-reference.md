@@ -9,7 +9,7 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `ablit setup [backend]` | First-run account flow. Keys go to the OS keyring, or are kept for the session only. ablit never writes a plaintext key without asking. |
 | `ablit plan <model>` | Resolves the model to one catalog entry, filters and ranks offers from every enabled backend, and prints the chosen offer, the next four, and why other backends or offers were dropped. Rents nothing. |
 | `ablit up <model>` | Runs `plan`, shows the quote, and asks the user to type `rent`. It then re-queries the offer, writes a local intent record, rents, starts the watchdog, bootstraps the engine, checks health, and prints the endpoint. It rents on Vast, RunPod, Clore and Lium. With no `--backends` it searches Vast, and also RunPod, Clore and Lium when a key for them exists, and rents where the chosen offer is. With no Vast key it searches only the backends that have a key. |
-| `ablit status [run]` | Run state, resource IDs, time of the last marketplace check, spend against the cap, bootstrap stage, and pending cleanup. Supports `--all`, `--json`, `--watch` and `--show-key`. |
+| `ablit status [run]` | Run state, resource IDs, time of the last marketplace check, spend against the cap, bootstrap stage, and pending cleanup. Supports `--all`, `--json`, `--watch` and `--show-key`. `--key-only` prints only the endpoint key of one run, so a shell can capture it with `$(...)`. It reads the keyring, contacts no marketplace, and can't be combined with the other flags. |
 | `ablit logs [run] [--stage bootstrap\|engine\|watchdog] [-f]` | Streams logs from the machine over SSH, with secrets removed. |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel to a running endpoint. |
 | `ablit down [run]` | Destroys every billable resource the run created and confirms with the marketplace. Never asks for confirmation. Works even for a backend whose new launches are disabled. |
@@ -72,11 +72,25 @@ The default is `--endpoint tunnel`. The engine listens on `127.0.0.1` on the mac
 ```
 Endpoint: http://127.0.0.1:<local port>/v1   (through an SSH tunnel to the rented machine)
 API key:  saved in your keyring as ablit/<run id>. Run `ablit status <run> --show-key` to print it.
+export ABLIT_KEY="$(ablit status <run> --key-only)"
 curl http://127.0.0.1:<local port>/v1/chat/completions -H "Authorization: Bearer $ABLIT_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"<served name>","messages":[{"role":"user","content":"Hello"}],"max_tokens":8}'
+
+Claude Code: paste these lines into a shell, then run `claude`.
+export ANTHROPIC_BASE_URL=http://127.0.0.1:<local port>
+export ANTHROPIC_AUTH_TOKEN="$(ablit status <run> --key-only)"
+export ANTHROPIC_MODEL=<served name>
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=<served name>
+export ANTHROPIC_DEFAULT_SONNET_MODEL=<served name>
+export ANTHROPIC_DEFAULT_OPUS_MODEL=<served name>
+export ANTHROPIC_DEFAULT_FABLE_MODEL=<served name>
+export CLAUDE_CODE_SUBAGENT_MODEL=<served name>
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 Closing this tunnel doesn't stop billing. Run `ablit down <run>` to stop it.
 ```
+
+The Claude Code block appears only when the engine lock sets `anthropic_messages: true`, which the llama.cpp and Xolotl locks do. The base URL has no `/v1`, because Claude Code adds `/v1/messages` itself. Claude Code's system prompt and tools take about 15K to 25K tokens, so when the entry serves fewer than 25,000 tokens of context the block ends with a line that says the endpoint will likely refuse Claude Code's requests.
 
 The `public` value would open the marketplace's mapped port over plain HTTP. It is not built yet, and a paid `up` refuses it.
 

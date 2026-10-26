@@ -48,6 +48,9 @@ disk_margin_gb: 11.0
 extract_disk_gb: 210.0
 bind: 127.0.0.1
 api_key_variable: STRATA_API_KEY
+# The server answers /v1/messages and /v1/messages/count_tokens on the same port, so
+# `ablit up` prints a Claude Code block.
+anthropic_messages: true
 install_dir: /opt/xolotl
 # The README asks for a pinned memory arena of 60 GiB by default.
 min_memlock_kb: 62914560

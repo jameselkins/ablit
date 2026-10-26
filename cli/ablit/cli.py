@@ -110,6 +110,9 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--json", action="store_true")
     status.add_argument("--watch", action="store_true")
     status.add_argument("--show-key", action="store_true", help="print the endpoint key")
+    status.add_argument("--key-only", action="store_true",
+                        help="print only the endpoint key of one run, for use in a shell. "
+                             "It reads the keyring and contacts no marketplace.")
 
     logs = sub.add_parser("logs", help="stream logs from the box over SSH, with secrets removed")
     logs.add_argument("run", nargs="?", help=_RUN_HELP)
