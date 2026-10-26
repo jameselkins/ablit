@@ -19,7 +19,8 @@ lists each fact with its source and marks what is UNVERIFIED. Four facts shape t
    budgets are made from a signed-in session only, so `watchdog_credential` returns
    None and the machine cannot destroy its own pod.
 
-The lifecycle has synthetic tests and is untested on a rented machine.
+The lifecycle has synthetic tests and one paid round trip on 2026-10-26
+(catalog/boot-tests/llama31-8b-abliterated-q4km-lium-2026-10-26.md).
 """
 
 from __future__ import annotations
@@ -78,26 +79,21 @@ STATE_BY_STATUS = {
 # https://docs.lium.io/pod-users/billing#when-a-pod-is-charged
 NOT_BILLED = ("CREATION_FAILED", "BROKEN", "DELETING")
 
-# The public key travels in this template variable, which the start script below reads.
-PUBLIC_KEY_VARIABLE = "PUBLIC_KEY"
 SSH_KEY_PATTERN = re.compile(r"^[A-Za-z0-9+/=@._ -]{1,1024}$")
 
 # The template's start command must keep the container running.
 # https://docs.lium.io/pod-users/templates#creating-a-custom-template
-# The script appends the run key, installs sshd when it is missing and starts it unless something already
-# listens on port 22. It is UNVERIFIED on a rented pod, as is the way Lium adds the key to a custom image.
-LIUM_START = (
-    "umask 077; mkdir -p /ablit/logs /ablit/stages /root/.ssh /run/sshd; "
-    'printf "%s\\n" "$PUBLIC_KEY" >> /root/.ssh/authorized_keys; '
-    "chown -R root:root /root/.ssh; chmod 700 /root /root/.ssh; chmod 600 /root/.ssh/authorized_keys; "
-    "if [ ! -x /usr/sbin/sshd ]; then "
-    "(apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssh-server) "
-    ">/ablit/logs/sshd-install.log 2>&1; fi; "
-    "ssh-keygen -A >/dev/null 2>&1; "
-    "(ss -ltn 2>/dev/null | grep -q ':22 ' || /usr/sbin/sshd -e -o PasswordAuthentication=no "
-    "-o PermitRootLogin=prohibit-password); "
-    "exec sleep infinity"
-)
+# Lium refuses shell metacharacters in the start command and in environment values (HTTP 400,
+# "Malicious startup command detected", checked on 2026-10-23), so the command cannot add a key or
+# start sshd. The rent call carries the run's public key, and ablit relies on Lium to install it.
+# Whether that works on an image without sshd is UNVERIFIED.
+# The engine images set their own entrypoint (llama.cpp runs /app/llama-server with no args, which
+# exits at once), so the template also overrides the entrypoint. A paid rent on 2026-10-26 failed
+# with "the image's default command exiting right after start" while startup_commands was
+# "sleep infinity" with no entrypoint, because the image entrypoint consumed it as arguments.
+# Both images are Ubuntu-based, so /bin/sleep exists.
+LIUM_ENTRYPOINT = "/bin/sleep"
+LIUM_START = "infinity"
 
 # Lium accepts a termination time of 1 to 720 hours. https://lium.io/api/openapi.json (RentExecutorRequest)
 MIN_TERMINATION_HOURS, MAX_TERMINATION_HOURS = 1, 720
@@ -257,10 +253,10 @@ class LiumBackend(RentalBackend):
         self._root = root.rstrip("/")
 
     def capabilities(self) -> Capabilities:
-        # Search works against live data. Renting stays False until a paid test shows it works.
+        # Search works against live data. Renting passed one paid round trip on 2026-10-26.
         # A key made with the user's key cannot create another key, so scoped_watchdog_credential stays False.
         # The rent call takes termination_hours, but marketplace_deadline stays False until a test shows it ends a pod.
-        return Capabilities(search=True)
+        return Capabilities(search=True, rent=True)
 
     # --- HTTP -------------------------------------------------------------
 
@@ -430,7 +426,8 @@ class LiumBackend(RentalBackend):
                     # Only the SSH port is exposed. The engine is reached through an SSH tunnel.
                     "internal_ports": [22],
                     "volumes": ["/root"],
-                    "environment": {PUBLIC_KEY_VARIABLE: key},
+                    "environment": {},
+                    "entrypoint": LIUM_ENTRYPOINT,
                     "startup_commands": boot.onstart,
                     "is_private": True,
                     # Lium deletes a one-time template with the pod that used it.
@@ -469,7 +466,7 @@ class LiumBackend(RentalBackend):
         except CredentialsRejected:
             raise
         except (RequestRejected, ResponseNotRecognized, httpx.HTTPError) as error:
-            raise TemplateNotCreated(f"the template step failed, so no pod was rented ({type(error).__name__})") from error
+            raise TemplateNotCreated(f"the template step failed, so no pod was rented: {error}") from error
         return template_id
 
     def _drop_template(self, template_id: str, creds: Creds) -> None:
