@@ -28,14 +28,49 @@ START_DEADLINE_SECONDS = 20 * 60
 SSH_GRACE_SECONDS = 300
 
 
+# Claude Code's system prompt and tools take roughly 15K to 25K tokens, so a smaller
+# context limit makes the engine refuse its requests.
+CLAUDE_CODE_MIN_CONTEXT = 25_000
+
+
 def endpoint(record: dict) -> None:
-    port, run_id = record["local_port"], record["run_id"]
+    port, run_id, model = record["local_port"], record["run_id"], record["model_id"]
+    key_command = f"ablit status {run_id} --key-only"
     print(f"Endpoint: http://127.0.0.1:{port}/v1   (through an SSH tunnel to the rented machine)")
     print(f"API key:  saved in your keyring as ablit/{run_id}. Run `ablit status {run_id} --show-key` to print it.")
+    print(f'export ABLIT_KEY="$({key_command})"')
     print(f'curl http://127.0.0.1:{port}/v1/chat/completions -H "Authorization: Bearer $ABLIT_KEY" \\\n'
           '  -H "Content-Type: application/json" \\\n'
-          f'''  -d '{{"model":"{record['model_id']}","messages":[{{"role":"user","content":"Hello"}}],"max_tokens":8}}' ''')
+          f'''  -d '{{"model":"{model}","messages":[{{"role":"user","content":"Hello"}}],"max_tokens":8}}' ''')
+    if record.get("anthropic_messages"):
+        print()
+        print(claude_code_block(record))
     print(f"Closing this tunnel doesn't stop billing. Run `ablit down {run_id}` to stop it.", flush=True)
+
+
+def claude_code_block(record: dict) -> str:
+    """Return shell lines that point Claude Code at the run's endpoint.
+
+    The key is read from the keyring when the lines run, so it is never printed here.
+    """
+    port, run_id, model = record["local_port"], record["run_id"], record["model_id"]
+    lines = [
+        "Claude Code: paste these lines into a shell, then run `claude`.",
+        # Claude Code adds /v1/messages itself, so the base URL has no /v1.
+        f"export ANTHROPIC_BASE_URL=http://127.0.0.1:{port}",
+        f'export ANTHROPIC_AUTH_TOKEN="$(ablit status {run_id} --key-only)"',
+        f"export ANTHROPIC_MODEL={model}",
+    ]
+    # Every alias and background model points at the one model the endpoint serves.
+    lines += [f"export {name}={model}" for name in (
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_FABLE_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL")]
+    lines.append("export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1")
+    context = (record.get("entry") or {}).get("profile", {}).get("context_tokens")
+    if isinstance(context, int) and context < CLAUDE_CODE_MIN_CONTEXT:
+        lines.append(f"This entry serves {context} tokens of context. Claude Code's system prompt and tools "
+                     "take about 15K to 25K tokens, so the endpoint will likely refuse its requests.")
+    return "\n".join(lines)
 
 
 def monitor(store, record, driver, creds, *, want_ready=False):

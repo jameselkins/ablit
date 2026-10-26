@@ -140,7 +140,7 @@ A runtime, or engine, is the server program that loads the model on the rented m
 | `ablit setup [vast\|runpod\|clore\|lium]` | Enters a key with hidden input, tests it, and can save it in the OS keyring |
 | `ablit plan <model>` | Shows the chosen offer and the next four, with totals, and why other offers were dropped. Rents nothing. |
 | `ablit up <model>` | Plans, asks you to type `rent` (or takes `--yes`), rents the machine, and keeps the tunnel open |
-| `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup |
+| `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. `--key-only` prints only the endpoint key. |
 | `ablit logs [run]` | Logs from the machine with known secrets removed |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel and runs the local cap check |
 | `ablit down [run]` | Destroys the machine, confirms it is gone, and revokes run credentials. Run it again if it exits with code 7. |
@@ -151,6 +151,12 @@ Agents and scripts should read [AGENTS.md](AGENTS.md), which covers `--json` out
 ## The endpoint and your keys
 
 The engine on the rented machine listens on `127.0.0.1` only, and ablit reaches it through an SSH port forward that checks the host key. ablit prints a local URL and the name of the keyring entry that holds the endpoint key, which is a random 32-byte value. Paid launches accept only `--endpoint tunnel`. Closing the tunnel does not stop billing, so run `ablit down` to stop the run. Marketplace keys come from the OS keyring or from `VAST_API_KEY`, `RUNPOD_API_KEY` or `CLORE_API_KEY`, and an environment key takes priority.
+
+## Using the endpoint with Claude Code
+
+The llama.cpp and Xolotl engines also answer the Anthropic Messages API on the same port, so Claude Code can use your rented model. When the endpoint answers, `ablit up` prints a block of `export` lines. Paste them into a shell and run `claude`. The block points `ANTHROPIC_BASE_URL` at the tunnel with no `/v1` at the end, reads the key with `ablit status <run> --key-only`, and sets every model name Claude Code asks for to the one model the endpoint serves.
+
+Claude Code's system prompt and tools take about 15K to 25K tokens before you type anything. The model's context limit must cover that, so an entry with a small context limit, such as 4096 tokens, will refuse Claude Code's requests. The block says so when the entry serves fewer than 25,000 tokens. vLLM entries print no block, because nobody has checked that ablit's vLLM version answers `/v1/messages`.
 
 ## Paid links
 

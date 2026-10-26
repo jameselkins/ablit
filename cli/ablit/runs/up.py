@@ -75,6 +75,8 @@ def make_intent(store, entry, offer, report, args, lock) -> dict:
         "quote": report_json(report), "offer": asdict(offer), "cap_usd": args.max_spend,
         "entry": entry.model_dump(), "catalog_sha256": catalog_digest,
         "image": lock["image"] + "@" + lock["digest"],
+        # Whether the engine answers /v1/messages, which decides the Claude Code block.
+        "anthropic_messages": bool(lock.get("anthropic_messages")),
         "started_at": time.time(), "resource_ids": [], "create_sent": False,
         "min_download_mbps": args.min_download or entry.profile.min_download_mbps,
         "report_requested": getattr(args, "report", False),

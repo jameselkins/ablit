@@ -14,6 +14,15 @@ from ablit.runs.lifecycle import down, local_stop_needed, refresh, run_redactor
 from ablit.runs.monitor import POLL_SECONDS
 
 
+def key_only(record) -> int:
+    """Print the run's endpoint key alone, so a shell can capture it with $(...)."""
+    key = secret_get(record["run_id"])
+    if key is None:
+        raise CredentialError("The endpoint key is no longer in the keyring.")
+    print(key, flush=True)
+    return 0
+
+
 def status(args, records, drivers, environ, store):
     while True:
         output, code = [], 0
