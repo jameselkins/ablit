@@ -154,3 +154,39 @@ def test_ctrl_c_before_the_endpoint_is_ready_does_not_exit_0(monkeypatch):
     store, run = prepared(monkeypatch, started_at=time.time(), marketplace_state="starting")
     monkeypatch.setattr(monitor_mod, "refresh", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt))
     assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 7
+
+
+def test_a_keyring_error_during_the_monitor_destroys_the_run(monkeypatch, capsys):
+    store, run = prepared(monkeypatch, marketplace_state="running")
+
+    def refresh(store_, record, driver, creds):
+        raise keys.CredentialError("The OS keyring is unavailable.")
+
+    destroyed = []
+    monkeypatch.setattr(monitor_mod, "refresh", refresh)
+    monkeypatch.setattr(monitor_mod, "save_remote_logs", lambda *a: None)
+    monkeypatch.setattr(monitor_mod, "down", lambda *a: destroyed.append(True) or 0)
+    assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 6
+    assert destroyed == [True]
+    assert "stopping the run because of CredentialError" in capsys.readouterr().out
+
+
+def test_an_unexpected_error_with_an_active_run_exits_7(monkeypatch, capsys):
+    prepared(monkeypatch)
+
+    def broken(*args, **kwargs):
+        raise TypeError("invented bug")
+
+    monkeypatch.setattr("ablit.cli._main", broken)
+    assert main(["status"], environ={}) == 7
+    err = capsys.readouterr().err
+    assert "TypeError: invented bug" in err and "may still be billing" in err
+
+
+def test_an_unexpected_error_with_no_active_run_exits_1(monkeypatch, capsys):
+    def broken(*args, **kwargs):
+        raise TypeError("invented bug")
+
+    monkeypatch.setattr("ablit.cli._main", broken)
+    assert main(["status"], environ={}) == 1
+    assert "may still be billing" not in capsys.readouterr().err

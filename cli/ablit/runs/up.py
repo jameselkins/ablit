@@ -198,6 +198,9 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
             if args.catalog and not args.untested:
                 raise RunError("A local catalog launch requires --untested.")
             engines.check_artifacts(entry)
+            if offer.allocated_disk_gb is None:
+                print("The offer has no allocated disk size, so it cannot be rented. Run up again for a new quote.")
+                return 5
             if args.yes:
                 print("Quote approved with --yes.", flush=True)
             elif input("Type rent to rent this machine: ").strip() != "rent":
