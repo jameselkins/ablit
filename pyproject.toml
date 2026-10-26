@@ -90,7 +90,7 @@ mypy_path = "cli"
 explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_ignores = false
-check_untyped_defs = false
+check_untyped_defs = true
 
 # Each override below silences one known finding in one module. The findings are
 # listed here so they can be fixed and the override removed.

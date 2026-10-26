@@ -24,8 +24,10 @@ Every paid `up` needs `--max-spend <USD>`, and the watchdog destroys the run whe
 A typical flow:
 
 1. Run `ablit plan <model> --json` and read `chosen`, `hourly_all_in_usd` and `totals`.
-2. Run `ablit up <model> --max-spend <USD> --yes`. It prints text, ending with the endpoint block, and exits 0 when the endpoint answers.
-3. Use `ablit status --json` and `ablit logs` to follow the run.
+2. Start `ablit up <model> --max-spend <USD> --yes` in a managed process. It prints the endpoint block when the endpoint answers, and stays running to keep the SSH tunnel open and check spending. Do not wait for it to exit as a readiness signal.
+3. Use `ablit status --json` from another process to follow the run. The endpoint is ready when the run has `state: "running"` and a `local_port`. Use `ablit logs` to read the logs.
+
+Interrupting `up` closes its tunnel and stops its local spending check, and billing continues. Use `ablit tunnel <run>` to reconnect, or `ablit down <run>` to stop billing.
 
 `ablit down [run]` destroys everything a run created and never asks to confirm. Run it whenever the user wants billing to stop, or a run is left over. Rerun it until it exits 0.
 

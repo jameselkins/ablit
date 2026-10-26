@@ -116,15 +116,33 @@ class RunStore:
     def active_model(self, model: str) -> list[dict]:
         return [r for r in self.all() if r["model_id"] == model and r["state"] != "billing_stopped_confirmed"]
 
-    def denied_hosts(self) -> set[str]:
+    def _denials(self) -> dict[str, dict[str, str]]:
+        """Read scoped denials, recovering the marketplace for older records."""
         path = self.root / "deny.json"
         if not path.exists():
-            return set()
-        return set(json.loads(path.read_text())["hosts"])
+            return {}
+        data = json.loads(path.read_text())
+        if data.get("schema") == 2:
+            return data["hosts"]
+        # Older files held bare IDs. Saved runs identify their marketplace. With
+        # no matching run, a UUID came from Lium and other IDs default to Vast.
+        by_host: dict[str, set[str]] = {}
+        for record in self.all():
+            if record.get("host_id") is not None:
+                by_host.setdefault(str(record["host_id"]), set()).add(record.get("backend", "vast"))
+        hosts: dict[str, dict[str, str]] = {}
+        for host, reason in data["hosts"].items():
+            fallback = "lium" if re.fullmatch(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", host) else "vast"
+            for backend in by_host.get(host, {fallback}):
+                hosts.setdefault(backend, {})[host] = reason
+        return hosts
 
-    def deny(self, host_id: str, reason: str) -> None:
+    def denied_hosts(self, backend: str = "vast") -> set[str]:
+        return set(self._denials().get(backend, {}))
+
+    def deny(self, host_id: str, reason: str, *, backend: str = "vast") -> None:
         with self.lock("deny"):
             path = self.root / "deny.json"
-            data = json.loads(path.read_text()) if path.exists() else {"hosts": {}}
-            data["hosts"][host_id] = reason
-            atomic_json(path, data)
+            hosts = self._denials()
+            hosts.setdefault(backend, {})[host_id] = reason
+            atomic_json(path, {"schema": 2, "hosts": hosts})

@@ -30,11 +30,15 @@ jobs:
         run: mypy
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -46,6 +50,13 @@ jobs:
 
       - name: Install the package and the test dependencies
         run: python -m pip install --upgrade pip && python -m pip install -e ".[test]"
+
+      - name: Use the system Bash for macOS shell tests
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ablit-bash"
+          ln -s /bin/bash "$RUNNER_TEMP/ablit-bash/bash"
+          echo "$RUNNER_TEMP/ablit-bash" >> "$GITHUB_PATH"
 
       - name: Run the tests
         run: python -m pytest -q
@@ -64,9 +75,21 @@ jobs:
       - name: Build the catalog
         run: python tools/build_catalog.py
 
-      - name: Check the engine scripts
+      - name: Check engine script syntax
         run: |
           for script in engines/lib/common.sh engines/*/bootstrap.sh engines/*/health.sh; do
             bash -n "$script"
           done
-          shellcheck -x -S warning engines/lib/common.sh engines/*/bootstrap.sh engines/*/health.sh
+
+      - name: Lint the engine scripts
+        if: runner.os == 'Linux'
+        run: shellcheck -x -S warning engines/lib/common.sh engines/*/bootstrap.sh engines/*/health.sh
+
+      - name: Check launch bundles from the installed wheel
+        if: runner.os == 'Linux' && matrix.python-version == '3.12'
+        run: |
+          python -m pip install build
+          python -m build
+          python -m venv "$RUNNER_TEMP/ablit-install"
+          "$RUNNER_TEMP/ablit-install/bin/python" -m pip install dist/*.whl
+          "$RUNNER_TEMP/ablit-install/bin/python" -I tools/check_install.py

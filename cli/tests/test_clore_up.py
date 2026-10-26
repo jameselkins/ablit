@@ -242,7 +242,8 @@ def test_a_clore_run_with_no_endpoint_at_the_deadline_is_cancelled_and_exits_6(m
     answers = iter([orders(order(9001, pub_cluster=None, tcp_ports=None)), orders(), orders()])
     assert monitor_run(monkeypatch, store, run, lambda request: next(answers), lambda request: OK) == 6
     assert store.load(run["run_id"])["state"] == "billing_stopped_confirmed"
-    assert "7101" in store.denied_hosts()
+    assert "7101" in store.denied_hosts("clore")
+    assert "7101" not in store.denied_hosts("vast")
 
 
 def test_a_clore_run_whose_cancel_is_not_confirmed_exits_7(monkeypatch):

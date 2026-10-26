@@ -66,10 +66,13 @@ def make_intent(store, entry, offer, report, args, lock) -> dict:
         "started_at": time.time(), "resource_ids": [], "create_sent": False,
         "min_download_mbps": args.min_download or entry.profile.min_download_mbps,
         "report_requested": getattr(args, "report", False),
-        # RunPod and Clore have no key limited to one machine, so the local cap check does not wait for a stale heartbeat.
+        # Keep the backend's dependence on the local check visible in status.
         "local_cap_primary": offer.backend in LOCAL_CAP_BACKENDS,
         "transfer_estimate_usd": offer.bandwidth_cost_per_gb * (report.req.download_gb + report.req.image_gb),
     }
+    # Confirm that every local bootstrap file can be rendered before creating
+    # a run record, registering a key or renting anything.
+    engines.bundle(entry, record)
     store.save(record)
     return record
 
@@ -178,15 +181,18 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
                 print("The engine image has no valid pinned digest.")
                 return 5
             for name in names:
-                drivers[name].denied_host_ids = store.denied_hosts()
+                drivers[name].denied_host_ids = store.denied_hosts(name)
             req = request_from_entry(entry, lock["image_gb"])
             report = run_plan(entry, req, opts, {name: drivers[name] for name in names}, wanted=",".join(names),
                               max_spend=args.max_spend,
                               environ={ENV_KEY_NAMES[name]: all_creds[name].api_key for name in names},
                               strict_credentials=True)
-            denied = store.denied_hosts()
-            report = replace(report, ranked=[r for r in report.ranked if r.offer.host_id not in denied])
+            denied = {name: store.denied_hosts(name) for name in names}
+            report = replace(report, ranked=[r for r in report.ranked if r.offer.host_id not in denied[r.offer.backend]])
             print(render(report), end="")
+            if not report.complete:
+                print("The quote is incomplete. No machine was rented. Retry or limit --backends.", file=sys.stderr)
+                return 5
             if not report.ranked:
                 return 3
             offer = report.ranked[0].offer
@@ -214,6 +220,8 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
             if engines.engine_lock(entry) != lock:
                 print("The image lock changed. Confirmation cancelled.")
                 return 5
+            if offer.allocated_disk_gb is None:
+                raise RunError("The offer has no allocated disk size. No machine was rented.")
             record = make_intent(store, entry, offer, report, args, lock)
             print(f"Run: {record['run_id']}", flush=True)
             with store.lock(record["run_id"]):

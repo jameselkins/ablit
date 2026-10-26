@@ -164,8 +164,9 @@ download_job() {
 # which the catalog entries and the upstream reassemble.sh scripts both use.
 join_worker() {
   ablit_step_done join && return 0
-  local -a rels
-  mapfile -t rels < <(ablit_rels_by_role weight)
+  local -a rels=()
+  local rel
+  while IFS= read -r rel; do rels+=("$rel"); done < <(ablit_rels_by_role weight)
   [ "${#rels[@]}" -gt 0 ] || ablit_fail "missing_file" "the entry lists no weight files"
   mkdir -p "$ABLIT_DATA_DIR/$(dirname "$JOINED_REL")"
   if [ "${#rels[@]}" -eq 1 ]; then
@@ -183,9 +184,9 @@ join_worker() {
 
 # Print the folders that hold the Engram tables, joined with colons.
 engram_argument() {
-  local -a rels dirs=()
+  local -a rels=() dirs=()
   local rel dir known seen layer
-  mapfile -t rels < <(ablit_rels_by_role engram)
+  while IFS= read -r rel; do rels+=("$rel"); done < <(ablit_rels_by_role engram)
   if [ "${#rels[@]}" -gt 0 ]; then
     # The entry lists tables that are already extracted.
     for rel in "${rels[@]}"; do
@@ -198,7 +199,7 @@ engram_argument() {
     for layer in $ENGRAM_LAYERS; do dirs+=("$ABLIT_DATA_DIR/$ENGRAM_OUT_REL/layers.$layer"); done
   else
     # Read the official files in place: the folder holds the index and both shards.
-    mapfile -t rels < <(ablit_rels_by_role engram-source)
+    while IFS= read -r rel; do rels+=("$rel"); done < <(ablit_rels_by_role engram-source)
     [ "${#rels[@]}" -gt 0 ] || ablit_fail "missing_file" "the entry lists no Engram files"
     dirs=("$(dirname "$ABLIT_DATA_DIR/${rels[0]}")")
     [ -f "${dirs[0]}/model.safetensors.index.json" ] \
@@ -212,9 +213,9 @@ engram_argument() {
 # TODO(step 5): untested on a rented machine. The arguments follow the script's
 # own usage text at the pinned commit.
 run_extraction() {
-  local -a rels to=()
+  local -a rels=() to=()
   local rel src total free layer pid watcher status=0
-  mapfile -t rels < <(ablit_rels_by_role engram-source)
+  while IFS= read -r rel; do rels+=("$rel"); done < <(ablit_rels_by_role engram-source)
   [ "${#rels[@]}" -gt 0 ] || ablit_fail "missing_file" "the entry lists no Engram source files"
   for rel in "${rels[@]}"; do
     [ -f "$ABLIT_DATA_DIR/$rel" ] || ablit_fail "missing_file" "$rel is not on the box"
@@ -247,9 +248,9 @@ run_extraction() {
 
 extract_worker() {
   ablit_step_done extract && return 0
-  local -a rels paths=()
+  local -a rels=() paths=()
   local rel
-  mapfile -t rels < <(ablit_rels_by_role engram-source)
+  while IFS= read -r rel; do rels+=("$rel"); done < <(ablit_rels_by_role engram-source)
   [ "${#rels[@]}" -gt 0 ] || return 0
   for rel in "${rels[@]}"; do paths+=("$ABLIT_DATA_DIR/$rel"); done
   ablit_wait_for_files "${paths[@]}"

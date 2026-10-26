@@ -254,8 +254,8 @@ def test_the_runpod_run_uses_the_local_check_even_when_the_heartbeat_is_fresh():
     run.update(marketplace_state="running", heartbeat={"at": now, "spend": 0, "action": "continue"},
                spend_estimate_usd=run["cap_usd"])
     assert local_stop_needed(run, now) is True
-    run["local_cap_primary"] = False  # a Vast run waits for a heartbeat older than three minutes
-    assert local_stop_needed(run, now) is False
+    run["local_cap_primary"] = False
+    assert local_stop_needed(run, now) is True
 
 
 def test_a_runpod_offer_with_no_advertised_speed_does_not_break_the_cap_math():

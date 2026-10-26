@@ -128,17 +128,13 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
 
 
 def local_stop_needed(record: dict, now: float) -> bool:
-    """Use the local check if the on-box heartbeat is over three minutes old."""
+    """Enforce the cap locally even when a live watchdog cannot destroy the machine."""
     if record["marketplace_state"] == "absent":
         return False
-    last = record.get("heartbeat", {}).get("at", record["started_at"])
-    # A backend with no scoped on-box key (RunPod, Clore) cannot rely on the watchdog to stop the run,
-    # so the local check runs whatever the heartbeat age is.
-    stale = now - last > 180 or bool(record.get("local_cap_primary"))
     cfg = Config(record["started_at"], record["offer"]["hourly_all_in"],
                  record["offer"]["bandwidth_cost_per_gb"], record["cap_usd"],
                  record["offer"]["download_mbps"] or record.get("min_download_mbps", 0))
-    return stale and record["spend_estimate_usd"] + reserve(cfg) >= record["cap_usd"]
+    return record["spend_estimate_usd"] + reserve(cfg) >= record["cap_usd"]
 
 
 def down(store, record: dict, driver, creds) -> int:

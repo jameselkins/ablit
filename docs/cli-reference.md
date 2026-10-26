@@ -15,6 +15,8 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `ablit down [run]` | Destroys every billable resource the run created and confirms with the marketplace. Never asks for confirmation. Works even for a backend whose new launches are disabled. |
 | `ablit catalog list\|show <id>\|validate <file>` | Lists entries and their test status, explains one entry, or checks a contributor's file. |
 
+`ablit up` stays running after it prints the endpoint, because it keeps the SSH tunnel open and checks spending. Scripts should keep the process running and poll `ablit status --json` for `state: "running"` and `local_port`. Interrupting `up` closes the tunnel and stops the local check, and billing continues until the machine is destroyed.
+
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.
 
 ## Flags for plan and up

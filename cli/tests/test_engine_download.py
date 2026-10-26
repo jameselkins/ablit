@@ -132,6 +132,17 @@ def test_consume_removes_the_file_and_remembers_it(box):
     assert (state / "consumed" / "sub%2Fpart").exists()
 
 
+def test_a_failed_download_preserves_its_reason_with_an_inherited_error_trap(box):
+    _tmp, _data, state = box
+    blob = payload("bad-hash", 20_000)
+    with FileServer({"one.bin": blob}) as server:
+        script = ('set -E\ntrap \'ablit_fail command_failed "generic failure"\' ERR\n'
+                  f'ablit_download_one "{server.url("one.bin")}" one.bin {len(blob)} {"0" * 64}')
+        done = run_bash(script, box)
+    assert done.returncode == 6
+    assert failed(state)["reason"] == "hash_mismatch"
+
+
 def test_role_helpers_list_names_and_sizes(box):
     tmp, _data, _state = box
     (tmp / "artifacts.tsv").write_text(

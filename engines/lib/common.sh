@@ -310,7 +310,9 @@ _ablit_fetch() {
   command -v python3 >/dev/null 2>&1 || ablit_fail "missing_tool" "python3 is needed for downloads"
   [ -f "$ABLIT_FETCH" ] || ablit_fail "missing_file" "$ABLIT_FETCH was not copied to the box"
   local out="" status=0 kind="" first="" second="" third=""
-  out="$(python3 "$ABLIT_FETCH" "$@")" || status=$?
+  # Bash 3.2 can run an inherited ERR trap inside this substitution even when
+  # the caller handles its status. The helper's FAIL line supplies the reason.
+  out="$(trap - ERR; python3 "$ABLIT_FETCH" "$@")" || status=$?
   IFS=$'\t' read -r kind first second third <<<"$(printf '%s\n' "$out" | tail -n 1)"
   case "$kind" in
     OK|LIMIT)

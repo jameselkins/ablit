@@ -243,8 +243,6 @@ def test_a_lium_run_with_no_ssh_command_at_the_start_deadline_denies_its_node(mo
     run.update(state="creating", ssh_host=None, ssh_port=None, started_at=time.time() - 3600, host_id=NODE)
     store.save(run)
     keys.secret_set(run["run_id"], "invented-endpoint-key")
-    denied = []
-    monkeypatch.setattr(store, "deny", lambda host, why: denied.append(host))
     monkeypatch.setattr(monitor_mod, "down", lambda *args, **kwargs: 0)
     monkeypatch.setattr(monitor_mod.time, "sleep", lambda seconds: None)
     from ablit.backends.lium import LiumBackend
@@ -253,4 +251,5 @@ def test_a_lium_run_with_no_ssh_command_at_the_start_deadline_denies_its_node(mo
         router.get(PODS).mock(return_value=listing(pod(name="ablit-" + run["run_id"], status="PENDING",
                                                        ssh_connect_cmd="")))
         code = monitor_mod.monitor(store, run, driver, keys.Creds("invented-lium-key"), want_ready=True)
-    assert code == 6 and denied == [NODE]
+    assert code == 6 and store.denied_hosts("lium") == {NODE}
+    assert store.denied_hosts("vast") == set()

@@ -61,7 +61,7 @@ def test_ssh_that_never_answers_prints_progress_then_denies_the_host_and_exits_6
     assert "stages waiting for bootstrap" in out
     assert "SSH did not answer" in out and "Destroying the run" in out
     assert "7301" in store.denied_hosts()
-    reasons = json.loads((store.root / "deny.json").read_text())["hosts"]
+    reasons = json.loads((store.root / "deny.json").read_text())["hosts"]["vast"]
     assert reasons["7301"] == "SSH did not answer after the machine was running"
     assert downs == [1]
 

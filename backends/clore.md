@@ -92,7 +92,7 @@ These are things the documentation does not say. The driver either refuses them,
 
 - Backend choice. `--backends clore` is accepted. With no flag, Clore joins the search when `CLORE_API_KEY` or a saved key exists, as RunPod does. With no Vast key, only the backends that have a key are searched.
 - Each run saves its `backend`, and `status`, `down`, `tunnel` and `logs` pick the driver from it.
-- The quote adds the Clore note in `cli/ablit/notices.py`, and the run record sets `local_cap_primary`, so the local check ignores the heartbeat age.
+- The quote adds the Clore note in `cli/ablit/notices.py`, and the run record sets `local_cap_primary` to show that the machine cannot enforce the cap itself. The local check enforces the cap regardless of the heartbeat's age on every backend.
 - The 20 minute start deadline, exit 6 (ended with no endpoint, cleanup confirmed) and exit 7 (cleanup not confirmed) are shared with the other backends. `status` shows the saved record, without a call, when another command holds the run lock.
 - A server that lacks a field ablit needs (a key that is missing or null) is left out of `plan` and counted in the search note as "servers missing a field ablit needs". A field with the wrong type still stops the search.
 - The on-box watchdog has no Clore key and makes no call. It cannot cancel the order.

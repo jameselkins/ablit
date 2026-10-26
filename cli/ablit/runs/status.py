@@ -39,7 +39,7 @@ def status(args, records, drivers, environ, store):
                         record["resource_ids"] = found.resource_ids
                     refresh(store, record, driver, creds)
                     if args.watch and local_stop_needed(record, time.time()):
-                        record["stop_reason"] = "local_cap"
+                        record["stop_reason"] = record.get("stop_reason") or "local_cap"
                         store.save(record)
                         code = status_down() or 6
                     elif record["marketplace_state"] == "absent" and record.get("resource_ids"):

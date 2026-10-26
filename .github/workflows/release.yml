@@ -47,6 +47,11 @@ jobs:
           name: dist
           path: dist/
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: install-check
+          path: tools/check_install.py
+
   install-test:
     needs: build
     strategy:
@@ -65,6 +70,11 @@ jobs:
           name: dist
           path: dist/
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: install-check
+          path: install-check/
+
       # No checkout here, so the installed package must carry its own catalog
       # and engine files.
       - name: Install the wheel in a clean environment and run it
@@ -74,6 +84,7 @@ jobs:
           clean/bin/ablit --version
           clean/bin/ablit catalog list
           clean/bin/ablit catalog show llama31-8b-abliterated-q4km
+          clean/bin/python -I install-check/check_install.py
 
   publish:
     needs: install-test

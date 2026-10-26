@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import subprocess
 import time
 
@@ -56,13 +57,12 @@ def monitor(store, record, driver, creds, *, want_ready=False):
             if not first:
                 time.sleep(POLL_SECONDS)
             first = False
-            try:
-                with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
-                    pass
-            except RunBusy:
-                print(f"{run_id}: another ablit command holds the run lock. Skipping this check.", flush=True)
-                continue
-            with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
+            with contextlib.ExitStack() as held:
+                try:
+                    held.enter_context(store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS))
+                except RunBusy:
+                    print(f"{run_id}: another ablit command holds the run lock. Skipping this check.", flush=True)
+                    continue
                 record = store.load(run_id)
                 if record["state"] == "billing_stopped_confirmed":
                     if record.get("stop_reason") == "watchdog_cap":
@@ -93,7 +93,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 # https://docs.vast.ai/api-reference/instances/show-instances
                 if record["marketplace_state"] in ("exited", "unknown", "offline", "absent", "stopped_by_marketplace"):
                     if record["marketplace_state"] == "stopped_by_marketplace" and record.get("host_id"):
-                        store.deny(record["host_id"], "Vast stopped the instance before it ran")
+                        store.deny(record["host_id"], "Vast stopped the instance before it ran",
+                                   backend=record.get("backend", "vast"))
                     code = down(store, record, driver, creds)
                     return code or 6
                 if (record["marketplace_state"] != "running" and not record.get("ready")
@@ -103,21 +104,22 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                           "Destroying the run.", flush=True)
                     if record.get("backend") in ("clore", "lium") and record.get("host_id") and not record.get("ssh_host"):
                         # Clore listed no public SSH port for this server, so it cannot be reached. Skip it next time.
-                        store.deny(record["host_id"], "Clore listed no SSH port before the start deadline")
+                        store.deny(record["host_id"], "No SSH port was listed before the start deadline",
+                                   backend=record["backend"])
                     code = down(store, record, driver, creds)
                     return code or 6
                 if record.get("failure"):
                     print(f"{run_id}: bootstrap failed: {record['failure'].get('detail', record['failure']['reason'])}", flush=True)
                     save_remote_logs(store, record, creds)
                     if record["failure"]["reason"] == "speed_below_floor" and record.get("host_id"):
-                        store.deny(record["host_id"], "speed_below_floor")
+                        store.deny(record["host_id"], "speed_below_floor", backend=record.get("backend", "vast"))
                     code = down(store, record, driver, creds)
                     return code or 6
                 if local_stop_needed(record, time.time()):
-                    record["stop_reason"] = "local_cap"
+                    record["stop_reason"] = record.get("stop_reason") or "local_cap"
                     store.save(record)
                     code = down(store, record, driver, creds)
-                    return code or 6
+                    return code or (8 if record["stop_reason"] == "watchdog_cap" else 6)
                 if want_ready and not uploaded and not record.get("ready") and not record.get("stages"):
                     now = time.time()
                     if record["marketplace_state"] == "running":
@@ -127,7 +129,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                             print(f"{run_id}: SSH did not answer in {SSH_GRACE_SECONDS} seconds after the machine was running. "
                                   "Destroying the run.", flush=True)
                             if record.get("host_id"):
-                                store.deny(record["host_id"], "SSH did not answer after the machine was running")
+                                store.deny(record["host_id"], "SSH did not answer after the machine was running",
+                                           backend=record.get("backend", "vast"))
                             code = down(store, record, driver, creds)
                             return code or 6
                         print(f"{run_id}: waiting for SSH on the machine ({waited} s)", flush=True)
@@ -154,7 +157,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                                   "cap_usd": record["cap_usd"], "advertised_mbps": record["offer"]["download_mbps"] or record["min_download_mbps"],
                                   "initial_cost_usd": record["offer"]["bandwidth_cost_per_gb"] * record["quote"]["request"]["image_gb"],
                                   "baseline_rx_bytes": 0}
-                        ssh.start(config, key, watchdog)
+                        ssh.start(config, key, watchdog or "")
                         uploaded = True
                     except RunError:
                         # SSH may still be starting. The deadline above ends the wait.
@@ -178,6 +181,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 if want_ready and record.get("ready") and tunnel is None:
                     tunnel, port = SSH(store, record).open_tunnel(record["entry"]["profile"]["port"])
                     key = secret_get(run_id)
+                    if not key:
+                        raise RunError("The endpoint key is missing from the OS keyring. Run down.")
                     engines.health(f"http://127.0.0.1:{port}", key, record["model_id"])
                     record.update(state="running", local_port=port)
                     store.save(record)

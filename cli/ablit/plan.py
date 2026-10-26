@@ -189,7 +189,7 @@ def run_plan(
         steps=result.steps,
         backends=reports,
         checked=len(all_offers),
-        complete=complete,
+        complete=complete and not any(b.status in (STATUS_FAILED, STATUS_TIMED_OUT) for b in reports),
         checked_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         image_digest=image_digest(entry),
     )

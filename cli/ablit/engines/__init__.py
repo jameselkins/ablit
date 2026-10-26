@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import shlex
 import tarfile
+from importlib import resources
 from pathlib import PurePosixPath
 from urllib.parse import quote
 
@@ -123,7 +124,7 @@ def bundle(entry, record: dict) -> bytes:
         files[f"engine/{name}"] = (root / "engines" / p.engine / name).read_bytes()
     files["engine/common.sh"] = (root / "engines" / "lib" / "common.sh").read_bytes()
     files["engine/fetch.py"] = (root / "engines" / "lib" / "fetch.py").read_bytes()
-    files["ablit_watchdog.py"] = (root / "cli" / "ablit" / "watchdog" / "ablit_watchdog.py").read_bytes()
+    files["ablit_watchdog.py"] = resources.files("ablit.watchdog").joinpath("ablit_watchdog.py").read_bytes()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode="w") as archive:
         for name, content in files.items():

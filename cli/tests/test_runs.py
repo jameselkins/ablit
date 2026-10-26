@@ -157,10 +157,10 @@ def test_empty_list_cannot_clear_an_ambiguous_create(tmp_path):
     assert store.load(RUN)["state"] != "billing_stopped_confirmed"
 
 
-def test_local_check_requires_a_stale_heartbeat_and_cap(tmp_path):
+def test_local_check_enforces_the_cap_with_a_fresh_or_stale_heartbeat(tmp_path):
     store = RunStore(tmp_path)
     r = record(store, marketplace_state="running", spend_estimate_usd=3, heartbeat={"at": 1500})
-    assert not local_stop_needed(r, 1680)
+    assert local_stop_needed(r, 1680)
     assert local_stop_needed(r, 1681)
     r["spend_estimate_usd"] = 0
     assert not local_stop_needed(r, 1681)

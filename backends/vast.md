@@ -110,7 +110,7 @@ The watchdog token is saved in the OS keyring and sent over encrypted SSH to a p
 
 The watchdog publishes its destroy decision ten seconds before calling the API, within its two-minute reserve. An attached CLI can save the heartbeat before the instance vanishes. Exit 8 requires saved watchdog cap evidence and confirmed instance absence. If no CLI collected the last heartbeat, disappearance alone does not prove why the instance ended. The code reports a bootstrap or unknown stop rather than inventing watchdog evidence.
 
-The local cap check uses the larger of the locked and observed hourly rates, elapsed time, quoted transfer allowance and the remote heartbeat estimate. It runs during up, tunnel and status --watch when the heartbeat is more than three minutes old. The API does not document cumulative cost or received-byte units for the instance list, so the CLI labels its figure as an estimate. It never reports that estimate as a final bill.
+The local cap check uses the larger of the locked and observed hourly rates, elapsed time, quoted transfer allowance and the remote heartbeat estimate. It runs during up, tunnel and status --watch regardless of the heartbeat's age. A fresh heartbeat does not prove that the watchdog can destroy the instance. The API does not document cumulative cost or received-byte units for the instance list, so the CLI labels its figure as an estimate. It never reports that estimate as a final bill.
 
 ## Documentation gaps and conservative handling
 

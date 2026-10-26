@@ -37,7 +37,7 @@ Python 3.11 or newer is required. Runtime dependencies are `httpx`, `pyyaml`, `p
 
 The code for these steps is in `cli/ablit/runs/`. The first four steps keep ablit from losing track of something it is paying for.
 
-1. Before creating anything, `up` writes `runs/<run-id>.json` with the approved quote and state `creating`. It writes through a temporary file, renames it, and flushes to disk.
+1. Before creating anything, `up` renders the bootstrap bundle to check that the installed package has all its files. It then writes `runs/<run-id>.json` with the approved quote and state `creating`. It writes through a temporary file, renames it, and flushes to disk.
 2. The run ID goes in the instance label. On RunPod it goes in the pod name, because a create has no label field. If a create request times out or the response is lost, ablit lists the user's instances and looks for the label before doing anything else, and it never sends a second create for the same run.
 3. Every resource ID, including volumes, is recorded as soon as it is known.
 4. A lock file per run protects the run file. A second active run of the same model is refused unless the user passes `--another`.
@@ -46,6 +46,8 @@ The code for these steps is in `cli/ablit/runs/`. The first four steps keep abli
 7. Start deadline. If the machine is not in the marketplace state "running" 20 minutes after the create (`START_DEADLINE_SECONDS` in `cli/ablit/runs/monitor.py`), `up` destroys the run and exits 6, or 7 if cleanup is not confirmed. No path of `up` exits 0 before the engine is ready. A run stopped by another command exits 6, and Ctrl-C before the endpoint exists exits 7 because billing continues. A Vast instance once stayed in "loading" for over 32 minutes. Vast's documentation says GPU charges start when an instance is running and storage charges start at creation, and it is not verified whether anything is billed while an instance loads. Disk charges probably accrue, so the deadline limits them.
 8. SSH deadline. Once the marketplace says "running", `up` waits up to `SSH_GRACE_SECONDS` (300) for the bootstrap upload to succeed. The clock starts at the first pass that sees "running" and does not depend on an SSH call raising. Every SSH call has a timeout, ssh runs in its own process group, and the group is killed on a timeout, so a helper process that holds the output pipes cannot keep `up` waiting. When the time is up, ablit adds the host to the deny list with the reason "SSH did not answer after the machine was running", runs `down`, and exits 6, or 7 if cleanup is not confirmed. Five minutes is enough because sshd normally answers within a minute or two, and each extra minute bills.
 9. Lock use. While it monitors a run, `up` takes the run lock for one check at a time and waits up to 10 seconds for it. If another command holds it longer, `up` skips that check. `status` never waits for the lock. When the lock is busy it prints the saved record, says so on standard error, and does not ask the marketplace.
+
+The host deny list stores IDs under their marketplace, so a failed host on one marketplace cannot exclude a host on another. Older files are read using the marketplace in matching saved run records. Without a matching run, a UUID is treated as a Lium host and other IDs as Vast hosts. The next write saves the new format. If an old ID matches runs on several marketplaces, its denial is kept on each one because the original file does not identify which failed.
 
 ## Planner
 
@@ -92,6 +94,8 @@ Vast returns at most 64 rows per query, so the first 64 rows by hourly price can
 
 If a backend fails or times out, the output names it and says the comparison did not include it.
 
+The report is incomplete if any requested backend fails or returns an incomplete search. `plan` still shows the offers it found, and `up` refuses an incomplete quote with exit code 5 before registering a key or renting a machine.
+
 ### Steering by commission
 
 Referral data is not an input to search, filtering or ranking. An import-linter contract in `.importlinter` stops `ablit.select` and `ablit.backends` from importing `ablit.referral`, and tests in `cli/tests/test_steering.py` check the result. POLICY.md states the rule and lists the tests.
@@ -102,7 +106,7 @@ The cap has four layers, and none of them is a guarantee.
 
 1. Watchdog on the machine. The bootstrap starts `ablit-watchdog`, a single Python file with no dependencies, before any download. Every 30 seconds it computes spend from the start time, the rate locked at rent time, and the bytes received times the per-GB price. It destroys its instance when spend plus a reserve reaches the cap. The reserve is 2 minutes of the hourly rate plus 2 minutes of transfer at the advertised speed. It also destroys the instance if no bytes arrive for 10 minutes during the download.
 2. Watchdog credential. On Vast, ablit creates an API key whose `api.instance.destroy` permission is limited to the one instance ID, and it never puts the user's full account key on the machine. RunPod and Clore document no key limited to one machine, so their drivers return none, and the quote says the cap on those backends relies on the local check. See `backends/runpod.md` and `backends/clore.md` for the details and for what is unverified.
-3. Local check. While `up`, `status --watch` or `tunnel` runs, the CLI computes spend from marketplace figures, and it destroys the run if the watchdog's heartbeat is more than 3 minutes old. On a RunPod or Clore run the heartbeat age is ignored, because the machine cannot be trusted to destroy itself.
+3. Local check. While `up`, `status --watch` or `tunnel` runs, the CLI computes spend from marketplace figures and the watchdog's reported spend. It destroys the run when estimated spend plus the reserve reaches the cap, regardless of the heartbeat's age. A watchdog that is still sending heartbeats may be unable to destroy the machine, so the local check enforces the cap independently.
 4. Start deadline. No marketplace offers a start deadline field that ablit can use today, so ablit applies its own start deadline of 20 minutes from the create. Lium's `termination_hours` is a different deadline, which deletes the pod a whole number of hours after the rent, and ablit sets it from the cap. On Clore, a run that reaches the deadline with no public SSH port also puts the server on the local deny list.
 
 If the cap cannot cover the download, the startup estimate and 10 minutes of use, `up` exits with code 5 and shows the smallest cap that would work.
