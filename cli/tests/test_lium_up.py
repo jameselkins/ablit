@@ -4,6 +4,7 @@ Nothing here shows that renting works on a real Lium machine, because none has b
 """
 
 import json
+import threading
 import time
 
 import httpx
@@ -253,3 +254,115 @@ def test_a_lium_run_with_no_ssh_command_at_the_start_deadline_denies_its_node(mo
         code = monitor_mod.monitor(store, run, driver, keys.Creds("invented-lium-key"), want_ready=True)
     assert code == 6 and store.denied_hosts("lium") == {NODE}
     assert store.denied_hosts("vast") == set()
+
+
+# Paid tests on 2026-10-26 ran three `up` calls for one model at once, each with its own --backends.
+# The Lium call attached to the RunPod call's run, which was still creating, and waited on that pod.
+
+VAST = "https://console.vast.ai"
+
+
+def vast_routes(router):
+    """Answer a Vast rent, and list one instance labeled for each saved Vast run."""
+    router.post(VAST_URL).mock(side_effect=FakeVast([vast_row(7101)]))
+    router.post(VAST + "/api/v0/ssh/").respond(200, json={"success": True, "key": {"id": 7501}})
+    create = router.put(VAST + "/api/v0/asks/7101/").respond(200, json={"success": True, "new_contract": 7201})
+    router.post(VAST + "/api/v0/auth/apikeys/").respond(200, json={"id": 7401, "key": "invented-token"})
+    router.get(VAST + "/api/v1/instances/").mock(side_effect=lambda request: httpx.Response(
+        200, json={"success": True, "next_token": None, "instances": [
+            {"id": 7201, "label": "ablit-" + r["run_id"], "actual_status": "running",
+             "ssh_host": "h.example.invalid", "ssh_port": 2201, "host_id": 7301, "dph_total": 1.0, "volume_info": []}
+            for r in RunStore().all() if r["backend"] == "vast"]}))
+    return create
+
+
+def creating_vast_run(router):
+    """Leave one Vast run in `creating`, as an `up` that has not reached the engine leaves it."""
+    create = vast_routes(router)
+    assert main(["up", MODEL, "--untested", "--max-spend", "3", "--backends", "vast", "--yes"], environ={}) == 0
+    (record,) = RunStore().all()
+    assert record["state"] == "creating" and record["resource_ids"] == ["7201"]
+    return create, record
+
+
+def lium_routes(router):
+    router.get(FEED).mock(return_value=nodes())
+    router.post(TEMPLATES).mock(return_value=made())
+    return router.post(RENT).mock(return_value=rented())
+
+
+def test_up_for_lium_never_takes_over_a_vast_run_that_is_still_creating(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    keys.secret_set("accounts/vast", "invented-vast-key")
+    with respx.mock(assert_all_called=False) as router:
+        _, vast_run = creating_vast_run(router)
+        rent = lium_routes(router)
+        capsys.readouterr()
+        code = main(["up", MODEL, "--untested", "--max-spend", "3", "--backends", "lium", "--yes"], environ=ENV)
+        assert code == 2 and rent.call_count == 0
+        # The refusal must not clean up a run that belongs to another `up`.
+        assert not [c for c in router.calls if c.request.method == "DELETE"]
+    err = capsys.readouterr().err
+    assert vast_run["run_id"] in err and "on vast" in err and "searches only lium" in err and "--another" in err
+    assert RunStore().load(vast_run["run_id"])["state"] == "creating"
+
+
+def test_up_never_resumes_a_run_that_a_live_up_still_owns(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    keys.secret_set("accounts/vast", "invented-vast-key")
+    with respx.mock(assert_all_called=False) as router:
+        create, vast_run = creating_vast_run(router)
+        capsys.readouterr()
+        # A live `up` holds the owner lock for as long as it runs.
+        with RunStore().lock(vast_run["run_id"] + ".owner"):
+            code = main(["up", MODEL, "--untested", "--max-spend", "3", "--backends", "vast", "--yes"], environ={})
+        assert code == 2 and create.call_count == 1
+        assert not [c for c in router.calls if c.request.method == "DELETE"]
+    assert "Another ablit up is still starting it" in capsys.readouterr().err
+
+
+def test_a_resumed_run_is_named_with_its_backend_and_state(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    keys.secret_set("accounts/vast", "invented-vast-key")
+    with respx.mock(assert_all_called=False) as router:
+        create, vast_run = creating_vast_run(router)
+        capsys.readouterr()
+        # The earlier `up` has exited, so this is the documented recovery case.
+        assert main(["up", MODEL, "--untested", "--max-spend", "3", "--yes"], environ={}) == 0
+        assert create.call_count == 1
+    assert f"Resuming run {vast_run['run_id']} on vast, state creating" in capsys.readouterr().err
+
+
+def test_up_waits_briefly_for_a_parallel_up_to_release_the_selection_lock(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    monkeypatch.setattr(up_mod, "SELECTION_LOCK_WAIT_SECONDS", 10.0)
+    keys.secret_set("accounts/vast", "invented-vast-key")
+    held, release = threading.Event(), threading.Event()
+
+    def other_up():
+        with RunStore().lock("selection"):
+            held.set()
+            release.wait(5)
+
+    worker = threading.Thread(target=other_up)
+    worker.start()
+    held.wait(5)
+    threading.Timer(0.5, release.set).start()
+    with respx.mock(assert_all_called=False) as router:
+        create = vast_routes(router)
+        assert main(["up", MODEL, "--untested", "--max-spend", "3", "--backends", "vast", "--yes"], environ={}) == 0
+        assert create.call_count == 1
+    worker.join()
+    assert "Waiting up to 10 seconds" in capsys.readouterr().err
+
+
+def test_up_says_what_to_do_when_the_selection_lock_stays_busy(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    monkeypatch.setattr(up_mod, "SELECTION_LOCK_WAIT_SECONDS", 0.3, raising=False)
+    keys.secret_set("accounts/vast", "invented-vast-key")
+    with respx.mock(assert_all_called=False) as router:
+        create = vast_routes(router)
+        with RunStore().lock("selection"):
+            code = main(["up", MODEL, "--untested", "--max-spend", "3", "--backends", "vast", "--yes"], environ={})
+        assert code == 2 and create.call_count == 0
+    assert "Wait until it prints its run ID or exits, then run up again" in capsys.readouterr().err
