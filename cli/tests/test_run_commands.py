@@ -540,3 +540,31 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
     monkeypatch.setattr(monitor_mod.time, "sleep", lambda seconds: None)
     assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 7
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
+
+
+class _RunningDriver:
+    def observe(self, alloc, creds):
+        from ablit.backends.base import Observation
+        return Observation(checked_at=1.0, state="running")
+
+
+@pytest.mark.parametrize("reply", [[], "text", {"heartbeat": "text"}, {"heartbeat": [1]}, {"failed": "text"}])
+def test_a_probe_reply_with_the_wrong_shape_keeps_the_run_loop_going(monkeypatch, reply):
+    from ablit.backends import Creds
+    from ablit.runs.lifecycle import refresh
+    store = RunStore()
+    r = saved_run(store)
+    monkeypatch.setattr(SSH, "probe", lambda self: reply)
+    record = refresh(store, r, _RunningDriver(), Creds("invented-account-key"))
+    assert record["ssh_check"] == "unavailable" and "failure" not in record
+
+
+def test_a_remote_failure_detail_loses_its_terminal_control_characters(monkeypatch):
+    from ablit.backends import Creds
+    from ablit.runs.lifecycle import refresh
+    store = RunStore()
+    r = saved_run(store)
+    detail = "disk full\x1b]52;c;aW52ZW50ZWQ=\x07\x1b[2J"
+    monkeypatch.setattr(SSH, "probe", lambda self: {"failed": {"reason": "check", "detail": detail}})
+    record = refresh(store, r, _RunningDriver(), Creds("invented-account-key"))
+    assert record["failure"]["detail"] == "check: disk full]52;c;aW52ZW50ZWQ=[2J"

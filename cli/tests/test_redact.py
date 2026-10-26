@@ -81,3 +81,10 @@ def test_no_secret_survives(secrets, pieces, data):
     out = redact("".join(parts), secrets)
     for secret in secrets:
         assert secret not in out
+
+
+def test_strip_control_keeps_text_tabs_and_newlines_and_drops_terminal_controls():
+    from ablit.redact import strip_control
+    assert strip_control("a\tb\nc") == "a\tb\nc"
+    assert strip_control("x\x1b[31my\x07z\x9b\x7f") == "x[31myz"
+    assert strip_control("héllo ✓") == "héllo ✓"

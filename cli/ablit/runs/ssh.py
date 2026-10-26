@@ -12,6 +12,7 @@ import socket
 import subprocess
 import time
 
+from ablit.redact import strip_control
 from ablit.runs import RunError
 
 # The endpoint secret arrives on stdin and exists only in the child's environment.
@@ -153,7 +154,7 @@ class SSH:
                                 text=True, encoding="utf-8", errors="replace")
         try:
             for line in proc.stdout:
-                print(redactor(line), end="", flush=True)
+                print(strip_control(redactor(line)), end="", flush=True)
             if proc.wait():
                 raise RunError("Remote logs are unavailable.")
         finally:

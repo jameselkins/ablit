@@ -64,3 +64,17 @@ class Redactor:
 def redact(text: str, secrets: Iterable[str | None]) -> str:
     """Return `text` with every secret in `secrets` replaced by a mask."""
     return Redactor(secrets)(text)
+
+
+# C0 controls other than tab and newline, DEL, and C1 controls. ESC starts the terminal
+# sequences that can set the window title, write the clipboard or hide text.
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+
+
+def strip_control(text: str) -> str:
+    """Remove terminal control characters from text that came from a rented machine.
+
+    The machine's owner can write anything into its logs and status files, so this
+    text must not drive the user's terminal.
+    """
+    return _CONTROL.sub("", text)

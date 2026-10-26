@@ -190,3 +190,18 @@ def test_an_unexpected_error_with_no_active_run_exits_1(monkeypatch, capsys):
     monkeypatch.setattr("ablit.cli._main", broken)
     assert main(["status"], environ={}) == 1
     assert "may still be billing" not in capsys.readouterr().err
+
+
+def test_an_unexpected_error_in_the_monitor_destroys_the_run(monkeypatch, capsys):
+    store, run = prepared(monkeypatch, marketplace_state="running")
+
+    def refresh(store_, record, driver, creds):
+        raise AttributeError("'list' object has no attribute 'get'")
+
+    destroyed = []
+    monkeypatch.setattr(monitor_mod, "refresh", refresh)
+    monkeypatch.setattr(monitor_mod, "save_remote_logs", lambda *a: None)
+    monkeypatch.setattr(monitor_mod, "down", lambda *a: destroyed.append(True) or 0)
+    assert monitor_mod.monitor(store, run, None, CREDS, want_ready=True) == 6
+    assert destroyed == [True]
+    assert "stopping the run because of AttributeError" in capsys.readouterr().out

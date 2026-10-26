@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import subprocess
 import time
 
 import httpx
@@ -204,9 +203,10 @@ def monitor(store, record, driver, creds, *, want_ready=False):
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
         # Leaving before there is an endpoint is not a success. Billing is not confirmed stopped.
         return 7 if want_ready and tunnel is None else 0
-    # A keyring error is a CredentialError. It must stop the run here, or `main` reports a key
-    # problem while the machine keeps billing.
-    except (BackendError, CredentialError, RunError, ValueError, httpx.HTTPError, subprocess.SubprocessError) as error:
+    # Leaving this loop ends the local cap check while the machine keeps billing, so any error
+    # destroys the run. That covers keyring errors and bugs, such as an AttributeError on a reply
+    # with a shape nobody expected.
+    except Exception as error:
         print(f"{run_id}: stopping the run because of {reason(error)}", flush=True)
         save_remote_logs(store, store.load(run_id), creds)
         with store.lock(run_id):
