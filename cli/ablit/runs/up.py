@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import math
 import secrets
@@ -22,7 +23,7 @@ from ablit.catalog.loader import repo_root
 from ablit.credentials import CredentialError, credentials, secret_set
 from ablit.plan import report_json, run_plan
 from ablit.plan_text import render
-from ablit.runs import RunError
+from ablit.runs import RunBusy, RunError
 from ablit.runs.lifecycle import allocation, down
 from ablit.runs.monitor import monitor
 from ablit.runs.ssh import SSH
@@ -154,7 +155,78 @@ def choose_backends(args, environ) -> list[str]:
 
 
 
-def _up(args, entry, opts, driver, environ, store, drivers=None):
+# A parallel `up` holds the selection lock while it quotes and creates, which takes seconds. Waiting is
+# safe because the waiting `up` reads the run records again once it has the lock, so it sees any run the
+# other one made. The wait is short because an `up` at the rent prompt can hold the lock much longer.
+SELECTION_LOCK_WAIT_SECONDS = 15.0
+
+
+@contextlib.contextmanager
+def selection_lock(store):
+    held = store.lock("selection")
+    try:
+        held.__enter__()
+    except RunBusy:
+        print(f"Another ablit up is choosing or renting a machine. Waiting up to {SELECTION_LOCK_WAIT_SECONDS:.0f} seconds.",
+              file=sys.stderr, flush=True)
+        held = store.lock("selection", wait=SELECTION_LOCK_WAIT_SECONDS)
+        try:
+            held.__enter__()
+        except RunBusy:
+            raise RunBusy("Another ablit up is still choosing or renting a machine. "
+                          "Wait until it prints its run ID or exits, then run up again.") from None
+    with contextlib.ExitStack() as stack:
+        stack.push(held)
+        yield
+
+
+def owner_lock_name(run_id: str) -> str:
+    return run_id + ".owner"
+
+
+def claim(store, owned, run_id, claimed) -> None:
+    """Hold the run's owner lock until this `up` returns. The OS drops it if the process dies."""
+    owned.enter_context(store.lock(owner_lock_name(run_id)))
+    claimed.add(run_id)
+
+
+def resumable(store, active, args, entry, names, drivers) -> dict:
+    """Return the one active run that this `up` may resume, or raise RunError saying why not.
+
+    Resuming exists to recover a run whose earlier `up` stopped before the engine was ready, e.g. a
+    lost create response (see "Testing create recovery" in CONTRIBUTING.md) or Ctrl-C during setup.
+    The rule is the narrowest one that keeps those cases:
+    1. The run is the only active run of the model, and it is still `creating`.
+    2. Its marketplace is one this `up` searches, so `--backends lium` never waits on a RunPod pod.
+    3. The cap and the build match, because the run was quoted and capped with them.
+    4. No live `up` owns it. Each `up` holds the run's owner lock while it runs, so two live `up`
+       processes never share a run. A parallel `up` started for another marketplace is not a lost run.
+    Region, trust and price filters do not block a resume. The create was already sent, so the run
+    either continues or has to be destroyed, and filters would only leave it for `down`.
+    """
+    def refuse(record, why):
+        return RunError(f"Run {record['run_id']} on {record.get('backend', 'vast')} is already active "
+                        f"for this model, state {record['state']}. {why} "
+                        "Pass --another to rent a second machine, or run `ablit down` for that run first.")
+    if len(active) != 1 or active[0]["state"] != "creating":
+        raise RunError("An active run already exists for this model. Use tunnel, down, or --another.")
+    record = active[0]
+    backend = record.get("backend", "vast")
+    if backend not in names:
+        raise refuse(record, f"This up searches only {', '.join(names)}, so it does not resume that run.")
+    if record["cap_usd"] != args.max_spend or record["entry"] != entry.model_dump():
+        raise refuse(record, "It has a different cap or build.")
+    if backend not in drivers:
+        raise RunError(f"No driver is available for {backend}.")
+    try:
+        with store.lock(owner_lock_name(record["run_id"])):
+            pass
+    except RunBusy:
+        raise refuse(record, "Another ablit up is still starting it.") from None
+    return {**record, "backend": backend}
+
+
+def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
     if entry.profile.engine not in engines.LAUNCHABLE_ENGINES or args.endpoint != "tunnel":
         raise RunError("Paid launches support the llama.cpp and Xolotl entries on Vast, RunPod, Clore and Lium through an SSH tunnel.")
     drivers = drivers or {"vast": driver}
@@ -165,25 +237,21 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
     all_creds = {name: credentials(name, environ) for name in names}
     for name in names:
         drivers[name].store = store
-    with store.lock("selection"):
+    with selection_lock(store):
         active = store.active_model(entry.id)
         if active and not args.another:
-            if len(active) == 1 and active[0]["state"] == "creating":
-                record = active[0]
-                if record["cap_usd"] != args.max_spend or record["entry"] != entry.model_dump():
-                    raise RunError("The existing run has a different cap or build. Run down first.")
-                backend = record.get("backend", "vast")
-                if backend not in drivers:
-                    raise RunError(f"No driver is available for {backend}.")
-                use_driver, use_creds = drivers[backend], credentials(backend, environ)
-                use_driver.store = store
-                with store.lock(record["run_id"]):
-                    record = store.load(record["run_id"])
-                    if record["state"] != "creating":
-                        raise RunError("The run state changed. Check status before resuming.")
-                    record = prepare(store, record, entry, use_driver, use_creds)
-            else:
-                raise RunError("An active run already exists for this model. Use tunnel, down, or --another.")
+            record = resumable(store, active, args, entry, names, drivers)
+            backend = record["backend"]
+            use_driver, use_creds = drivers[backend], all_creds[backend]
+            claim(store, owned, record["run_id"], claimed)
+            print(f"Resuming run {record['run_id']} on {backend}, state {record['state']}, "
+                  "which an earlier up started and no longer watches. No new machine will be rented.",
+                  file=sys.stderr, flush=True)
+            with store.lock(record["run_id"]):
+                record = store.load(record["run_id"])
+                if record["state"] != "creating":
+                    raise RunError("The run state changed. Check status before resuming.")
+                record = prepare(store, record, entry, use_driver, use_creds)
         else:
             lock = engines.engine_lock(entry)
             digest = lock.get("digest")
@@ -235,6 +303,7 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
                 print("The image lock changed. Confirmation cancelled.")
                 return 5
             record = make_intent(store, entry, offer, report, args, lock)
+            claim(store, owned, record["run_id"], claimed)
             print(f"Run: {record['run_id']}", flush=True)
             with store.lock(record["run_id"]):
                 # Save the endpoint key before creating a billable resource.
@@ -260,17 +329,26 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
                 record["resource_ids"] = alloc.resource_ids
                 store.save(record)
                 record = prepare(store, record, entry, use_driver, use_creds)
+    # The selection lock ends here. The owner lock stays held while this `up` watches the run.
     return monitor(store, record, use_driver, use_creds, want_ready=True)
 
 
 def up(args, entry, opts, driver, environ, store, drivers=None):
     before = {r["run_id"]: r["state"] for r in store.all()}
+    # Only runs this call created or resumed. A run that a parallel `up` made is never cleaned up here.
+    claimed: set[str] = set()
+    # Owner locks taken by `_up` stay held until cleanup below has finished.
+    with contextlib.ExitStack() as owned:
+        return _guarded_up(args, entry, opts, driver, environ, store, drivers, claimed, owned, before)
+
+
+def _guarded_up(args, entry, opts, driver, environ, store, drivers, claimed, owned, before):
     try:
-        return _up(args, entry, opts, driver, environ, store, drivers)
+        return _up(args, entry, opts, driver, environ, store, drivers, claimed, owned)
     except (CredentialError, CredentialsRejected, BackendError, httpx.HTTPError,
             RunError, ValueError, subprocess.SubprocessError) as error:
-        targets = [r for r in store.active_model(entry.id)
-                   if r["run_id"] not in before or (before[r["run_id"]] == "creating" and r.get("resource_ids"))]
+        targets = [r for r in store.active_model(entry.id) if r["run_id"] in claimed
+                   and (r["run_id"] not in before or (before[r["run_id"]] == "creating" and r.get("resource_ids")))]
         if not targets:
             raise
         print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)

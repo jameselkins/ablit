@@ -1,5 +1,6 @@
 """Command tests never use a marketplace account or a real SSH host."""
 
+import contextlib
 import io
 import json
 import sys
@@ -146,7 +147,8 @@ def test_up_still_refuses_an_engine_that_cannot_launch_yet(monkeypatch):
         router.post(VAST_URL).mock(side_effect=lambda request: pytest.fail("no search for an engine that cannot launch"))
         with pytest.raises(up_mod.RunError, match="llama.cpp and Xolotl entries on Vast"):
             up_mod._up(SimpleNamespace(endpoint="tunnel", backends=None),
-                         resolve(load_catalog().entries, "ds41-1017-abl-fp8"), None, None, {}, None)
+                         resolve(load_catalog().entries, "ds41-1017-abl-fp8"), None, None, {}, None,
+                         None, set(), contextlib.ExitStack())
 
 
 def test_progress_lines_report_each_ten_percent_once():

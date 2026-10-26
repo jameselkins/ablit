@@ -29,6 +29,10 @@ A typical flow:
 
 Interrupting `up` closes its tunnel and stops its local spending check, and billing continues. Use `ablit tunnel <run>` to reconnect, or `ablit down <run>` to stop billing.
 
+Without `--another`, `up` refuses to rent when the model already has an active run. It resumes that run instead only when the run is still `creating`, its marketplace is one this `up` searches, the cap and build match, and no other `up` process is still running for it. Resuming covers an `up` that exited before the engine was ready, e.g. after a lost create response or Ctrl-C. A resumed run is named on standard error with its run ID, marketplace and state. Two `up` calls that run at the same time never share a run. To rent the same model on several marketplaces at once, pass `--another` to each `up` after the first.
+
+A paid `up` holds a lock while it quotes and rents. A second `up` waits up to 15 seconds for it, and then exits 2 and asks you to run it again once the first `up` prints its run ID.
+
 `ablit down [run]` destroys everything a run created and never asks to confirm. Run it whenever the user wants billing to stop, or a run is left over. Rerun it until it exits 0.
 
 ## Machine-readable output

@@ -38,6 +38,15 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 
 `up` also takes `--yes`, which approves the quote without the prompt so that an agent or a script can rent, `--another`, which allows a second active run of the same model, and `--report`, which is accepted and recorded in the run file. `--report` does not write a log yet, so a boot test record is written by hand from the output of `ablit logs`.
 
+Without `--another`, `up` refuses to rent when the model already has an active run, and it says which run, on which marketplace and in which state. It resumes the run instead, and says so on standard error, only when all of these hold:
+
+1. The run is the model's only active run, and it is still `creating`.
+2. The run's marketplace is one this `up` searches, from `--backends` or the default set.
+3. The cap and the build match the earlier `up`.
+4. No other `up` process is still running for the run. Each `up` holds a lock on its run until it exits.
+
+Resuming recovers a run whose `up` exited before the engine was ready, e.g. after a lost create response or Ctrl-C, and it never sends a second create. Region, trust and price filters don't block a resume, because the create was already sent. A paid `up` holds a lock while it quotes and rents. Another `up` waits up to 15 seconds for that lock, and then exits 2 and asks you to run it again.
+
 A paid `up` asks the user to type `rent`. With `--yes`, the required `--max-spend`, the cap check and the price recheck still apply. A paid `up` with neither a terminal nor `--yes` exits with code 2.
 
 ## Quote
