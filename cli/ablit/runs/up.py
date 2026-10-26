@@ -204,6 +204,9 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
             if args.catalog and not args.untested:
                 raise RunError("A local catalog launch requires --untested.")
             engines.check_artifacts(entry)
+            if offer.allocated_disk_gb is None:
+                print("The offer has no allocated disk size, so it cannot be rented. Run up again for a new quote.")
+                return 5
             if args.yes:
                 print("Quote approved with --yes.", flush=True)
             elif input("Type rent to rent this machine: ").strip() != "rent":
@@ -220,8 +223,6 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
             if engines.engine_lock(entry) != lock:
                 print("The image lock changed. Confirmation cancelled.")
                 return 5
-            if offer.allocated_disk_gb is None:
-                raise RunError("The offer has no allocated disk size. No machine was rented.")
             record = make_intent(store, entry, offer, report, args, lock)
             print(f"Run: {record['run_id']}", flush=True)
             with store.lock(record["run_id"]):

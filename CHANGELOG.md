@@ -7,18 +7,30 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 ### Added
 
 - Clore renting in `ablit up`, connected to the Clore driver.
-- The Lium marketplace backend, with keyless search, renting in `ablit up`, setup and `backends/lium.md`. Renting is untested on a rented machine.
+- The Lium marketplace backend, with keyless search, renting in `ablit up`, setup and `backends/lium.md`. Renting passed one paid round trip on 2026-10-26.
 - A pinned Xolotl `03be8a6` image digest in the engine lock, with the conversation cache set to 4096 MiB.
 - A boot test record for the Xolotl entry on `03be8a6`, and an 8B RunPod boot test record.
 - A comparison of Morph with the other hosted services in the documentation.
+- Two unverified llama.cpp entries for Ornith-1.5-122B UNCENSORED (IQ2_XXS and Q4_K_M, text only), the qwen35moe architecture in the llama.cpp engine lock, and Lyber in the hosted service comparison.
 - A ruff check, a mypy check, Python 3.13 in the CI matrix, a Dependabot configuration, a pre-commit configuration with ruff and gitleaks, and this changelog.
 
 ### Changed
 
+- CI runs the shell tests with macOS's bundled Bash and checks launch bundles from an installed wheel.
+- Mypy checks function bodies that have no type annotations.
 - `ablit up` stops waiting silently on a machine that does not answer SSH.
 - RunPod paid runs use Secure Cloud only, and Community offers are dropped. Exit codes were also fixed.
 - The README was rewritten around what works and why to use it.
 - The Xolotl 1017 entry is marked boot-tested with its Vast record.
+
+### Fixed
+
+- Launch bundles find the watchdog in installed packages, and `up` checks the bundle before renting.
+- Local spending checks enforce the cap even when the watchdog is still sending heartbeats but cannot destroy the machine.
+- Host denials are stored per marketplace, with older records preserved.
+- Failed searches mark the comparison incomplete, and `up` refuses incomplete quotes.
+- Monitor lock contention skips a poll instead of triggering cleanup.
+- The Xolotl bootstrap works with Bash 3.2, and agent instructions explain that `up` stays running after readiness.
 
 ## [0.1.2] - 2026-10-21
 

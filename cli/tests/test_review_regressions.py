@@ -232,6 +232,6 @@ def test_up_refuses_an_offer_without_allocated_disk_before_any_create(monkeypatc
     monkeypatch.setattr("ablit.backends.vast.VastBackend.requote", lambda self, offer, creds: offer)
     with respx.mock(assert_all_called=False) as router:
         create, scoped = launch_routes(router)
-        assert main(["up", MODEL, "--max-spend", "5", "--yes"], environ={}) == 2
+        assert main(["up", MODEL, "--max-spend", "5", "--yes"], environ={}) == 5
         assert create.call_count == scoped.call_count == 0
     assert RunStore().all() == []

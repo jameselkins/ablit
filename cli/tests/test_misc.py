@@ -83,7 +83,7 @@ def test_build_catalog_is_deterministic_and_complete(repo_root: Path):
     assert document["catalog_version"] == "2026.10.20.1"
     assert document["schema"] == 1
     assert [e["id"] for e in document["entries"]] == sorted(e["id"] for e in document["entries"])
-    assert len(document["entries"]) == 5
+    assert len(document["entries"]) == 7
     assert hashlib.sha256(first).hexdigest() == hashlib.sha256(second).hexdigest()
 
 

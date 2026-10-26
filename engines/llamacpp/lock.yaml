@@ -18,9 +18,9 @@ compressed_bytes: 2594121813
 image_gb: 10.0
 bind: 127.0.0.1
 api_key_variable: LLAMA_API_KEY
-# Only the architecture used by the step 3 entry is claimed here.
+# Only the architectures used by catalog entries are claimed here. The ornith15-122b entries use qwen35moe.
 # https://github.com/ggml-org/llama.cpp/blob/1d88cb05f1a257f90741538ca3aca6c1b015c6d3/src/llama-arch.cpp
-supported_architectures: [llama]
+supported_architectures: [llama, qwen35moe]
 variables:
   - ABLIT_RUN_ID
   - ABLIT_MODEL_ID

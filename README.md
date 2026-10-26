@@ -27,9 +27,10 @@ ablit is for cases where you want control over the model more than the lowest pr
 | [abliteration.ai](https://abliteration.ai) | API and chat, per token or $20 to $200 a month ([pricing](https://abliteration.ai/pricing)) | Content is not stored, and token counts and timestamps are kept ([data handling](https://abliteration.ai/data-handling)) | Yes ([terms](https://abliteration.ai/terms-of-service)) |
 | [Experiential Labs](https://experientiallabs.ai/) | A model gateway with uncensored GLM-5.3 Flash and DeepSeek V4.1 Flash, per token ([uncensored](https://experientiallabs.ai/uncensored)) | The DeepSeek model is "not zero retention", and the standard service keeps prompts for 30 days ([privacy](https://experientiallabs.ai/privacy)) | Yes ([terms](https://experientiallabs.ai/terms)) |
 | [Morph](https://morphllm.com) | DeepSeek V4.1 Flash 1017 Abliterated through its model API, open only to customers who pass KYC and explain their purpose ([announcement](https://x.com/morphllm/status/2113174908167712865)). Its docs list the regular 1017 model at $0.12 in and $0.80 out per million tokens ([docs](https://docs.morphllm.com/llms.txt)), and the abliterated price is not listed. | Not checked | Not checked |
+| [Lyber](https://www.lyber.ai/) | One OpenAI-compatible API that routes to five uncensored or abliterated models (Qwen 3.8 27B, DeepSeek V4.1 Flash, GLM 5.3 Full, GLM 5.3 Flash and Kimi K3), on prepaid per-token credit, listed from $0.25 to $5.00 per million input tokens and $1.00 to $15.00 per million output tokens. It is in early access, and you request access ([models and pricing](https://www.lyber.ai/)). | Not checked | Not checked |
 | ablit | Rents a machine on your own Vast or RunPod account and runs a pinned build | The engine runs on the rented machine with its text log turned off, and ablit has no telemetry | No, the build is pinned by revision and hash |
 
-The services' details come from their own pages, read on 2026-10-22, and ablit has not tested them. A rented machine is not private from the marketplace or the machine's owner, because Vast and RunPod hosts run the hardware and can see what runs on it. A 552B model on one card is also slower than a hosted model on a large cluster.
+The services' details come from their own pages, read on 2026-10-22 (Lyber on 2026-10-23), and ablit has not tested them. A rented machine is not private from the marketplace or the machine's owner, because Vast and RunPod hosts run the hardware and can see what runs on it. A 552B model on one card is also slower than a hosted model on a large cluster.
 
 ## Why Xolotl, and what it is good for
 
@@ -91,7 +92,8 @@ The cap counts compute, disk, the model download and transfer charges. If the ca
 | `ds41-september-gsq-uncensored` on Xolotl | Yes, on Vast on 2026-10-21, on a 98 GB card |
 | `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22 on a 32 GB RTX 5090 (about 33 tokens per second), and on 2026-10-23 with the newer engine pin on a 98 GB card (about 52 tokens per second) |
 | The watchdog destroying a run at its cap, and recovery of a lost create response | Yes, on Vast on 2026-10-21 |
-| vLLM entries, spot machines, public endpoints, Clore and Lium rentals | No |
+| `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Lium on 2026-10-26 (about 63 tokens per second on an RTX 3090) |
+| vLLM entries, spot machines, public endpoints and Clore rentals | No |
 
 The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, and `ablit up` refuses them until their image is pinned and tested.
 
@@ -102,7 +104,7 @@ The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, a
 | [Vast.ai](https://vast.ai) | Yes, without a key | Yes, tested. A watchdog key limited to the one machine enforces the cap on the machine. |
 | [RunPod](https://www.runpod.io) | Yes, without a key | Yes, tested on Secure Cloud. Community Cloud pods may get no public IP for SSH, so paid runs use Secure Cloud only. |
 | [Clore.ai](https://clore.ai) | Yes | Connected with `--backends clore`, and untested on a rented machine. Clore has no scoped keys, and the marketplace does not say which servers allow SSH, so ablit cancels a server that has no SSH port at the start deadline and skips it after that. |
-| [Lium](https://lium.io) | Yes, without a key | Connected with `--backends lium`, and untested on a rented machine. Keys made with your key cannot be limited to one machine, so the cap relies on the check on this computer and on Lium deleting the pod after a whole number of hours. Notes and sources are in `backends/lium.md`. |
+| [Lium](https://lium.io) | Yes, without a key | Connected with `--backends lium`, and tested on a rented machine on 2026-10-26. Keys made with your key cannot be limited to one machine, so the cap relies on the check on this computer and on Lium deleting the pod after a whole number of hours. Notes and sources are in `backends/lium.md`. |
 
 ## Catalog
 
@@ -115,6 +117,8 @@ The catalog is a folder of YAML files in `catalog/models/`, one per model build,
 | `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The newer 1017 checkpoint on one GPU. The author reports it trails the September build on the hardest agentic tasks. |
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | unverified | The abliterated 1017 model at full FP8 precision |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | unverified | An unmodified 70B model, kept as a cheaper first test of vLLM |
+| `ornith15-122b-uncensored-iq2xxs` | llama.cpp | One 48 GB GPU, 64 GB RAM | unverified | Ornith-1.5-122B with refusals removed, in the 44 GB 2-bit build. Text only, and the publisher reports it complies more often but scores lower on MMLU than the Q4_K_M build. |
+| `ornith15-122b-uncensored-q4km` | llama.cpp | One 84 GB GPU, 96 GB RAM | unverified | The same model in the 79 GB Q4_K_M build, which the publisher reports keeps more of the base model's MMLU score. Text only. |
 
 The quality claims in the table come from the model authors, and ablit has not checked them. CONTRIBUTING.md explains how to add an entry.
 

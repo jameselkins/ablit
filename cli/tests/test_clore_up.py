@@ -336,3 +336,24 @@ def test_up_refuses_an_unknown_backend_name(monkeypatch, capsys):
     with respx.mock:
         assert main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "vast,lambda"], environ=CLORE_ENV) == 2
     assert "clore" in capsys.readouterr().err
+
+
+def test_up_refuses_an_offer_with_no_allocated_disk_before_anything_is_rented(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    plan = up_mod.run_plan
+
+    def no_disk(*args, **kwargs):
+        from dataclasses import replace
+        report = plan(*args, **kwargs)
+        return replace(report, ranked=[replace(r, offer=replace(r.offer, allocated_disk_gb=None)) for r in report.ranked])
+
+    monkeypatch.setattr(up_mod, "run_plan", no_disk)
+    with respx.mock(assert_all_called=False) as router:
+        router.get(MARKET).mock(side_effect=lambda request: market())
+        router.get(API_ROOT + "/renter_fees").respond(200, json={"code": 0, "renter_fees": {"on_demand": {
+            "base": {"USD-Blockchain": 5}}}, "creation_fees": {"on_demand": {"USD-Blockchain": 0.1}}})
+        create = router.post(CREATE).mock(return_value=OK)
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "clore"], environ=CLORE_ENV)
+    assert code == 5 and create.call_count == 0
+    assert RunStore().all() == []
+    assert "no allocated disk size" in capsys.readouterr().out

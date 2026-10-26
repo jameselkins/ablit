@@ -19,7 +19,7 @@ from ablit.backends.errors import (
     ResponseNotRecognized,
     UnknownFieldType,
 )
-from ablit.backends.lium import API_ROOT, LIUM_START, LiumBackend, offer_id_for
+from ablit.backends.lium import API_ROOT, LIUM_ENTRYPOINT, LIUM_START, LiumBackend, offer_id_for
 from ablit.runs import RunStore
 from helpers import make_offer
 
@@ -92,7 +92,8 @@ def test_create_makes_a_one_time_template_then_rents_once_and_saves_the_id(drive
     assert template.url.path == "/api/templates" and template.headers["X-API-Key"] == "invented-lium-key"
     assert body["docker_image"] == "example/image" and body["docker_image_digest"] == "sha256:" + "a" * 64
     assert body["one_time_template"] is True and body["is_private"] is True and body["internal_ports"] == [22]
-    assert body["startup_commands"] == LIUM_START and body["environment"] == {"PUBLIC_KEY": SSH_KEY}
+    assert body["startup_commands"] == LIUM_START and body["environment"] == {}
+    assert body["entrypoint"] == LIUM_ENTRYPOINT
     assert body["name"] == "ablit-" + RUN
     request = rent.calls[0].request
     assert json.loads(request.content) == {
@@ -126,10 +127,12 @@ def test_a_run_with_no_cap_sends_no_termination_hours(driver):
     assert "termination_hours" not in json.loads(rent.calls[0].request.content)
 
 
-def test_the_start_script_writes_the_key_and_keeps_the_container_running():
-    assert "$PUBLIC_KEY" in LIUM_START and "authorized_keys" in LIUM_START
-    assert "PasswordAuthentication=no" in LIUM_START and LIUM_START.endswith("exec sleep infinity")
-    assert "LIUM_API_KEY" not in LIUM_START
+def test_the_start_command_has_no_shell_metacharacters():
+    # Lium refuses a start command with shell metacharacters, so the entrypoint and the command
+    # only keep the container running. The entrypoint also overrides the engine image's own
+    # entrypoint, which would otherwise consume the start command as its arguments and exit.
+    assert LIUM_ENTRYPOINT == "/bin/sleep" and LIUM_START == "infinity"
+    assert not set(";&|<>$()`\\'\"") & set(LIUM_ENTRYPOINT + LIUM_START)
 
 
 def test_the_attempt_is_journaled_before_the_request_leaves(driver):
@@ -420,7 +423,7 @@ def test_there_is_no_scoped_watchdog_credential_and_the_driver_says_so(driver):
     assert capabilities.search is True
     assert capabilities.scoped_watchdog_credential is False
     assert capabilities.marketplace_deadline is False  # termination_hours is sent but untested
-    assert capabilities.rent is False  # not true until a rented machine has worked
+    assert capabilities.rent is True  # one paid round trip passed on 2026-10-26
 
 
 def test_the_driver_sends_only_the_calls_it_needs(driver):
