@@ -93,6 +93,7 @@ The cap counts compute, disk, the model download and transfer charges. If the ca
 | `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22 on a 32 GB RTX 5090 (about 33 tokens per second), and on 2026-10-23 with the newer engine pin on a 98 GB card (about 52 tokens per second) |
 | The watchdog destroying a run at its cap, and recovery of a lost create response | Yes, on Vast on 2026-10-21 |
 | `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Lium on 2026-10-26 (about 63 tokens per second on an RTX 3090) |
+| `nanbeige43-33b-uncensored-q4km` on llama.cpp | Yes, on Vast and Lium on 2026-10-26 (about 70 tokens per second on an RTX 5090, 34 on an L40 and 30 on a V100). Two tries on a RunPod A40 never got an SSH address. |
 | vLLM entries, spot machines, public endpoints and Clore rentals | No |
 
 The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, and `ablit up` refuses them until their image is pinned and tested.
