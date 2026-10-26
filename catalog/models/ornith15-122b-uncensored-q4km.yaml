@@ -1,0 +1,48 @@
+# Seed entry. Status is unverified. Nobody has booted this entry.
+# Every hardware floor below is a source figure or a derived figure, and none has been tested.
+# Sizes and hashes come from the Hugging Face API at the pinned revision (?blobs=true), read on 2026-10-23.
+# VRAM floor: 79.37 GB file plus about 0.1 GB of key-value cache plus about 0.15 GB of recurrent state (about 79.6 GB), plus a 3 GB allowance for the CUDA context and compute buffers, which is 82.6 GB, rounded up to 84 GB. An 80 GB card is too small.
+# Host RAM floor: 79.37 GB file plus 16 GB for the container, CUDA host buffers and the server, which is 95.4 GB, rounded up to the next 16 GB.
+# The key-value cache is 12 full-attention layers x 2 key-value heads x 256 head size x 2 (key and value) x 2 bytes, which is 24,576 bytes per token, or about 0.1 GB at 4096 tokens. The recurrent state is 36 GatedDeltaNet layers of 64 x 128 x 128 float32 values. Both come from the base model's config.json.
+# Text only. The vision file (mmproj) and the DFlash2 draft model are not listed.
+schema: 1
+id: ornith15-122b-uncensored-q4km
+display_name: Ornith-1.5-122B UNCENSORED, Q4_K_M GGUF (llama.cpp)
+source:
+  repo: dealignai/Ornith-1.5-122B-UNCENSORED-GGUF
+  revision: 3cadf9f9a4d12802324d0a6fad1a6e4a8d3a44e7
+  license: mit
+  base_model: ornith-ai/Ornith-1.5-122B
+  modification: abliterated
+artifacts:
+  - {path: Ornith-1.5-122B-Q4_K_M-UNCENSORED.gguf, bytes: 79371735200, sha256: 10770e751937b966ba616268505bef8b5199aa7c36e812764b68a0caa0b8266f, role: weight}
+staging:
+  - {step: download, artifacts: all}
+profile:
+  engine: llamacpp
+  engine_lock: llamacpp-server-cuda
+  gpu: {vendor: nvidia, count: 1, vram_gb_each: 84, compute_capability_min: null}
+  host_ram_gb: 96
+  storage: {random_read_required: false}
+  context_tokens: 4096
+  concurrency: 1
+  port: 8080
+  startup_hours_estimate: 0.3
+  min_download_mbps: 500
+sources:
+  - {url: "https://huggingface.co/api/models/dealignai/Ornith-1.5-122B-UNCENSORED-GGUF/revision/3cadf9f9a4d12802324d0a6fad1a6e4a8d3a44e7?blobs=true", covers: [profile.gpu.count, profile.gpu.vram_gb_each], note: "VRAM is derived from the 79.37 GB file plus key-value cache and recurrent state arithmetic on the base model config, plus a 3 GB allowance. The arithmetic has not been tested."}
+  - {url: "https://huggingface.co/ornith-ai/Ornith-1.5-122B/blob/7681ef608624e7532d8164128bcffdbdbaf1b1af/config.json", covers: [profile.gpu.vram_gb_each], note: "Layer counts, key-value heads and head size used in the cache arithmetic. The model card lists the same layout."}
+  - {url: "https://github.com/ggml-org/llama.cpp/blob/dd002b91f583af0b80140f9a140dc04856bfc2e0/tools/server/README.md", covers: [profile.port], note: Default server port in the llama.cpp server README at the pinned commit.}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: "No publisher states these. They are defaults or estimates chosen by ablit. The RAM floor is the file size plus 16 GB, rounded up to the next 16 GB. The startup estimate is 0.25 hours plus 60 seconds, and the model card reports no load time."}
+  - https://huggingface.co/dealignai/Ornith-1.5-122B-UNCENSORED-GGUF/blob/3cadf9f9a4d12802324d0a6fad1a6e4a8d3a44e7/README.md
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. They are derived from the file size and arithmetic, not from a publisher statement.
+  - This is the larger build. The model card's file table calls it the strongest removal of refusals, although the card's own tests show the IQ2_XXS build complying more often. The card reports a 5 of 6 pass on its harmful multi-turn test and a 2.85 point MMLU loss. All of these figures are the publisher's own.
+  - Text only. This entry serves the text model and skips the vision file (Ornith-1.5-122B-mmproj-F16.gguf) and the optional DFlash2 draft model. The engine template does not pass an mmproj file or a draft model, so ablit does not use the model's MTP speculative decoding either.
+  - The model card says it needs llama.cpp build b11670 or newer. The engine lock pins b11749, which is newer. The architecture is qwen35moe, which the pinned llama.cpp source lists.
+  - The model card tests with --jinja and --reasoning-format deepseek. The engine template passes neither flag, so the chat template and the thinking output may differ from the card. Nobody has checked.
+  - The model card tests with a context of 65536 and 8 parallel requests. This entry uses 4096 tokens and one request, which are ablit's defaults.
+  - Ornith-1.5-122B is a Qwen 3.5 family model with 122B parameters in total and 10B active per token (hybrid GatedDeltaNet and attention, with a mixture of experts).
+  - The card says refusals were removed and calls the build a research artifact that should not be deployed to end users without separate safety controls. Its harmful-request and MMLU scores are the publisher's own claims, and ablit has not checked them.
