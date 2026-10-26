@@ -122,7 +122,8 @@ def test_ids_that_could_break_a_link_are_rejected(bad):
 
 
 def _text_files(root: Path):
-    skip_dirs = {".git", ".venv", ".hypothesis", ".pytest_cache", "__pycache__", "dist", "node_modules"}
+    # Agent worktrees under .claude/worktrees are other checkouts, not this one.
+    skip_dirs = {".git", ".venv", ".hypothesis", ".pytest_cache", "__pycache__", "dist", "node_modules", "worktrees"}
     for path in sorted(root.rglob("*")):
         if not path.is_file() or any(part in skip_dirs for part in path.relative_to(root).parts):
             continue
