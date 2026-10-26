@@ -14,7 +14,8 @@ createPod, listPods, getPod and deletePod, from the official OpenAPI schema at
 https://api.runpod.io/v2/openapi.json. backends/runpod.md lists each fact with
 its source and marks what is UNVERIFIED.
 
-Renting is untested on a rented machine. The lifecycle has synthetic tests only.
+One paid round trip passed on Secure Cloud on 2026-10-22 (record in catalog/boot-tests/).
+The rest of the lifecycle has synthetic tests only.
 """
 
 from __future__ import annotations
@@ -232,10 +233,10 @@ class RunPodBackend(RentalBackend):
         self._rest_root = rest_root.rstrip("/")
 
     def capabilities(self) -> Capabilities:
-        # Search works against live data. Renting stays False until a paid test shows it works.
+        # Search works against live data. Renting is True because one paid round trip passed on 2026-10-22.
         # RunPod documents no key limited to one pod, so scoped_watchdog_credential stays False.
         # RunPod's v2 create request has no deadline field, so marketplace_deadline stays False.
-        return Capabilities(search=True)
+        return Capabilities(search=True, rent=True)
 
     def _run(self, query: str, creds: Creds | None) -> Any:
         headers = {"Content-Type": "application/json", "User-Agent": f"ablit/{__version__}"}

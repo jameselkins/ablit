@@ -372,7 +372,7 @@ def test_there_is_no_scoped_watchdog_credential_and_the_driver_says_so(driver):
     assert capabilities.search is True
     assert capabilities.scoped_watchdog_credential is False
     assert capabilities.marketplace_deadline is False  # the v2 create request has no deadline field
-    assert capabilities.rent is False  # not true until a rented machine has worked
+    assert capabilities.rent is True  # one paid round trip passed on 2026-10-22
 
 
 def test_the_driver_sends_no_write_call_other_than_create_and_delete(driver):
