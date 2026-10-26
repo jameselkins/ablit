@@ -29,8 +29,8 @@ CUDA 13.0.2 is the toolkit that the Xolotl author builds with. The author's setu
 
 Sources, all fetched at build time and checked against the expected commit:
 
-- Xolotl at `03be8a60d334212901d18708924a84e9d219b6dd`, from `https://github.com/Indras-Mirror/Xolotl`.
-- llama.cpp at `3cf03257f219afbe7334045ff7c6a06ac68c627d`. The Xolotl script `tools/xolotl/fetch-llama.sh` pins this commit and applies `tools/xolotl/ggml/xolotl-ggml.patch`. The Dockerfile stops if the script pins a different commit.
+- Xolotl at `961d390fea6d848431822f7c6e94a6e5c0775133`, from `https://github.com/Indras-Mirror/Xolotl`.
+- llama.cpp at `6050b467c07a95c7b87debd4ddac2f8ba8d9b807`, with `tools/xolotl/ggml/xolotl-ggml.patch` applied. Xolotl's `CMakeLists.txt` fetches this commit, and `third_party/ggml/VERSION.txt` names it. The Dockerfile stops if either names a different commit. Xolotl's `tools/xolotl/fetch-llama.sh` still names the older commit `3cf03257` at this pin, and the patch does not apply to that commit, so the Dockerfile does the checkout and the patch itself, as the CMake fetch does.
 
 CMake flags: `-DSTRATA_ENABLE_CUDA=ON -DSTRATA_GGML_CUDA=ON -DSTRATA_MMQ_KQUANTS=ON -DSTRATA_DSV41_FQ_OP=ON -DSTRATA_DSV41_HC_MIX=ON`, as in the Xolotl README. Four more are set for a shared image.
 
@@ -85,7 +85,7 @@ STRATA_API_KEY="$ABLIT_ENDPOINT_KEY" STRATA_TEXT_LOG=0 \
 The config file is JSON, written by the bootstrap script. The keys that matter are listed here. The sample files above show every key.
 
 - `exe` is `/opt/xolotl/bin/ds41-engine`. Do not use Xolotl's own `ds41-engine.sh`. It uses systemd-run and a lock file under the home directory, and a container has neither. The image does not include that script.
-- `args` is the engine argument list. It holds `-m <gguf>`, `--backend cuda`, `--experts gpu`, `--engram <dir>[:<dir>]`, `--rank <rank file>`, `--ctx`, `--arena-gib`, `--kv-fp4`, `--route-bias`, `--prompt-batch` and `--conversation-cache-mib`, with the values from the model card and the sample config.
+- `args` is the engine argument list. It holds `-m <gguf>`, `--backend cuda`, `--experts gpu`, `--engram <dir>[:<dir>]`, `--rank <rank file>`, `--ctx`, `--arena-gib`, `--kv-fp4`, `--route-bias`, `--prompt-batch`, `--conversation-cache-mib` and `--tier-batch-pcie`, with the values from the model card and the sample config.
 - `cwd` is `/opt/xolotl`.
 - `tokenizer` is a directory with `vocab.json`, `merges.txt`, `token_type.json` and `chat_template.jinja`.
 - `model_name` is the name the endpoint reports, which ablit sets from `ABLIT_SERVED_NAME`.
@@ -182,18 +182,20 @@ Xolotl's `data/` folder is under the Qwen Community License. It is not copied in
 
 The model weights are not in the image. Their licenses are covered by the catalog entries and the model cards, not by this folder.
 
-## Does the pinned commit serve both catalog entries
+## Does the pinned commit serve the catalog entries
 
-The pin `03be8a60d334212901d18708924a84e9d219b6dd` (Indras-Mirror/Xolotl main on 2026-10-22) replaces `63fc34c6ea839d3e78e765b3e3aa72173116d352` (2026-10-20). The older pin booted on Vast for both `ds41-september-gsq-uncensored` and `ds41-1017-xq-v3-uncensored` on 2026-10-21 and 2026-10-22. The new pin has not been booted, so it is unverified until the first run on a rented machine.
+The pin `961d390fea6d848431822f7c6e94a6e5c0775133` (Indras-Mirror/Xolotl main on 2026-10-26) replaces `03be8a60d334212901d18708924a84e9d219b6dd` (2026-10-22). It was the head of main when it was chosen. The older pin booted `ds41-1017-xq-v3-uncensored` on Vast on 2026-10-23.
+
+The new pin is needed for the V4 build of the 1017 model. That build keeps its hottest experts in DeepSeek's native FP4 (MXFP4), and the expert map check in `ds41_geometry.hpp` at the older pin refuses that type. The pin also brings the expert cache that stays warm across turns (keep-cache, on by default), faster indexer kernels, faster CPU kernels for the ternary and Q2_0 tiers, a fix for forced `tool_choice` in `serve_ds41.py`, and a fix that keeps the live state after an aborted turn (Xolotl issue 59).
 
 What changed between the two pins, as far as the image and the bootstrap script are concerned:
 
-- The files the Dockerfile copies are the same, except `serve/server.py` and `tools/v41/serve/serve_ds41.py`. The tokenizer and Engram scripts, `dsv41_encoding.py`, `ds41-engine.sh`, `requirements.txt`, `fetch-llama.sh`, the ggml patch and all licenses are unchanged, so the Python packages, the llama.cpp commit and the license table stay as they were.
-- `CMakeLists.txt` and `v41_engine.cmake` add engine source files, but the flags and the architecture list are the same. A new runtime check in `ds41_cuda_policy.cpp` turns off chunk MMQ on a card below compute capability 7.5, which does not affect 86, 89 or 120.
-- The server gained the config key `parallel` (batch slots), the nested config key `conversation_cache`, and a few vision keys. The bootstrap script uses none of them except as shown below.
-- The Engram direct read is the same code. Only the history handling for batch slots changed in `ds41_engram.cpp`, and the open errors that `bootstrap.sh` searches for are unchanged.
-- New options and their defaults in `ds41_generate.cpp`: `--conversation-cache-mib` defaults to 8192 (pinned host memory, taken as conversations are saved) and `--conversation-cache-slots` to 64. `--batch` (also `--batch-slots`) defaults to 1, which is off, so a batch slot costs nothing unless the config asks for it. `--kv-q8` and `--kv-type N` default to off, and the engine refuses to start with both `--kv-fp4` and `--kv-q8`. The bootstrap script keeps `--kv-fp4`.
-- The bootstrap script sets `--conversation-cache-mib` to 4096 by default, because the 60 GiB arena already takes most of a 90 GB host. Set `XOLOTL_CONVERSATION_CACHE_MIB=0` in the environment to turn the pool off, which matches the earlier pin.
+- llama.cpp moved from `3cf03257` to `6050b467` in `CMakeLists.txt`, and the ggml patch was rewritten for it. `fetch-llama.sh` was not updated and still names `3cf03257`, so the Dockerfile no longer runs it. The patch applies cleanly to `6050b467`, and it still adds the two fused operations that `-DSTRATA_DSV41_FQ_OP=ON` and `-DSTRATA_DSV41_HC_MIX=ON` need.
+- The files the Dockerfile copies are the same, except `tools/v41/serve/serve_ds41.py` and the new `tools/v41/serve/ds41_top.py`. `serve/`, the tokenizer and Engram scripts, `dsv41_encoding.py`, Xolotl's `ds41-engine.sh`, `requirements.txt` and all licenses are unchanged, so the Python packages, the wrapper defaults and the license table stay as they were.
+- The CMake flags and the architecture list are the same. `v41_engine.cmake` adds a helper program for a second GPU and a test program, and the Dockerfile builds neither.
+- The Engram open errors that `bootstrap.sh` searches for are unchanged. `ds41_engram.cpp` gained a reader for IQ4_NL tables, which the catalog entries do not use.
+- Defaults that changed inside the engine: keep-cache is on (`STRATA_SERVE_KEEP_CACHE=0` turns it off), the route bias refreshes during a conversation (`STRATA_BIAS_REFRESH=1`), and the smallest new-token count that goes through the prompt batch follows the arena (128 when the arena holds every expert, else 16). The bootstrap script sets none of these.
+- The bootstrap script now passes `--tier-batch-pcie 0.25`. The engine default is 1.0, which sends every RAM-tier miss over PCIe and leaves the CPU idle. The model card for the V4 1017 build measured its speed with 0.25. Set `XOLOTL_TIER_BATCH_PCIE` to change it.
 
 One finding the bootstrap author may want to test. At the pin, `Ds41Engram::open` already reads `model.safetensors.index.json` and its shards from the directories named in `--engram`. If so, `extract_engram.py` (which rewrites about 203 GB) can be skipped by pointing `--engram` at a directory that holds the two FP8 shards and the index file. This is untested, and the catalog does not list `model.safetensors.index.json` or `config.json` as files to download. If it fails, run `extract_engram.py SRC_DIR --to layers.1=DIR_A --to layers.14=DIR_B`, which takes the source directory and one `--to` per layer group. With no arguments it prints its usage and exits with code 2.
 

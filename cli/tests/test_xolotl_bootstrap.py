@@ -234,6 +234,7 @@ def test_the_default_run_joins_while_downloading_and_reads_the_engram_files_in_p
     flags = config["args"]
     assert flags[flags.index("--rank") + 1] == str(box.data / "v" / "rank.bin")
     assert flags[flags.index("--ctx") + 1] == "4096" and flags[flags.index("--arena-gib") + 1] == "60"
+    assert flags[flags.index("--tier-batch-pcie") + 1] == "0.25"
     assert oct((box.state / "xolotl-config.json").stat().st_mode & 0o777) in ("0o600", "0o644")
 
 
@@ -404,6 +405,6 @@ def test_the_lock_still_gives_the_workflow_exactly_one_commit_line():
     commits = re.findall(r"^  commit: ([0-9a-f]{40})$", lock, re.M)
     assert len(commits) == 1
     assert re.search(r"^image: ghcr.io/jameselkins/ablit-xolotl$", lock, re.M)
-    assert re.search(r"^tag: 03be8a6$", lock, re.M)
+    assert re.search(r"^tag: 961d390$", lock, re.M)
     assert re.search(r"^digest: sha256:[a-f0-9]{64}$", lock, re.M)
     assert re.search(r"^cuda_architectures: \[86, 89, 120\]$", lock, re.M)

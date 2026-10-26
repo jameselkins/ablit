@@ -74,6 +74,12 @@ XOLOTL_USE_DRAFT="${XOLOTL_USE_DRAFT:-1}"
 # The 60 GiB arena already uses most of a 90 GB host, so this script asks for half
 # of that. A value of 0 turns the pool off, which is how the earlier pin ran.
 XOLOTL_CONVERSATION_CACHE_MIB="${XOLOTL_CONVERSATION_CACHE_MIB:-4096}"
+# The share of RAM-tier expert misses in batched passes (prompt chunks, and every
+# served decode and verify step with the draft model) that goes over PCIe. The CPU
+# computes the rest. The engine's default is 1.0, which leaves the CPU idle. The
+# V4 1017 model card measured its speed figures with 0.25, and the engine docs
+# say a host with many cores and memory channels gains most from a low value.
+XOLOTL_TIER_BATCH_PCIE="${XOLOTL_TIER_BATCH_PCIE:-0.25}"
 
 # Download settings. Chunks are small so that the checksum of a file can follow
 # the download closely, and so that the last file is spread over many connections.
@@ -311,12 +317,12 @@ write_server_config() {
   mkdir -p "$ABLIT_STATE_DIR/logs"
   "$XOLOTL_PYTHON" -I - "$XOLOTL_CONFIG" "$XOLOTL_ENGINE_EXE" "$XOLOTL_DIR" "$model" "$rank" "$tokenizer" \
     "$engram" "$draft" "$ABLIT_CONTEXT_TOKENS" "$XOLOTL_ARENA_GIB" "$ABLIT_SERVED_NAME" "$ABLIT_PORT" \
-    "$XOLOTL_CORE_LOG" "$XOLOTL_CONVERSATION_CACHE_MIB" <<'PY'
+    "$XOLOTL_CORE_LOG" "$XOLOTL_CONVERSATION_CACHE_MIB" "$XOLOTL_TIER_BATCH_PCIE" <<'PY'
 import json
 import os
 import sys
 
-(out, exe, cwd, model, rank, tokenizer, engram, draft, ctx, arena, name, port, log, pool) = sys.argv[1:15]
+(out, exe, cwd, model, rank, tokenizer, engram, draft, ctx, arena, name, port, log, pool, tier) = sys.argv[1:16]
 env = {"STRATA_ATTN_F16_GATHER": "1"}
 if draft:
     env["STRATA_SERVE_DSPARK"] = draft
@@ -326,7 +332,7 @@ config = {
         "-m", model, "--backend", "cuda", "--experts", "gpu", "--engram", engram, "--rank", rank,
         "--ctx", ctx, "--stop", "1", "--arena-adapt", "--kv-fp4", "--route-bias", "0.5",
         "--route-bias-file", "0.3", "--arena-gib", arena, "--prompt-batch", "12288",
-        "--conversation-cache-mib", str(int(pool)),
+        "--conversation-cache-mib", str(int(pool)), "--tier-batch-pcie", str(float(tier)),
     ],
     "cwd": cwd,
     "tokenizer": tokenizer,
