@@ -66,6 +66,7 @@ def test_up_with_backends_clore_rents_whole_server_and_saves_only_nonsecret_reco
     assert body["ports"] == {"22": "tcp"} and body["autossh_entrypoint"] is True
     assert body["ssh_key"] == "ssh-ed25519 invented-public-content" and "ssh_password" not in body and "env" not in body
     assert body["required_price"] == pytest.approx(4.8)
+    assert body["command"] == up_mod.CLORE_START
     record = RunStore().all()[0]
     assert record["backend"] == "clore" and record["resource_ids"] == ["9001"]
     assert record["local_cap_primary"] is True and not record.get("watchdog_key_id") and "ssh_key_id" not in record
@@ -357,3 +358,10 @@ def test_up_refuses_an_offer_with_no_allocated_disk_before_anything_is_rented(mo
     assert code == 5 and create.call_count == 0
     assert RunStore().all() == []
     assert "no allocated disk size" in capsys.readouterr().out
+
+
+def test_the_clore_start_command_starts_sshd_and_keeps_the_key_modes():
+    # The llama.cpp image has no SSH server, and Clore's entrypoint did not add one on 2026-10-26.
+    assert up_mod.CLORE_START.startswith(up_mod.ONSTART)
+    assert "openssh-server" in up_mod.CLORE_START and "/usr/sbin/sshd -e" in up_mod.CLORE_START
+    assert "PasswordAuthentication=no" in up_mod.CLORE_START and "CLORE_API_KEY" not in up_mod.CLORE_START
