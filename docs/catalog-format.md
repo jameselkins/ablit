@@ -31,7 +31,7 @@ staging:                           # order of steps, used to compute peak disk
   - {step: join, inputs: [weight], output_bytes: ..., keeps_inputs_until_done: false, delete_inputs_after: true}
 profile:
   engine: xolotl
-  engine_lock: xolotl-03be8a6
+  engine_lock: xolotl-961d390
   gpu: {vendor: nvidia, count: 1, vram_gb_each: 24, compute_capability_min: 7.5}
   host_ram_gb: 90
   storage: {random_read_required: true}

@@ -36,7 +36,7 @@ ARG CUDA_DEVEL_IMAGE=nvcr.io/nvidia/cuda:13.0.2-devel-ubuntu24.04@sha256:5dc1bca
 ARG CUDA_RUNTIME_IMAGE=nvcr.io/nvidia/cuda:13.0.2-runtime-ubuntu24.04@sha256:6a0e31b59e70890446f2c17356d6efc0d54260090a8c63d6ca7c2ad049db95d2
 
 # The Xolotl commit that ablit pins in engines/xolotl/lock.yaml.
-ARG XOLOTL_COMMIT=03be8a60d334212901d18708924a84e9d219b6dd
+ARG XOLOTL_COMMIT=961d390fea6d848431822f7c6e94a6e5c0775133
 # One entry per GPU generation: Turing, A100, RTX 30 and A-series, RTX 40 and L40,
 # H100, and RTX 50. See the README beside this file.
 ARG CUDA_ARCHITECTURES="75;80;86;89;90;120a"
@@ -50,10 +50,12 @@ ARG XOLOTL_COMMIT
 ARG CUDA_ARCHITECTURES
 ARG CUDA_DEVEL_IMAGE
 ARG CUDA_RUNTIME_IMAGE
-# The llama.cpp commit that tools/xolotl/fetch-llama.sh pins at that Xolotl
-# commit. The build stops if the script names a different commit, so a change in
-# Xolotl cannot slip in unnoticed.
-ARG LLAMA_CPP_COMMIT=3cf03257f219afbe7334045ff7c6a06ac68c627d
+# The llama.cpp commit that Xolotl's CMakeLists.txt fetches (its GIT_TAG) at that
+# Xolotl commit, which third_party/ggml/VERSION.txt names too. The build stops if
+# either names a different commit, so a change in Xolotl cannot slip in unnoticed.
+# Xolotl's tools/xolotl/fetch-llama.sh still names an older llama.cpp commit at
+# this pin, and the ggml patch does not apply to that one, so the build skips it.
+ARG LLAMA_CPP_COMMIT=6050b467c07a95c7b87debd4ddac2f8ba8d9b807
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -68,21 +70,28 @@ RUN git init --quiet . \
  && git checkout --quiet FETCH_HEAD \
  && test "$(git rev-parse HEAD)" = "${XOLOTL_COMMIT}"
 
-# Run Xolotl's own fetch-llama.sh. It checks out llama.cpp at its pinned commit
-# and applies the Xolotl ggml patch. The folder is prepared with a shallow fetch
-# first, so the script does not clone the whole llama.cpp history.
+# Check out llama.cpp at the commit that Xolotl's CMake pins, and apply the
+# Xolotl ggml patch, as the CMake fetch does. A shallow fetch of the one commit
+# avoids cloning the whole llama.cpp history. The last two checks stop the build
+# if the patch did not bring the two fused DeepSeek-V4.1 operations.
 RUN set -eu; \
-    pin="$(sed -n 's/^PIN=\([0-9a-f]\{40\}\)$/\1/p' tools/xolotl/fetch-llama.sh)"; \
-    if [ "$pin" != "${LLAMA_CPP_COMMIT}" ]; then \
-      echo "fetch-llama.sh pins llama.cpp ${pin} but this Dockerfile expects ${LLAMA_CPP_COMMIT}" >&2; \
+    cmake_pin="$(sed -n 's/^ *GIT_TAG \([0-9a-f]\{40\}\)$/\1/p' CMakeLists.txt)"; \
+    version_pin="$(cut -d' ' -f1 third_party/ggml/VERSION.txt)"; \
+    if [ "$cmake_pin" != "${LLAMA_CPP_COMMIT}" ] || [ "$version_pin" != "${LLAMA_CPP_COMMIT}" ]; then \
+      echo "Xolotl pins llama.cpp ${cmake_pin} in CMake and ${version_pin} in VERSION.txt, but this Dockerfile expects ${LLAMA_CPP_COMMIT}" >&2; \
       exit 1; \
     fi; \
+    patch="$PWD/tools/xolotl/ggml/xolotl-ggml.patch"; \
     mkdir -p third_party/llama.cpp; \
     git -C third_party/llama.cpp init --quiet; \
     git -C third_party/llama.cpp remote add origin https://github.com/ggml-org/llama.cpp.git; \
-    git -C third_party/llama.cpp fetch --quiet --depth 1 origin "$pin"; \
-    bash tools/xolotl/fetch-llama.sh; \
-    test "$(git -C third_party/llama.cpp rev-parse HEAD)" = "$pin"
+    git -C third_party/llama.cpp fetch --quiet --depth 1 origin "${LLAMA_CPP_COMMIT}"; \
+    git -C third_party/llama.cpp checkout --quiet FETCH_HEAD; \
+    test "$(git -C third_party/llama.cpp rev-parse HEAD)" = "${LLAMA_CPP_COMMIT}"; \
+    git -C third_party/llama.cpp apply "$patch"; \
+    git -C third_party/llama.cpp apply --reverse --check "$patch"; \
+    grep -q GGML_OP_DSV41_FAKE_QUANT third_party/llama.cpp/ggml/include/ggml.h; \
+    grep -q GGML_OP_DSV41_HC_MIXES third_party/llama.cpp/ggml/include/ggml.h
 
 # Python packages for the server, pinned to the versions in Xolotl's own
 # requirements.txt. The build tools get their own environment, so they stay out

@@ -44,19 +44,21 @@ staging:
   - {step: join, inputs: [weight], output_bytes: 162954903552, keeps_inputs_until_done: false, delete_inputs_after: true}
 profile:
   engine: xolotl
-  engine_lock: xolotl-03be8a6
+  engine_lock: xolotl-961d390
   gpu: {vendor: nvidia, count: 1, vram_gb_each: 24, compute_capability_min: 7.5}
   host_ram_gb: 90
   host_ram_gb_recommended: 256
   storage: {random_read_required: true}
-  context_tokens: 4096
+  context_tokens: 131072
   concurrency: 1
   port: 8150
   startup_hours_estimate: 0.3
   min_download_mbps: 1000
 sources:
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/63fc34c6ea839d3e78e765b3e3aa72173116d352/README.md", covers: ["profile.gpu.*", profile.host_ram_gb, profile.host_ram_gb_recommended, profile.port], note: "Author's README at the pinned engine commit. The figures come from one machine the author measured."}
-  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: Defaults chosen by ablit. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate.}
+  - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/engine/ds41_dense.cpp", covers: [profile.context_tokens], note: "Ds41Dense sizes the caches from --ctx. With --kv-fp4 the compressed KV and indexer keys cost about 890 bytes a position, about 111 MiB at 131072 tokens, so the context adds no hardware floor."}
+  - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/serve/strata-ds41-1017.json", covers: [profile.context_tokens], note: "The author's server config for this model family, with --ctx 524288 on a 24 GB card."}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: "Figures chosen by ablit. The context is 131072 tokens so that Claude Code fits, and it is below the 524288 the author runs. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate."}
   - https://huggingface.co/IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored/blob/9d3c01d86709261e51d566b02e1dda75f40d009a/README.md
   - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
 tests:
@@ -76,3 +78,4 @@ notes:
   - This entry lists only the v3/ directory, the tokenizer files, the rank file, the Q2_K draft file, the Engram index and the two Engram source shards. The repo also holds a V2 build, which the catalog left out because the author reports V3 as slightly better on agentic tasks.
   - The repo was renamed from GSQ to XQ on 2026-10-19, and old file paths at its root now return 404. The revision is pinned because the repo changes often.
   - The author's model card reports a regression against the September build on two of five tasks in a short agentic test, and says the cause is not isolated yet.
+  - The context was raised from 4096 to 131072 tokens on 2026-10-26, together with the move to Xolotl 961d390. The earlier boot tests ran with 4096 tokens on Xolotl 63fc34c and 03be8a6. With --kv-fp4 the compressed KV and indexer keys take about 111 MiB at 131072 tokens (about 890 bytes a position), and the engine sizes its VRAM expert cache from what is left, so the hardware floors stay as they were. The author runs 524288 tokens on a 24 GB card. The V4 1017 entry booted with this context and engine pin on 2026-10-26.

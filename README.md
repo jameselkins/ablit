@@ -4,16 +4,30 @@ ablit is a command-line tool that finds the cheapest rented GPU machine that can
 
 It is built for abliterated and uncensored models, which are models edited to remove their refusals. ablit runs on your computer, so your marketplace key stays with you, and ablit runs no service, holds no money and relays no inference traffic.
 
-Status: alpha. Three models have run end to end on rented machines, and the table in the Status section lists what was tested and when.
+Status: alpha. Five models have run end to end on rented machines, and the table in the Status section lists what was tested and when.
 
 ## DeepSeek-V4.1-Flash 1017 on one GPU works
 
-On 2026-10-22, ablit rented one RTX 5090 (32 GB) on Vast and ran `ds41-1017-xq-v3-uncensored`, an uncensored quant of the 552B DeepSeek-V4.1-Flash 1017 model, on the Xolotl engine. The machine was ready in under 27 minutes, including the 372 GB download, and it answered at about 33 tokens per second through the SSH tunnel. The September build of the same model, `ds41-september-gsq-uncensored`, ran the day before at about 47 tokens per second on a 98 GB card. Neither has been tested on a 24 GB card yet, which is the smallest card the engine author reports.
+On 2026-10-26, ablit rented one RTX PRO 5000 (48 GB) with 96 GB of RAM on Vast and ran `ds41-1017-xq-v4-uncensored`, an uncensored quant of the 552B DeepSeek-V4.1-Flash 1017 model, on the Xolotl engine. The machine was ready 25 minutes after the rental, including the 372 GB download. It wrote 28 to 36 tokens per second, read a 20,000-token prompt at about 500 tokens per second, and returned Anthropic `tool_use` blocks. The whole test cost about $0.74. The older V3 and September builds of the same model also ran, on 32 GB and 98 GB cards. None has been tested on a 24 GB card yet, which is the smallest card the engine author reports.
 
 ```
 ablit setup vast
-ablit up ds41-1017-xq-v3-uncensored --max-spend 4
+ablit up ds41-1017-xq-v4-uncensored --max-spend 4
 ```
+
+### Use it from Claude Code
+
+The Xolotl entries serve 131072 tokens of context, which leaves room for Claude Code's system prompt and tools. The server answers the Anthropic Messages API at `/v1/messages`, including tool use. With the run up, point Claude Code at the tunnel:
+
+```
+export ANTHROPIC_BASE_URL=http://127.0.0.1:<local port>
+export ANTHROPIC_AUTH_TOKEN="$(ablit status <run> --show-key --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["runs"][0]["endpoint_key"])')"
+export ANTHROPIC_MODEL=ds41-1017-xq-v4-uncensored
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=ds41-1017-xq-v4-uncensored
+claude
+```
+
+`ablit up` prints the local port, and `ablit status --json` shows it as `local_port`. A request longer than 131072 tokens gets HTTP 400, so compact the conversation before it grows that long. With thinking on, each new turn reads the whole conversation again, which took about 33 seconds on a 20,000-token conversation in the boot test. With thinking off, the engine reuses the conversation and a short turn took 3 to 5 seconds. The boot test checked the Messages API and tool use with plain requests, and it did not run a Claude Code session.
 
 ## Why run your own model instead of a hosted one
 
@@ -38,7 +52,7 @@ DeepSeek-V4.1-Flash has 552B parameters, so the usual way to run it is a node wi
 
 [Xolotl](https://github.com/Indras-Mirror/Xolotl) is a research engine by one developer that runs the model on one consumer GPU with about 90 GB of RAM. The model is a mixture of experts, so each token uses only a few of its experts. Xolotl keeps the most used experts in GPU memory and the rest in RAM and on disk, and it loads the others when a token needs them. Its quant files load only in Xolotl.
 
-Xolotl fits when you want the large DeepSeek model and an 8-GPU node is too expensive or not available, and when about 30 to 50 tokens per second for one user is enough. It does not fit a service with many users. The pinned engine commit has batch slots that let one engine serve several requests at once, but ablit leaves them off, because each slot uses more GPU memory and ablit has not tested them. The engine is new, it has one main author, and its speed figures come from a few machines, so treat it as research code.
+Xolotl fits when you want the large DeepSeek model and an 8-GPU node is too expensive or not available, and when about 30 to 50 tokens per second for one user is enough. ablit pins Xolotl commit 961d390 (2026-10-26), which loads the V4 build, keeps the expert cache warm between turns, and serves 131072 tokens of context in the catalog entries. It does not fit a service with many users. The pinned engine commit has batch slots that let one engine serve several requests at once, but ablit leaves them off, because each slot uses more GPU memory and ablit has not tested them. The engine is new, it has one main author, and its speed figures come from a few machines, so treat it as research code.
 
 ## Quickstart
 
@@ -91,6 +105,7 @@ The cap counts compute, disk, the model download and transfer charges. If the ca
 | `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Vast on 2026-10-21 (about 65 tokens per second) and on RunPod Secure Cloud on 2026-10-22 (about 40 tokens per second) |
 | `ds41-september-gsq-uncensored` on Xolotl | Yes, on Vast on 2026-10-21, on a 98 GB card |
 | `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22 on a 32 GB RTX 5090 (about 33 tokens per second), and on 2026-10-23 with the newer engine pin on a 98 GB card (about 52 tokens per second) |
+| `ds41-1017-xq-v4-uncensored` on Xolotl | Yes, on Vast on 2026-10-26 on a 48 GB RTX PRO 5000 with 96 GB of RAM, with Xolotl 961d390 and 131072 tokens of context (28 to 36 tokens per second, prefill about 500 tokens per second on 20,000 tokens, tool use through `/v1/messages`) |
 | The watchdog destroying a run at its cap, and recovery of a lost create response | Yes, on Vast on 2026-10-21 |
 | `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Lium on 2026-10-26 (about 63 tokens per second on an RTX 3090) |
 | `nanbeige43-33b-uncensored-q4km` on llama.cpp | Yes, on Vast and Lium on 2026-10-26 (about 70 tokens per second on an RTX 5090, 34 on an L40 and 30 on a V100). Two tries on a RunPod A40 never got an SSH address. |
@@ -115,7 +130,8 @@ The catalog is a folder of YAML files in `catalog/models/`, one per model build,
 |---|---|---|---|---|
 | `llama31-8b-abliterated-q4km` | llama.cpp | One small GPU | boot-tested | A cheap abliterated model for a first run |
 | `ds41-september-gsq-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | DeepSeek-V4.1-Flash on one GPU. The author's tests give it the best agentic scores of the one-GPU builds. |
-| `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The newer 1017 checkpoint on one GPU. The author reports it trails the September build on the hardest agentic tasks. |
+| `ds41-1017-xq-v4-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The 1017 checkpoint on one GPU in the author's recommended V4 build. The author reports it agrees with the full model more often than V3 (86.9 against 82.9 percent top-1) and that it solved 6 of 7 tasks in an agentic test. |
+| `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The earlier 1017 build. The author reports it trails the September build on the hardest agentic tasks. |
 | `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | unverified | The abliterated 1017 model at full FP8 precision |
 | `llama33-70b-fp8-dynamic` | vLLM | From its sources | unverified | An unmodified 70B model, kept as a cheaper first test of vLLM |
 | `ornith15-122b-uncensored-iq2xxs` | llama.cpp | One 48 GB GPU, 64 GB RAM | unverified | Ornith-1.5-122B with refusals removed, in the 44 GB 2-bit build. Text only, and the publisher reports it complies more often but scores lower on MMLU than the Q4_K_M build. |

@@ -34,7 +34,7 @@ def base_entry() -> dict:
              "keeps_inputs_until_done": True, "delete_inputs_after": True},
         ],
         "profile": {
-            "engine": "xolotl", "engine_lock": "xolotl-03be8a6",
+            "engine": "xolotl", "engine_lock": "xolotl-961d390",
             "gpu": {"vendor": "nvidia", "count": 1, "vram_gb_each": 24, "compute_capability_min": 7.5},
             "host_ram_gb": 90, "storage": {"random_read_required": True},
             "context_tokens": 4096, "concurrency": 1, "port": 8150,
