@@ -1,5 +1,5 @@
-# Status is unverified. Nobody has booted this entry.
-# The hardware floors below are source or derived figures, and none has been tested with this build.
+# Status is boot-tested: it booted on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM.
+# The hardware floors below are source or derived figures, and the 24 GB GPU floor has not been tested.
 # Sizes and hashes were filled in by tools/verify_entry.py --fill.
 schema: 1
 id: ds41-1017-xq-v4-uncensored
@@ -60,10 +60,11 @@ sources:
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/engine/ds41_dense.cpp", covers: [profile.context_tokens], note: "Ds41Dense sizes the caches from --ctx. With --kv-fp4 the compressed KV and indexer keys cost about 890 bytes a position, about 111 MiB at 131072 tokens, so the context adds no hardware floor. The author's own server config runs --ctx 524288 on a 24 GB card."}
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/serve/strata-ds41-1017.json", covers: [profile.context_tokens], note: "The author's 1017 server config, with --ctx 524288 and --arena-gib 64."}
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: "Figures chosen by ablit. The context is 131072 tokens so that Claude Code fits, and it is below the 524288 the author runs. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate."}
-tests: []
-status: unverified
+tests:
+  - {backend: vast, date: "2026-10-26", log: boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md}
+status: boot-tested
 notes:
-  - Nobody has booted this entry, and the hardware floors are not yet tested. The 24 GB GPU and 90 GB RAM floors come from the model card and the engine README, which report one machine with an RTX 4090 and 90 GB of RAM.
+  - The entry booted and served on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM, with a context of 131072 tokens. The 24 GB GPU floor is not yet tested. The 24 GB GPU and 90 GB RAM floors come from the model card and the engine README, which report one machine with an RTX 4090 and 90 GB of RAM.
   - This is the V4 build, the one the author recommends. Its hottest 1,056 experts stay in DeepSeek's native FP4 (MXFP4), The expert map check in ds41_geometry.hpp at Xolotl 03be8a6 refuses that type, so the entry uses the 961d390 engine lock. The model card also says its speed figures need Xolotl from 2026-10-25 or newer.
   - The author reports higher agreement with the full model than V3 (86.9 percent top-1 and KL 0.306 through the engine, against 82.9 percent and 0.405 for V3), at the same file size.
   - The rank file is v4/rank-1017-v4.bin, which the model card says to use. The repo also holds v4/rank-1017-v3.bin, which V4 first shipped with, and the entry leaves it out.
@@ -72,6 +73,6 @@ notes:
   - Peak disk comes from the staging list. It assumes the weight parts are deleted as they are joined, and the join step says it streams, because the bootstrap appends one part at a time. The bootstrap adds a margin of one weight part (10.7 GB) to the disk it asks for, because the join appends a part before it deletes it.
   - The staging list has no Engram extraction step. The engine reads model.safetensors.index.json and the two FP8 shards of the official 1017 checkpoint in place, as the boot tests of the V3 entry showed. If it cannot, the bootstrap extracts the tables and starts the engine again, and the disk request already includes room for that (extract_disk_gb in the engine lock).
   - The download floor is 1000 Mbps. At 500 Mbps the 372 GB download alone takes about 100 minutes, and at 1000 Mbps it takes about 50 minutes.
-  - The startup estimate is 0.3 hours after the download ends, by the formula in CONTRIBUTING.md. It has not been measured for this build.
+  - The startup estimate is 0.3 hours after the download ends, by the formula in CONTRIBUTING.md. The boot test measured 44 seconds from the end of the download to ready.
   - The engine is single-developer research code, and its speed numbers come from one machine.
   - The repo also holds the V2 and V3 builds. This entry lists only the v4/ directory, the tokenizer files, the Q2_K draft file, the Engram index and the two Engram source shards. The revision is pinned because the repo changes often.

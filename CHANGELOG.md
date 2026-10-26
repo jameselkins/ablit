@@ -6,6 +6,8 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 
 ### Added
 
+- The `ds41-1017-xq-v4-uncensored` entry for the V4 build of the DeepSeek-V4.1-Flash 1017 model, boot-tested on Vast on 2026-10-26.
+- A pinned Xolotl `961d390` image digest in the engine lock. The image builds against llama.cpp `6050b467`, and the bootstrap passes `--tier-batch-pcie 0.25`.
 - Clore renting in `ablit up`, connected to the Clore driver.
 - The Lium marketplace backend, with keyless search, renting in `ablit up`, setup and `backends/lium.md`. Renting passed one paid round trip on 2026-10-26.
 - A pinned Xolotl `03be8a6` image digest in the engine lock, with the conversation cache set to 4096 MiB.
@@ -16,6 +18,7 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 
 ### Changed
 
+- The Xolotl entries serve 131072 tokens of context instead of 4096, so Claude Code's system prompt and tools fit.
 - CI runs the shell tests with macOS's bundled Bash and checks launch bundles from an installed wheel.
 - Mypy checks function bodies that have no type annotations.
 - `ablit up` stops waiting silently on a machine that does not answer SSH.

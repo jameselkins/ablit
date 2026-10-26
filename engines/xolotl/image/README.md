@@ -202,6 +202,6 @@ One finding the bootstrap author may want to test. At the pin, `Ds41Engram::open
 ## Known limits
 
 - The apt packages are not pinned to versions, so two builds of the same commit can differ in system packages. The base images and the Python versions are pinned. The Python packages are pinned by version only, with no hashes, because the package index could not be read while this folder was written.
-- The image has not been built. `docker build --check` reports no warnings, the shell scripts pass shellcheck, and the source fetch, file assembly and Python smoke test were run against simulated trees. The compile and the binary smoke test run for the first time in the workflow.
+- The 961d390 image was built by the workflow on 2026-10-26 (run 40363940524) for 86, 89 and 120a, and is 2.2 GB on disk. `ELF-ARCHS` in that image lists sm_75, sm_80, sm_90, sm_100, sm_103 and sm_121 as well as the three requested values. Nobody has checked where the extra code comes from, and the engine lock still admits only 86, 89 and 120. It booted the V4 1017 entry on an RTX PRO 5000 on 2026-10-26.
 - `pyproject.toml` force-includes the `engines` folder in the wheel, so these files, including this README and the Dockerfile, ship in the PyPI package. They add about 50 KB.
 - The mock server in the smoke test uses the generic Xolotl server. The DeepSeek wrapper (`serve_ds41.py`) needs the real tokenizer files, so the test covers it only through `--help`.
