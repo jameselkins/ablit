@@ -44,6 +44,17 @@ ONSTART = ("umask 077; mkdir -p /ablit/logs /ablit/stages; "
            "chmod 700 /root /root/.ssh; chmod 600 /root/.ssh/authorized_keys; fi; "
            "sleep 2; done) >/dev/null 2>&1 &")
 
+# Clore's autossh entrypoint did not start an SSH server in the llama.cpp image on 2026-10-26: the forwarded
+# port reset every connection. The order's command therefore installs sshd when it is missing and starts it
+# unless something already listens on port 22. Clore writes the order's key to authorized_keys. UNVERIFIED.
+CLORE_START = (ONSTART + " "
+               "if [ ! -x /usr/sbin/sshd ]; then "
+               "(apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssh-server) "
+               ">/ablit/logs/sshd-install.log 2>&1; fi; "
+               "mkdir -p /run/sshd; ssh-keygen -A >/dev/null 2>&1; "
+               "(ss -ltn 2>/dev/null | grep -q ':22 ' || /usr/sbin/sshd -e -o PasswordAuthentication=no "
+               "-o PermitRootLogin=prohibit-password)")
+
 
 def minimum_cap(offer, req, floor) -> float:
     # RunPod reports no speed per host. The planner ranks such an offer at the floor, so the reserve does too.
@@ -236,8 +247,9 @@ def _up(args, entry, opts, driver, environ, store, drivers=None):
                     store.save(record)
                     record["ssh_key_id"] = use_driver.register_ssh_key(public, use_creds)
                     store.save(record)
-                # Clore runs this as the order's `command`, with its own entrypoint providing sshd. UNVERIFIED.
-                boot = BootSpec(record["image"], {"runpod": RUNPOD_START, "lium": LIUM_START}.get(offer.backend, ONSTART),
+                # Clore runs CLORE_START as the order's `command`, under its own entrypoint.
+                starts = {"runpod": RUNPOD_START, "lium": LIUM_START, "clore": CLORE_START}
+                boot = BootSpec(record["image"], starts.get(offer.backend, ONSTART),
                                 math.ceil(offer.allocated_disk_gb), ssh_public_key=public)
                 try:
                     alloc = use_driver.create(offer, boot, record["run_id"], use_creds)
