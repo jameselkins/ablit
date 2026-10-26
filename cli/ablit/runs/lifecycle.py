@@ -5,13 +5,14 @@ from __future__ import annotations
 import math
 import subprocess
 import time
+from typing import Any
 
 import httpx
 
 from ablit.backends.base import Allocation, Inventory
 from ablit.backends.errors import BackendError
 from ablit.credentials import CredentialError, secret_delete, secret_get
-from ablit.redact import Redactor
+from ablit.redact import Redactor, strip_control
 from ablit.runs import RunError
 from ablit.runs.ssh import SSH
 from ablit.watchdog.ablit_watchdog import Config, reserve
@@ -89,9 +90,17 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
     if remote and record.get("ssh_host") and observation.state != "absent":
         try:
             probe = SSH(store, record).probe()
+            # The machine's owner controls this reply. A wrong shape must end in RunError, which keeps
+            # the run loop and its local cap check going, and never in an AttributeError.
+            if not isinstance(probe, dict):
+                raise RunError("The remote probe has an unknown shape.")
             heartbeat = probe.get("heartbeat")
+            if heartbeat and not isinstance(heartbeat, dict):
+                raise RunError("The remote heartbeat has an unknown shape.")
             if heartbeat:
-                at, spent = heartbeat.get("at"), heartbeat.get("spend")
+                # The type checks below vet both values, so mypy may treat them as Any.
+                at: Any = heartbeat.get("at")
+                spent: Any = heartbeat.get("spend")
                 if (type(at) not in (int, float) or type(spent) not in (int, float)
                         or not math.isfinite(at) or not math.isfinite(spent) or spent < 0
                         or heartbeat.get("action") not in ("continue", "destroy_cap", "destroy_stall")):
@@ -110,9 +119,11 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
             record["progress"] = clean_progress(probe.get("progress"))
             if "failed" in probe:
                 failed = probe["failed"]
+                if not isinstance(failed, dict):
+                    raise RunError("The remote failure record has an unknown shape.")
                 reason = str(failed.get("reason", "unknown"))
                 record["failure"] = {"reason": "speed_below_floor" if reason == "speed_below_floor" else "bootstrap_failed",
-                                     "detail": run_redactor(record, creds)(f"{reason}: {failed.get('detail', '')}")[:500]}
+                                     "detail": strip_control(run_redactor(record, creds)(f"{reason}: {failed.get('detail', '')}"))[:500]}
             if "ready" in probe:
                 record["ready"] = True
         except (RunError, OSError, ValueError, httpx.HTTPError, subprocess.SubprocessError):
@@ -232,7 +243,7 @@ def save_remote_logs(store, record: dict, creds) -> None:
         text = SSH(store, record).run("tail -n 300 /ablit/logs/*.log 2>/dev/null", timeout=20)
         path = store.root / "logs" / f"{record['run_id']}.log"
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.write_text(run_redactor(record, creds)(text.decode("utf-8", "replace")), encoding="utf-8")
+        path.write_text(strip_control(run_redactor(record, creds)(text.decode("utf-8", "replace"))), encoding="utf-8")
         path.chmod(0o600)
         print(f"{record['run_id']}: saved the machine's logs to {path}", flush=True)
     except Exception:
