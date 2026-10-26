@@ -122,7 +122,7 @@ Each marketplace has a note under `backends/` that lists every API call, its doc
 | Vast, see [backends/vast.md](../backends/vast.md) | Yes | Tested on a rented machine |
 | RunPod, see [backends/runpod.md](../backends/runpod.md) | Yes | Tested on Secure Cloud only |
 | Clore, see [backends/clore.md](../backends/clore.md) | Yes | Connected to `ablit up`, and untested on a rented machine |
-| Lium, see [backends/lium.md](../backends/lium.md) | Yes | Connected to `ablit up`, and untested on a rented machine |
+| Lium, see [backends/lium.md](../backends/lium.md) | Yes | Tested on a rented machine on 2026-10-26 |
 
 ## Engine templates
 

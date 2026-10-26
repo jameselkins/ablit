@@ -1,6 +1,6 @@
 # RunPod driver notes
 
-The driver is `cli/ablit/backends/runpod.py`. It searches with the GraphQL API and rents with REST API v2. **Renting is untested on a rented machine.** Nobody has rented a pod with it, so every rental call below follows RunPod's published schema and a synthetic test, and nothing more. The `rent` capability stays off until a paid round trip works.
+The driver is `cli/ablit/backends/runpod.py`. It searches with the GraphQL API and rents with REST API v2. **One paid round trip passed on Secure Cloud on 2026-10-22** (the 8B llama.cpp entry, about 40 tokens per second; record in `catalog/boot-tests/`). Every rental call below follows RunPod's published schema, a synthetic test and that paid test. A Community Cloud pod in an earlier run got no direct SSH address, so paid runs use Secure Cloud only.
 
 The search was checked on 2026-10-20 with anonymous, read-only GraphQL queries. The rental facts were read on 2026-10-21 from RunPod's OpenAPI schema and documentation, and no write call was sent to RunPod. Anything the sources do not say is marked UNVERIFIED.
 
