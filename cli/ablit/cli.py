@@ -419,9 +419,8 @@ def _main(
 
 
 def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> int:
-    from ablit.backends.errors import BackendError, CredentialsRejected, WorkloadRejected
+    from ablit.backends.errors import CredentialsRejected, WorkloadRejected
     from ablit.credentials import CredentialError
-    import httpx
     try:
         return _main(argv, backends=backends, environ=environ)
     except (CredentialError, CredentialsRejected) as error:
@@ -433,20 +432,26 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
     except RunError as error:
         print(f"ablit: {error}", file=sys.stderr)
         return exitcodes.USAGE
-    except (BackendError, httpx.HTTPError, OSError, ValueError) as error:
-        print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
-        # Only mention cleanup when a run could still be billing.
-        try:
-            active = [r for r in RunStore().all() if r["state"] != "billing_stopped_confirmed"]
-        except (RunError, OSError, ValueError):
-            active = [None]
-        if not active:
-            return 1
-        print("ablit: a run may still be billing. Check `ablit status --all` and run `ablit down <run>`.", file=sys.stderr)
-        return exitcodes.CLEANUP_PENDING
     except (EOFError, KeyboardInterrupt):
         print("Billing continues for existing rentals. Use `ablit status --all` and `ablit down <run>`.", file=sys.stderr)
         return exitcodes.USAGE
+    except Exception as error:
+        # BackendError, HTTP, OS and value errors land here, and so does any bug. Exit 1 promises
+        # that no run is billing, so check the runs before using it.
+        print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
+        return _unexpected_exit()
+
+
+def _unexpected_exit() -> int:
+    """Return 1 when no run could be billing, or else name the cleanup and return 7."""
+    try:
+        active = [r for r in RunStore().all() if r["state"] != "billing_stopped_confirmed"]
+    except Exception:
+        active = [None]
+    if not active:
+        return 1
+    print("ablit: a run may still be billing. Check `ablit status --all` and run `ablit down <run>`.", file=sys.stderr)
+    return exitcodes.CLEANUP_PENDING
 
 
 if __name__ == "__main__":
