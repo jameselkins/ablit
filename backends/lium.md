@@ -1,6 +1,6 @@
 # Lium notes
 
-The Lium driver is `cli/ablit/backends/lium.py`. It can search the marketplace, and it has calls to rent, watch, delete and check a pod. **Renting is untested on a rented machine.** Nobody has rented a Lium pod with it, so every rental call below follows Lium's documentation and its OpenAPI schema, plus a synthetic test, and nothing more. `ablit up --backends lium` calls this code, and Lium is in the default list when a Lium key exists. The driver's `rent` flag stays off until a paid test passes.
+The Lium driver is `cli/ablit/backends/lium.py`. It can search the marketplace, and it has calls to rent, watch, delete and check a pod. **One paid round trip passed on 2026-10-26** (the 8B llama.cpp entry, about 63 tokens per second; record in `catalog/boot-tests/`). Every rental call below follows Lium's documentation and its OpenAPI schema, plus a synthetic test, and the paid test. `ablit up --backends lium` calls this code, and Lium is in the default list when a Lium key exists.
 
 Every call below was read from Lium's public documentation (https://docs.lium.io) and its OpenAPI schema (https://lium.io/api/openapi.json) on 2026-10-23. Where those pages are silent, this page says so under "Gaps in the documentation", and the driver refuses what it cannot confirm. The driver was written from those pages only. The Lium SDK source was not read, and no SDK code was copied. The SDK (https://github.com/Datura-ai/lium, PyPI package `lium.io`) is under the MIT license. The OpenAPI schema also names the MIT license.
 
@@ -34,7 +34,7 @@ Base URL `https://lium.io/api`. The key goes in a header named `X-API-Key`, with
 |---|---|---|
 | `GET /public/v1/nodes` | Search and requote. No key, and the driver sends none. | https://docs.lium.io/developers/public-nodes-feed |
 | `GET /users/me` | The one read-only call in `ablit setup lium`. | https://docs.lium.io/developers/authentication (verify a key) |
-| `POST /templates` | Makes a private one-time template for the run, with the image digest, port 22, the public key and the start command. | https://docs.lium.io/pod-users/templates and `CustomTemplateRequest` in https://lium.io/api/openapi.json |
+| `POST /templates` | Makes a private one-time template for the run, with the image digest, port 22, the entrypoint override and the start command. The run's public key goes in the rent call, not the template. | https://docs.lium.io/pod-users/templates and `CustomTemplateRequest` in https://lium.io/api/openapi.json |
 | `POST /executors/{id}/rent` | Rents the node. The body is `pod_name`, `template_id`, `user_public_key`, `gpu_count` and `termination_hours`. The answer is `{"success": true, "pod_id": "<uuid>"}`. | https://docs.lium.io/developers/quickstart and `RentExecutorRequest` in the schema |
 | `GET /pods` | Finds the run's pod by name, reads state, price, spend and the SSH command, and checks that billing stopped. The list has no pages. | `PodListItemResponse` in the schema |
 | `DELETE /pods/{id}` | Deletes a pod. A 404 counts as done. | The schema, and https://docs.lium.io/developers/quickstart |
@@ -53,7 +53,7 @@ Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU
 The rent call takes the image only through a template, so a run makes two calls. Neither one is sent twice.
 
 1. Saves in the run record, before it sends anything, that a create was sent, with the node ID, the pod name and the termination hours.
-2. Creates the private one-time template named `ablit-<run>`. `docker_image` is the repository and `docker_image_digest` is the `sha256:` digest, so the image is pinned. If this step fails for any reason, no rent was sent, so the create counts as refused.
+2. Creates the private one-time template named `ablit-<run>`. `docker_image` is the repository and `docker_image_digest` is the `sha256:` digest, so the image is pinned. `entrypoint` is `/bin/sleep` and `startup_commands` is `infinity`, with an empty environment, because Lium refuses shell metacharacters in the start command and in environment values (HTTP 400, "Malicious startup command", checked on 2026-10-23). The entrypoint override matters: the engine images set their own entrypoint (llama.cpp runs `/app/llama-server`), which would consume a plain `sleep infinity` start command as its arguments and exit. A paid rent on 2026-10-26 failed exactly that way (`pod-create.failed`, "the image's default command exiting right after start") before the override existed. If this step fails for any reason, no rent was sent, so the create counts as refused.
 3. Sends the rent once. The pod name is `ablit-<run>`, which is the run label. The call also carries `Idempotency-Key: ablit-<run>`, which makes Lium answer a repeat of the call with the first pod. ablit never repeats a create anyway.
 4. Reads `pod_id` from the answer. If the answer has another shape, the driver does not guess, and the pod is found by its name.
 
@@ -77,7 +77,7 @@ These are things the documentation does not say. The driver either refuses them,
 
 1. Whether the node `id` in the public feed is the same ID that the rent path takes. The feed calls it a stable node ID and the quickstart takes an `executor_uuid` from `GET /executors`. Both are UUIDs, and the driver assumes they match.
 2. How a digest in a template is read. The schema has `docker_image_digest`, and the run record page says a template that pins a digest shows `@sha256:...`. The driver sends `sha256:<hex>` with no tag. Whether the tag may be left out is not documented.
-3. How Lium puts the key in `user_public_key` into a custom image, and whether the engine images (llama.cpp CUDA, Xolotl) run an SSH server. The template page says to include port 22 and a start command that keeps the container running. The start script appends the key from `PUBLIC_KEY`, installs sshd if it is missing and starts it unless port 22 is already in use. It is UNVERIFIED on a rented pod.
+3. How Lium puts the key in `user_public_key` into a custom image, and whether the engine images (llama.cpp CUDA, Xolotl) run an SSH server. The template page says to include port 22 and a start command that keeps the container running. Lium refuses shell metacharacters in the start command and in environment values, so the driver sends `entrypoint: /bin/sleep` with `startup_commands: infinity` and an empty environment, and relies on Lium to install the rent call's public key. Neither engine image runs sshd (the Xolotl Dockerfile notes Vast adds sshd itself). Lium's key install and SSH worked against the `sleep`-only container in the paid round trip on 2026-10-26. The first attempt that day failed before the entrypoint override existed (`pod-create.failed`, "the image's default command exiting right after start"), and that `CREATION_FAILED` pod was not billed.
 4. What `skip_add_agent_ssh_key` means. ablit leaves it unset, so Lium's default applies.
 5. Which key scope can create and delete templates. The key page says `manage` covers changing or deleting templates, so a key with only `read` and `rent` may be refused at the template step. A refusal there ends the run with no pod. The default key holds `read`, `rent` and `manage`.
 6. Whether `price` on a pod is the hourly price of the whole pod. The billing page says the pod price is the per GPU price times the GPUs, and `pending_price` is described as hourly USD.
@@ -102,5 +102,5 @@ These are things the documentation does not say. The driver either refuses them,
 
 ## Not yet done
 
-- A paid round trip. Until one works, the `rent` capability stays off.
 - Volumes, backups and multi node clusters.
+- `marketplace_deadline` stays off until a test shows `termination_hours` ends a pod.
