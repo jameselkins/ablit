@@ -69,7 +69,7 @@ def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, 
     files = sorted(p.name for p in out.glob("*.json"))
     assert "index.json" in files and "llama31-8b-abliterated-q4km.json" in files
     index = json.loads((out / "index.json").read_text())
-    assert len(index) == 7
+    assert len(index) == 8
     plan = json.loads((out / "llama31-8b-abliterated-q4km.json").read_text())
     assert plan["schema"] == 1
     log = [json.loads(line) for line in (out / "requests.log").read_text().splitlines()]
