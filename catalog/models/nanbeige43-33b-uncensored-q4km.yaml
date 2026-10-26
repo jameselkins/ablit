@@ -1,0 +1,38 @@
+# Seed entry. Status is boot-tested: it ran on rented Vast and Lium machines on 2026-10-26.
+# The hardware floors below are derived figures. Only the tested machines are proven.
+schema: 1
+id: nanbeige43-33b-uncensored-q4km
+display_name: Nanbeige 4.3 33B uncensored, Q4_K_M GGUF (llama.cpp)
+source:
+  repo: dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF
+  revision: 48e83e05611ef35d343ae5232f0078d85ff516e3
+  license: other
+  base_model: Nanbeige/Nanbeige4.3-33B
+  modification: abliterated
+artifacts:
+  - {path: Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf, bytes: 20051495968, sha256: 1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264, role: weight}
+staging:
+  - {step: download, artifacts: all}
+profile:
+  engine: llamacpp
+  engine_lock: llamacpp-server-cuda
+  gpu: {vendor: nvidia, count: 1, vram_gb_each: 32, compute_capability_min: null}
+  host_ram_gb: 32
+  storage: {random_read_required: false}
+  context_tokens: 32768
+  concurrency: 1
+  port: 8080
+  startup_hours_estimate: 0.25
+  min_download_mbps: 500
+sources:
+  - {url: "https://huggingface.co/api/models/dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF/revision/48e83e05611ef35d343ae5232f0078d85ff516e3?blobs=true", covers: [profile.gpu.count, profile.gpu.vram_gb_each], note: "VRAM is derived from the 20.05 GB file plus key-value cache arithmetic for 52 layers with 8 KV heads of 128 at 32768 tokens in F16, about 6.8 GB. The arithmetic has not been tested."}
+  - {url: "https://github.com/ggml-org/llama.cpp/blob/dd002b91f583af0b80140f9a140dc04856bfc2e0/tools/server/README.md", covers: [profile.port], note: Default server port in the llama.cpp server README at the pinned commit.}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: No publisher states these. They are defaults or estimates chosen by ablit.}
+  - https://huggingface.co/dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF/blob/48e83e05611ef35d343ae5232f0078d85ff516e3/README.md
+tests:
+  - {backend: vast, date: "2026-10-26", log: boot-tests/nanbeige43-33b-uncensored-q4km-vast-2026-10-26.md}
+  - {backend: lium, date: "2026-10-26", log: boot-tests/nanbeige43-33b-uncensored-q4km-lium-2026-10-26.md}
+status: boot-tested
+notes:
+  - A dense 33B Llama-architecture model with a 512K context in the source. ablit sets 32768 tokens so the model and its cache fit one 32 GB card.
+  - The license reserves hosted inference service rights. Personal and internal use are allowed. Read it before you serve anyone else.
