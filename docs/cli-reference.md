@@ -38,7 +38,11 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `--catalog PATH` | bundled catalog | Local catalog for testing. Paid launch from it also needs `--untested`. |
 | `--json` | off | Versioned machine-readable output |
 
-`up` also takes `--yes`, which approves the quote without the prompt so that an agent or a script can rent, `--another`, which allows a second active run of the same model, and `--report`, which is accepted and recorded in the run file. `--report` does not write a log yet, so a boot test record is written by hand from the output of `ablit logs`.
+`up` also takes `--yes`, which approves the quote without the prompt so that an agent or a script can rent, and `--another`, which allows a second active run of the same model.
+
+The `--report` flag writes a JSON report when the endpoint is ready. It includes `image_digest`, `build_sha256` and `bootstrap_sha256`, which every new run records when it is created. ablit preserves the bootstrap hash on resume and checks the bundle's script against it before upload. A mismatch stops the run and starts cleanup. Old runs without a recorded bootstrap hash report `null` for that field and cannot approve the current build.
+
+On macOS, the report is saved at `~/Library/Application Support/ablit/reports/<run>.json`. On Linux, it is saved at `$XDG_STATE_HOME/ablit/reports/<run>.json`, or `~/.local/state/ablit/reports/<run>.json` when `XDG_STATE_HOME` is unset. The report does not include logs, so a boot test record is written by hand from the output of `ablit logs`. See [catalog-format.md](catalog-format.md#status-and-launch-rules) for the test record fields.
 
 Without `--another`, `up` refuses to rent when the model already has an active run, and it says which run, on which marketplace and in which state. It resumes the run instead, and says so on standard error, only when all of these hold:
 

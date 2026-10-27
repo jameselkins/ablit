@@ -1,4 +1,4 @@
-# Seed entry. Status is boot-tested: it booted on Vast on 2026-10-21, on a 98 GB GPU.
+# Status is unverified: historical boot tests used older engine images and profiles.
 # The hardware floors below are source or derived figures, and the 24 GB GPU floor has not been tested.
 # Sizes and hashes were filled in by tools/verify_entry.py --fill.
 schema: 1
@@ -63,8 +63,9 @@ sources:
   - https://huggingface.co/kaushikvira/DeepSeek-V4.1-Flash-1017-GSQ-agentic-strata/blob/7aa29158172112fcdccb4c519eb31fdc4bb9238c/README.md
 tests:
   - {backend: vast, date: "2026-10-21", log: boot-tests/ds41-september-gsq-uncensored-2026-10-21.md}
-status: boot-tested
+status: unverified
 notes:
+  - The current engine image and 131072-token profile are not yet tested for this entry. Earlier boot tests are kept as history and do not approve the current build.
   - The entry booted and served on Vast on 2026-10-21, on a 98 GB GPU with 191 GB of RAM or more. The 24 GB GPU floor is not yet tested. It comes from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
   - The README says 16 GB of VRAM should load but is untested, so the floor here stays at 24 GB.
   - Peak disk comes from the staging list. It assumes the weight parts are deleted as they are joined, and the join step says it streams, because the bootstrap appends one part at a time. The bootstrap adds a margin of one weight part (10.7 GB) to the disk it asks for, because the join appends a part before it deletes it.

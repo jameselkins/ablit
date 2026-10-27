@@ -55,9 +55,27 @@ notes: []                          # where each figure came from
 
 ## Status and launch rules
 
-An entry is `unverified` once CI passes and a maintainer merges it. It becomes `boot-tested` when a `tests` record points to a log from a real run of that exact profile. The logs are in `catalog/boot-tests/`.
+An entry is `unverified` once CI passes and a maintainer merges it. It becomes `boot-tested` when a `tests` record points to a log from a real run of its current build and profile. The logs are in `catalog/boot-tests/`.
 
-Launching an `unverified` entry needs `--untested`, and the quote then says "Nobody has booted this entry yet. The engine may fail to start, and you pay for the time until ablit destroys the run." A `removed` entry cannot be launched. Before renting, ablit checks that every artifact is still public at its pinned revision.
+Each test record has `backend`, `date` and `log`, and a current test also needs `image_digest`, `build_sha256` and `bootstrap_sha256`:
+
+```yaml
+tests:
+  - backend: vast
+    date: "2026-10-27"
+    log: boot-tests/<id>-2026-10-27.md
+    image_digest: "sha256:<64 hex characters>"
+    build_sha256: "<64 hex characters>"
+    bootstrap_sha256: "<64 hex characters>"
+```
+
+The `image_digest` must match the current engine lock's digest. The `build_sha256` identifies the entry's `source`, `artifacts`, `staging` and `profile`, including its engine lock name. The `bootstrap_sha256` hashes `engines/<engine>/bootstrap.sh`, so a change to serving defaults in the script invalidates the test even when the image is unchanged.
+
+Every new run records all three hashes when it is created. ablit preserves the bootstrap hash on resume and checks the bundle's script against it before upload. A mismatch stops the run and starts cleanup. `ablit up --report` includes the recorded hashes in its JSON report. Copy the hashes from the tested run, rather than from an entry that may have changed since the run started. Old runs without a recorded bootstrap hash report `null` for that field and cannot approve the current build.
+
+Validation refuses `status: boot-tested` unless at least one record matches all three hashes. Changing a model revision, artifact, staging step, profile, engine image or bootstrap script needs a new test. Keep historical records and set the entry to `unverified` until the new test passes. Descriptions, notes and source citations can change without invalidating a test.
+
+Launching an `unverified` entry needs `--untested`, and the quote then says "Nobody has booted this exact build and profile yet. The engine may fail to start, and you pay for the time until ablit destroys the run." A `removed` entry cannot be launched. Before renting, ablit checks that every artifact is still public at its pinned revision.
 
 ## Checks on contributions
 

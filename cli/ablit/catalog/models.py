@@ -8,6 +8,9 @@ filled in yet.
 
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -98,3 +101,22 @@ class Entry(_Model):
 
     def artifact_revision(self, artifact: Artifact) -> str:
         return artifact.revision or self.source.revision
+
+
+def build_sha256(entry: Entry) -> str:
+    """Identify the model files, staging steps and exact serving profile.
+
+    Descriptions, sources and test history can change without changing the
+    build. Pydantic normalizes numeric types before the canonical encoding.
+    The engine image digest is recorded and checked separately.
+    """
+    data = entry.model_dump(include={"source", "artifacts", "staging", "profile"}, mode="json")
+    payload = json.dumps(data, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def bootstrap_sha256(entry: Entry, root: Path | None) -> str:
+    """Identify serving defaults that live outside the pinned engine image."""
+    if root is None:
+        raise ValueError("The engine bootstrap was not found next to this package.")
+    return hashlib.sha256((root / "engines" / entry.profile.engine / "bootstrap.sh").read_bytes()).hexdigest()

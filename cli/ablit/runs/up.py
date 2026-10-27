@@ -20,6 +20,7 @@ from ablit.backends.lium import LIUM_START
 from ablit.backends.runpod import RUNPOD_START
 from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
 from ablit.catalog.loader import repo_root
+from ablit.catalog.models import bootstrap_sha256, build_sha256
 from ablit.credentials import CredentialError, credentials, secret_set
 from ablit.plan import gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
@@ -74,6 +75,9 @@ def make_intent(store, entry, offer, report, args, lock) -> dict:
         "backend": offer.backend,
         "quote": report_json(report), "offer": asdict(offer), "cap_usd": args.max_spend,
         "entry": entry.model_dump(), "catalog_sha256": catalog_digest,
+        "build_sha256": build_sha256(entry),
+        "image_digest": lock["digest"],
+        "bootstrap_sha256": bootstrap_sha256(entry, root),
         "image": lock["image"] + "@" + lock["digest"],
         # Whether the engine answers /v1/messages, which decides the Claude Code block.
         "anthropic_messages": bool(lock.get("anthropic_messages")),

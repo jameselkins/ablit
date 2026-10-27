@@ -1,93 +1,102 @@
 # ablit
 
-ablit is a command-line tool that finds the cheapest rented GPU machine that can run an open-weight language model, shows the full cost, and starts the model on your own marketplace account. When the machine is ready, ablit gives you a local OpenAI-compatible endpoint, and `ablit down` destroys the machine and confirms that billing has stopped.
+ablit runs abliterated and uncensored language models on rented GPUs, using your own marketplace account. Abliterated models are edited to reduce refusals. ablit finds the cheapest offer that meets a model's requirements and gives you a local OpenAI-compatible API through an SSH tunnel.
 
-It is built for abliterated and uncensored models, which are models edited to remove their refusals. ablit runs on your computer, so your marketplace key stays with you, and ablit runs no service, holds no money and relays no inference traffic.
+The quote includes the model download, startup time, disk and transfer charges. Model revisions and engine images are pinned, and `ablit down` destroys the rental and confirms that billing has stopped.
 
-Status: alpha. Five models have run end to end on rented machines, and the table in the Status section lists what was tested and when.
-
-## DeepSeek-V4.1-Flash 1017 on one GPU works
-
-On 2026-10-26, ablit rented one RTX PRO 5000 (48 GB) with 96 GB of RAM on Vast and ran `ds41-1017-xq-v4-uncensored`, an uncensored quant of the 552B DeepSeek-V4.1-Flash 1017 model, on the Xolotl engine. The machine was ready 25 minutes after the rental, including the 372 GB download. It wrote 28 to 36 tokens per second, read a 20,000-token prompt at about 500 tokens per second, and returned Anthropic `tool_use` blocks. The whole test cost about $0.74. The older V3 and September builds of the same model also ran, on 32 GB and 98 GB cards. None has been tested on a 24 GB card yet, which is the smallest card the engine author reports.
-
-```
-ablit setup vast
-ablit up ds41-1017-xq-v4-uncensored --max-spend 4
-```
-
-### Use it from Claude Code
-
-The Xolotl entries serve 131072 tokens of context, which leaves room for Claude Code's system prompt and tools. The server answers the Anthropic Messages API at `/v1/messages`, including tool use. With the run up, point Claude Code at the tunnel:
-
-```
-export ANTHROPIC_BASE_URL=http://127.0.0.1:<local port>
-export ANTHROPIC_AUTH_TOKEN="$(ablit status <run> --show-key --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["runs"][0]["endpoint_key"])')"
-export ANTHROPIC_MODEL=ds41-1017-xq-v4-uncensored
-export ANTHROPIC_DEFAULT_HAIKU_MODEL=ds41-1017-xq-v4-uncensored
-claude
-```
-
-`ablit up` prints the local port, and `ablit status --json` shows it as `local_port`. A request longer than 131072 tokens gets HTTP 400, so compact the conversation before it grows that long. With thinking on, each new turn reads the whole conversation again, which took about 33 seconds on a 20,000-token conversation in the boot test. With thinking off, the engine reuses the conversation and a short turn took 3 to 5 seconds. The boot test checked the Messages API and tool use with plain requests, and it did not run a Claude Code session.
-
-## Why run your own model instead of a hosted one
-
-Several hosted services already sell uncensored models through an API, and for light use they are cheaper and simpler than ablit. Some of them also ask who you are before you can use the model, e.g., Morph requires KYC and a stated purpose for its abliterated DeepSeek. For example, Refuseless serves DeepSeek V4.1 Flash 1017 abliterated for $0.30 per million input tokens and $0.85 per million output tokens, while ablit's cheapest one-GPU machine for the 1017 model cost $0.67 an hour on 2026-10-22, before the download time. One person sending requests one after another would rarely spend $0.67 an hour on tokens.
-
-ablit is for cases where you want control over the model more than the lowest price. On a hosted service, the provider picks the build, can change or remove the model, and sets its own logging rules, which you can read but not check. With ablit, you pick the exact build by its Hugging Face revision, the weights and logs sit on a machine you rented, and nobody can swap the model while you use it. The cost is also fixed by the hour, so heavy use does not grow the bill.
-
-| Service | What it sells | Logging, from its own pages | Can the provider change the model |
-|---|---|---|---|
-| [Refuseless](https://refuseless.com) | API for abliterated GLM 5.3 and DeepSeek V4.1 Flash 1017, priced per token ([pricing](https://refuseless.com/pricing)) | Prompts are "never saved" ([privacy](https://refuseless.com/privacy)) | Yes ([terms](https://refuseless.com/terms)) |
-| [abliteration.ai](https://abliteration.ai) | API and chat, per token or $20 to $200 a month ([pricing](https://abliteration.ai/pricing)) | Content is not stored, and token counts and timestamps are kept ([data handling](https://abliteration.ai/data-handling)) | Yes ([terms](https://abliteration.ai/terms-of-service)) |
-| [Experiential Labs](https://experientiallabs.ai/) | A model gateway with uncensored GLM-5.3 Flash and DeepSeek V4.1 Flash, per token ([uncensored](https://experientiallabs.ai/uncensored)) | The DeepSeek model is "not zero retention", and the standard service keeps prompts for 30 days ([privacy](https://experientiallabs.ai/privacy)) | Yes ([terms](https://experientiallabs.ai/terms)) |
-| [Morph](https://morphllm.com) | DeepSeek V4.1 Flash 1017 Abliterated through its model API, open only to customers who pass KYC and explain their purpose ([announcement](https://x.com/morphllm/status/2113174908167712865)). Its docs list the regular 1017 model at $0.12 in and $0.80 out per million tokens ([docs](https://docs.morphllm.com/llms.txt)), and the abliterated price is not listed. | Not checked | Not checked |
-| [Lyber](https://www.lyber.ai/) | One OpenAI-compatible API that routes to five uncensored or abliterated models (Qwen 3.8 27B, DeepSeek V4.1 Flash, GLM 5.3 Full, GLM 5.3 Flash and Kimi K3), on prepaid per-token credit, listed from $0.25 to $5.00 per million input tokens and $1.00 to $15.00 per million output tokens. It is in early access, and you request access ([models and pricing](https://www.lyber.ai/)). | Not checked | Not checked |
-| ablit | Rents a machine on your own Vast or RunPod account and runs a pinned build | The engine runs on the rented machine with its text log turned off, and ablit has no telemetry | No, the build is pinned by revision and hash |
-
-The services' details come from their own pages, read on 2026-10-22 (Lyber on 2026-10-23), and ablit has not tested them. A rented machine is not private from the marketplace or the machine's owner, because Vast and RunPod hosts run the hardware and can see what runs on it. A 552B model on one card is also slower than a hosted model on a large cluster.
-
-## Why Xolotl, and what it is good for
-
-DeepSeek-V4.1-Flash has 552B parameters, so the usual way to run it is a node with 8 GPUs of 80 GB or more. Such nodes are few and expensive. On 2026-10-22, `ablit plan` found 13 offers across Vast, RunPod and Clore that could run the full FP8 model, and the cheapest cost $10.81 an hour, or about $287 for 24 hours. For the one-GPU Xolotl build, it found 26 offers, and the cheapest cost $0.67 an hour, or about $17 for 24 hours.
-
-[Xolotl](https://github.com/Indras-Mirror/Xolotl) is a research engine by one developer that runs the model on one consumer GPU with about 90 GB of RAM. The model is a mixture of experts, so each token uses only a few of its experts. Xolotl keeps the most used experts in GPU memory and the rest in RAM and on disk, and it loads the others when a token needs them. Its quant files load only in Xolotl.
-
-Xolotl fits when you want the large DeepSeek model and an 8-GPU node is too expensive or not available, and when about 30 to 50 tokens per second for one user is enough. ablit pins Xolotl commit 961d390 (2026-10-26), which loads the V4 build, keeps the expert cache warm between turns, and serves 131072 tokens of context in the catalog entries. It does not fit a service with many users. The pinned engine commit has batch slots that let one engine serve several requests at once, but ablit leaves them off, because each slot uses more GPU memory and ablit has not tested them. The engine is new, it has one main author, and its speed figures come from a few machines, so treat it as research code.
+Status: alpha. Three catalog entries have [boot test records](catalog/boot-tests/) that match their current build, profile, engine image and bootstrap script. Renting has been tested on Vast, RunPod Secure Cloud and Lium. Clore rentals remain untested.
 
 ## Quickstart
 
-ablit needs Python 3.11 or newer and OpenSSH.
+You need Python 3.11 or newer, OpenSSH and [uv](https://docs.astral.sh/uv/). Install ablit from [PyPI](https://pypi.org/project/ablit/):
 
-```
+```sh
 uv tool install ablit
-ablit plan llama31-8b-abliterated-q4km
+```
+
+To work from a local checkout, use `uv tool install --editable .`.
+
+First, preview a quote for the small Llama 3.1 8B model. Planning is free and needs no account.
+
+```sh
+ablit plan llama31-8b-abliterated-q4km --backends vast
+```
+
+The quote shows the chosen offer and the next four, including totals for 1 hour, 24 hours and 7 days. Omit `--backends vast` to compare all four marketplaces.
+
+Next, read [how the spend cap works](#how-the-spend-cap-works), then enter your Vast API key and start the model:
+
+```sh
 ablit setup vast
-ablit up llama31-8b-abliterated-q4km --max-spend 2
+ablit up llama31-8b-abliterated-q4km --backends vast --max-spend 2
+```
+
+Setup accepts the key with hidden input and can save it in your OS keyring. `up` shows a quote and asks you to type `rent` before spending money. The required `--max-spend 2` sets a $2 budget, including setup.
+
+Keep `up` running. When the model is ready, it prints a local endpoint and a curl example, and it keeps the tunnel and local spending check open. Use another terminal to check the run or stop billing:
+
+```sh
+ablit status
 ablit down
 ```
 
-First, `ablit plan` is free and needs no account. It prints the cheapest machine that meets the model's needs and the next four, with the full cost for 1 hour, 24 hours and 7 days. Second, `ablit setup vast` takes your Vast API key with hidden input, tests it, and can save it in the OS keyring. Third, `ablit up` shows the quote, asks you to type `rent`, rents the machine, starts the engine, and prints a local endpoint. Last, `ablit down` destroys the machine and confirms that billing has stopped.
+Closing `up` or pressing Ctrl-C closes the tunnel, and billing continues. Reconnect with `ablit tunnel`, or stop the rental with `ablit down`. If `down` exits with code 7, cleanup is pending; run it again until it exits 0.
 
-`--max-spend 2` is a cap of 2 US dollars, and it is required. Entries marked `unverified` also need `--untested`. Read the spend cap notice below before you rent.
+## Choose a model
 
-Example output from `ablit plan llama31-8b-abliterated-q4km` on 2026-10-21, cut to the first lines. Prices change from minute to minute.
+Start with the 8B entry to check the rental workflow. Nanbeige and DeepSeek have enough context for a coding agent's longer prompts.
 
+| Catalog entry | GPU and host RAM floors | Download | Context |
+|---|---|---|---|
+| `llama31-8b-abliterated-q4km` | One 8 GB GPU, 16 GB RAM | 4.9 GB | 4,096 tokens |
+| `nanbeige43-33b-uncensored-q4km` | One 32 GB GPU, 32 GB RAM | 20.1 GB | 32,768 tokens |
+| `ds41-1017-xq-v4-uncensored` | One 24 GB GPU, 90 GB RAM | 371.7 GB | 131,072 tokens |
+
+All three entries have boot tests, but only the machines in their records have been tested. The 8 GB Llama floor and the 24 GB DeepSeek floor remain untested. Nanbeige's license reserves hosted inference rights, so read the model license before serving other people.
+
+On 2026-10-26, the 552B DeepSeek V4 entry ran on one 48 GB RTX PRO 5000 with 96 GB of RAM. It was ready in about 25 minutes, including the download, and the engine generated 28 to 36 tokens per second. The run's estimated cost was $0.74. The [test record](catalog/boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md) includes prompt processing, caching and tool use results. Prices and speeds depend on the machine.
+
+DeepSeek uses [Xolotl](https://github.com/Indras-Mirror/Xolotl), a research engine that keeps experts across GPU memory, RAM and disk. Llama and Nanbeige use [llama.cpp](https://github.com/ggml-org/llama.cpp). Both engines are configured for one request at a time.
+
+Inspect a build's requirements, sources and license before renting:
+
+```sh
+ablit catalog list
+ablit catalog show nanbeige43-33b-uncensored-q4km
 ```
-Chosen offer
-  GPU:         RTX 3060 x1, 12.3 GB VRAM each
-  Host RAM:    31.5 GB
-  Price:       $0.0775 per hour all-in (GPU only: $0.0733)
-  Totals, including download charges and the hours spent downloading and starting:
-    1 hour         $0.14
-    24 hours       $1.92
-    7 days         $13.08
-```
 
-## How the spend cap works
+The [full catalog](catalog/models/) also includes earlier DeepSeek builds and unverified Ornith entries. The September and V3 DeepSeek entries are `unverified` because their test records cover older engine images. An `unverified` entry needs `--untested` to launch. The vLLM entries can be planned, but launches are blocked until the engine image is pinned and tested.
 
-The following notice is printed on every quote, in this file, and in `ablit up --help`.
+Use `--gpu 5090` or `--exclude-gpu 5090` with both `plan` and `up` to control which GPU models qualify. The [command reference](docs/cli-reference.md) covers the other filters.
 
-```
+## Use it with Claude Code
+
+When a llama.cpp or Xolotl endpoint is ready, `ablit up` prints the shell exports for Claude Code. Paste the block into another terminal, then run `claude`. The block sets the base URL and all model aliases, and reads the endpoint key from your keyring with `ablit status <run> --key-only`.
+
+The 8B entry's 4,096-token context is too small for Claude Code's system prompt and tools, which take about 15,000 to 25,000 tokens. Use an entry with more context, such as Nanbeige or DeepSeek V4. Streaming and tool calls through `/v1/messages` passed direct API tests; a complete Claude Code session has not been tested.
+
+DeepSeek's follow-up turns took 30 to 35 seconds to reread a 20,000-token prompt with thinking enabled. With thinking disabled in direct API requests, the engine reused the conversation and answered short follow-ups in 3 to 5 seconds. See the [test record](catalog/boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md) for the settings and measurements.
+
+## Marketplaces and spending checks
+
+`plan` searches all four marketplaces without a key. By default, `up` searches the marketplaces where you have configured credentials. Use `--backends vast`, `--backends runpod`, `--backends clore` or `--backends lium` to choose one explicitly, and `ablit setup <backend>` to save its key.
+
+| Marketplace | Rental status | How the spend cap is enforced |
+|---|---|---|
+| [Vast.ai](https://vast.ai) | Tested | A watchdog on the machine uses a key limited to that machine, and ablit also checks locally. |
+| [RunPod](https://www.runpod.io) | Tested on Secure Cloud | The cap relies on the local check. Paid runs use Secure Cloud because Community Cloud may provide no public IP for SSH. |
+| [Lium](https://lium.io) | Tested | The cap relies on the local check. A provider deletion deadline, set in whole hours from the cap, provides an additional limit and remains untested. |
+| [Clore.ai](https://clore.ai) | Untested | The cap relies on the local check. If your computer is off, the order continues until the account balance runs out. |
+
+The local check runs while `up`, `tunnel` or `status --watch` is attached. RunPod, Lium and Clore do not receive your account key on the rented machine. Their [backend notes](backends/) explain the limits and test coverage.
+
+### How the spend cap works
+
+Every paid launch requires `--max-spend <USD>`. If the budget cannot cover the download, startup, ten minutes of use and the watchdog reserve, ablit refuses to rent and shows the minimum budget.
+
+The quote prints the following notice, with the marketplace details above added where applicable:
+
+```text
 How the spend cap works: a watchdog on the rented machine destroys it when
 spend reaches $<cap>, and ablit checks too while it is running on this computer.
 If the rented machine freezes or loses its network while this computer is off
@@ -96,105 +105,35 @@ run `ablit down` or the rental ends. Check `ablit status` if you leave a run
 unattended.
 ```
 
-The cap counts compute, disk, the model download and transfer charges. If the cap cannot cover the download, the startup estimate and 10 minutes of use, `ablit up` exits with code 5 and shows the smallest cap that would work. RunPod and Clore have no API keys limited to one machine, so on those marketplaces only the check on your computer enforces the cap. `ablit plan` searches Clore without a key, and `ablit up` includes Clore only when you have saved a Clore key.
-
-## Status
-
-| What | Tested on a rented machine |
-|---|---|
-| `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Vast on 2026-10-21 (about 65 tokens per second) and on RunPod Secure Cloud on 2026-10-22 (about 40 tokens per second) |
-| `ds41-september-gsq-uncensored` on Xolotl | Yes, on Vast on 2026-10-21, on a 98 GB card |
-| `ds41-1017-xq-v3-uncensored` on Xolotl | Yes, on Vast on 2026-10-22 on a 32 GB RTX 5090 (about 33 tokens per second), and on 2026-10-23 with the newer engine pin on a 98 GB card (about 52 tokens per second) |
-| `ds41-1017-xq-v4-uncensored` on Xolotl | Yes, on Vast on 2026-10-26 on a 48 GB RTX PRO 5000 with 96 GB of RAM, with Xolotl 961d390 and 131072 tokens of context (28 to 36 tokens per second, prefill about 500 tokens per second on 20,000 tokens, tool use through `/v1/messages`) |
-| The watchdog destroying a run at its cap, and recovery of a lost create response | Yes, on Vast on 2026-10-21 |
-| `llama31-8b-abliterated-q4km` on llama.cpp | Yes, on Lium on 2026-10-26 (about 63 tokens per second on an RTX 3090) |
-| `nanbeige43-33b-uncensored-q4km` on llama.cpp | Yes, on Vast and Lium on 2026-10-26 (about 70 tokens per second on an RTX 5090, 34 on an L40 and 30 on a V100). Two tries on a RunPod A40 never got an SSH address. |
-| vLLM entries, spot machines, public endpoints and Clore rentals | No |
-
-The records are in `catalog/boot-tests/`. The two vLLM entries can be planned, and `ablit up` refuses them until their image is pinned and tested.
-
-## Marketplaces
-
-| Marketplace | Search | Renting with `ablit up` |
-|---|---|---|
-| [Vast.ai](https://vast.ai) | Yes, without a key | Yes, tested. A watchdog key limited to the one machine enforces the cap on the machine. |
-| [RunPod](https://www.runpod.io) | Yes, without a key | Yes, tested on Secure Cloud. Community Cloud pods may get no public IP for SSH, so paid runs use Secure Cloud only. |
-| [Clore.ai](https://clore.ai) | Yes | Connected with `--backends clore`, and untested on a rented machine. Clore has no scoped keys, and the marketplace does not say which servers allow SSH, so ablit cancels a server that has no SSH port at the start deadline and skips it after that. |
-| [Lium](https://lium.io) | Yes, without a key | Connected with `--backends lium`, and tested on a rented machine on 2026-10-26. Keys made with your key cannot be limited to one machine, so the cap relies on the check on this computer and on Lium deleting the pod after a whole number of hours. Notes and sources are in `backends/lium.md`. |
-
-## Catalog
-
-The catalog is a folder of YAML files in `catalog/models/`, one per model build, checked by `catalog/schema/v1.json`. It keeps the best build for each runtime and hardware tier, not every build that exists. The catalog data is released under CC0-1.0, and each entry records the license of the model it describes.
-
-| Entry | Runtime | Hardware | Status | Why it is here |
-|---|---|---|---|---|
-| `llama31-8b-abliterated-q4km` | llama.cpp | One small GPU | boot-tested | A cheap abliterated model for a first run |
-| `ds41-september-gsq-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | DeepSeek-V4.1-Flash on one GPU. The author's tests give it the best agentic scores of the one-GPU builds. |
-| `ds41-1017-xq-v4-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The 1017 checkpoint on one GPU in the author's recommended V4 build. The author reports it agrees with the full model more often than V3 (86.9 against 82.9 percent top-1) and that it solved 6 of 7 tasks in an agentic test. |
-| `ds41-1017-xq-v3-uncensored` | Xolotl | One 24 GB GPU, 90 GB RAM | boot-tested | The earlier 1017 build. The author reports it trails the September build on the hardest agentic tasks. |
-| `ds41-1017-abl-fp8` | vLLM | 8 GPUs with 80 GB each | unverified | The abliterated 1017 model at full FP8 precision |
-| `llama33-70b-fp8-dynamic` | vLLM | From its sources | unverified | An unmodified 70B model, kept as a cheaper first test of vLLM |
-| `ornith15-122b-uncensored-iq2xxs` | llama.cpp | One 48 GB GPU, 64 GB RAM | unverified | Ornith-1.5-122B with refusals removed, in the 44 GB 2-bit build. Text only, and the publisher reports it complies more often but scores lower on MMLU than the Q4_K_M build. |
-| `ornith15-122b-uncensored-q4km` | llama.cpp | One 84 GB GPU, 96 GB RAM | unverified | The same model in the 79 GB Q4_K_M build, which the publisher reports keeps more of the base model's MMLU score. Text only. |
-
-The quality claims in the table come from the model authors, and ablit has not checked them. CONTRIBUTING.md explains how to add an entry.
-
-## Runtimes
-
-A runtime, or engine, is the server program that loads the model on the rented machine and answers requests.
-
-| Runtime | What it is | Tested on a rented machine |
-|---|---|---|
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) | A widely used C++ server for GGUF model files, run from its official CUDA image pinned by digest | Yes |
-| [Xolotl](https://github.com/Indras-Mirror/Xolotl) | The one-GPU DeepSeek engine described above, run from an image ablit builds from a pinned commit | Yes |
-| [vLLM](https://github.com/vllm-project/vllm) | A widely used Python server for full-size models across several GPUs | No |
-
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `ablit setup [vast\|runpod\|clore\|lium]` | Enters a key with hidden input, tests it, and can save it in the OS keyring |
-| `ablit plan <model>` | Shows the chosen offer and the next four, with totals, and why other offers were dropped. Rents nothing. |
-| `ablit up <model>` | Plans, asks you to type `rent` (or takes `--yes`), rents the machine, and keeps the tunnel open |
-| `ablit status [run]` | Run state, resource IDs, estimated spend and cleanup. `--key-only` prints only the endpoint key. |
-| `ablit logs [run]` | Logs from the machine with known secrets removed |
-| `ablit tunnel [run]` | Re-opens the SSH tunnel and runs the local cap check |
-| `ablit down [run]` | Destroys the machine, confirms it is gone, and revokes run credentials. Run it again if it exits with code 7. |
-| `ablit catalog list`, `show <id>`, `validate <file>` | Lists entries, explains one, or checks a contributor's file |
+| `ablit plan <model>` | Compares offers and full costs without renting. |
+| `ablit up <model> --max-spend <USD>` | Quotes, asks for approval, rents and keeps the tunnel open. |
+| `ablit status [run]` | Shows the run state and estimated spend. |
+| `ablit logs [run]` | Reads logs with known secrets removed. |
+| `ablit tunnel [run]` | Reopens the tunnel and resumes the local cap check. |
+| `ablit down [run]` | Destroys the rental and confirms that billing has stopped. |
 
-Agents and scripts should read [AGENTS.md](AGENTS.md), which covers `--json` output, exit codes, and renting with `--yes`. The [command reference](docs/cli-reference.md) lists every flag.
+`plan` and `status` accept `--json`. Agents should read [AGENTS.md](AGENTS.md) for exit codes, readiness checks and renting with `--yes`. The [command reference](docs/cli-reference.md) lists every flag.
 
-## The endpoint and your keys
+## Privacy and keys
 
-The engine on the rented machine listens on `127.0.0.1` only, and ablit reaches it through an SSH port forward that checks the host key. ablit prints a local URL and the name of the keyring entry that holds the endpoint key, which is a random 32-byte value. Paid launches accept only `--endpoint tunnel`. Closing the tunnel does not stop billing, so run `ablit down` to stop the run. Marketplace keys come from the OS keyring or from `VAST_API_KEY`, `RUNPOD_API_KEY` or `CLORE_API_KEY`, and an environment key takes priority.
+ablit runs on your computer, has no telemetry and relays no inference traffic. Marketplace keys stay in the OS keyring or the corresponding `VAST_API_KEY`, `RUNPOD_API_KEY`, `CLORE_API_KEY` or `LIUM_API_KEY` environment variable.
 
-## Using the endpoint with Claude Code
+The engine listens on `127.0.0.1` on the rented machine, and the SSH tunnel checks the host key after first contact. Paid launches accept only `--endpoint tunnel`. The endpoint has its own random key, stored in your keyring.
 
-The llama.cpp and Xolotl engines also answer the Anthropic Messages API on the same port, so Claude Code can use your rented model. When the endpoint answers, `ablit up` prints a block of `export` lines. Paste them into a shell and run `claude`. The block points `ANTHROPIC_BASE_URL` at the tunnel with no `/v1` at the end, reads the key with `ablit status <run> --key-only`, and sets every model name Claude Code asks for to the one model the endpoint serves.
-
-Claude Code's system prompt and tools take about 15K to 25K tokens before you type anything. The model's context limit must cover that, so an entry with a small context limit, such as 4096 tokens, will refuse Claude Code's requests. The block says so when the entry serves fewer than 25,000 tokens. vLLM entries print no block, because nobody has checked that ablit's vLLM version answers `/v1/messages`.
+Renting gives you control over the pinned build and its logs. The marketplace and hardware owner can still inspect the machine, so a rental does not make your prompts private from them. A hosted API may be simpler and cheaper for occasional use.
 
 ## Paid links
 
-ablit has a referral ID for Vast.ai and none for RunPod or Clore. It has none for Lium either. If you have no Vast account, `ablit setup vast` shows a disclosure and offers the paid link, a plain link, or skip. The commission never changes your prices or which machine ablit picks, and `ablit setup --no-referral` turns the links off. POLICY.md has the full rules and the tests that enforce them.
+ablit has a referral ID for Vast.ai and none for RunPod or Clore. It has none for Lium either. If you create a new Vast account through the optional paid link, the maintainer earns 3% of your spending as Vast credits for the life of the account (checked 2026-10-21).
 
-| Marketplace | Commission the maintainer earns from a new account | Checked |
-|---|---|---|
-| Vast.ai | 3% of what you spend there, for the life of the account, paid by Vast as credits | checked 2026-10-21 |
+Setup offers a plain link alongside the paid one. Commissions never affect offer ranking or your prices, and `ablit setup --no-referral` turns the links off. [POLICY.md](POLICY.md) has the rules and the tests that enforce them.
 
-## More documentation
+## Documentation and contributing
 
-| File | Contents |
-|---|---|
-| [AGENTS.md](AGENTS.md) | Using ablit from an agent or script |
-| [docs/cli-reference.md](docs/cli-reference.md) | Every command and flag, the quote, and the exit codes |
-| [docs/architecture.md](docs/architecture.md) | How the planner, the spend cap, the drivers and the engine bootstrap work |
-| [docs/catalog-format.md](docs/catalog-format.md) | The catalog entry format and the rules for entry status |
-| [docs/design-decisions.md](docs/design-decisions.md) | Why ablit works the way it does, and what it leaves out |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to add a catalog entry, record a boot test, or change the code |
-| [POLICY.md](POLICY.md) | The referral rules and their tests |
-| [SECURITY.md](SECURITY.md) | How to report a problem, and what ablit does with secrets |
+Read the [command reference](docs/cli-reference.md) for usage, the [architecture](docs/architecture.md) for implementation details, and the [design decisions](docs/design-decisions.md) for scope. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to add a catalog entry or record a boot test. Report security issues through [SECURITY.md](SECURITY.md).
 
-## License
-
-The code is licensed under Apache-2.0, and the catalog data under CC0-1.0. See LICENSE, NOTICE and `catalog/LICENSE`.
+The code is licensed under [Apache-2.0](LICENSE), and the catalog data under [CC0-1.0](catalog/LICENSE). Each model has its own license, recorded in its catalog entry.

@@ -48,20 +48,26 @@ A weekly job runs check 2 again on every entry, and it fails when an artifact ha
 
 | Status | Meaning |
 |---|---|
-| `unverified` | The entry passed the checks and a maintainer merged it. Nobody has booted it. `ablit up` needs `--untested` to launch it, and the quote says "Nobody has booted this entry yet. The engine may fail to start, and you pay for the time until ablit destroys the run." |
-| `boot-tested` | The `tests` list holds a record with a log from a real run of that exact profile. You write the record from the output of `ablit logs`, which removes secrets, and you decide whether to share it. The `--report` flag of `ablit up` is accepted but does not write a log yet. |
+| `unverified` | The entry passed the checks and a maintainer merged it, but no boot test covers its current build and profile. `ablit up` needs `--untested` to launch it, and the quote says "Nobody has booted this exact build and profile yet. The engine may fail to start, and you pay for the time until ablit destroys the run." |
+| `boot-tested` | The `tests` list holds a record with a log from a real run. Its `image_digest` must match the current engine image, and its `build_sha256` must match the entry's source, artifacts, staging and profile. Its `bootstrap_sha256` must match the engine's current bootstrap script. You write the record from the output of `ablit logs`, which removes secrets, and you decide whether to share it. |
 | `removed` | An artifact has disappeared or the entry is withdrawn. ablit refuses to launch it. |
 
 Before it rents anything, ablit also checks that every artifact of the entry is still public at its pinned revision.
 
 ## Recording a boot test
 
-A boot test is a real run of an entry's exact profile, paid for from your own marketplace account. It is the second most useful contribution, and it needs a budget that you approve yourself, because CI never rents anything.
+A boot test is a real run of an entry's exact build and profile, paid for from your own marketplace account. It is the second most useful contribution, and it needs a budget that you approve yourself, because CI never rents anything.
 
-1. Run `ablit up <id> --untested --max-spend <USD>` for an `unverified` entry, and send a request through the tunnel to check that it answers.
+1. Run `ablit up <id> --untested --max-spend <USD> --report` for an `unverified` entry, and send a request through the tunnel to check that it answers.
 2. Save the bootstrap log with `ablit logs --stage bootstrap`, and note the machine's GPU, the stage times, the measured download speed, the speed of a chat completion in tokens per second, and whether `ablit down` confirmed that billing stopped.
 3. Write a record in `catalog/boot-tests/<id>-<date>.md`, in the layout of the existing records there. Leave out host IDs, offer IDs, prices and keys.
-4. Add `{backend: <name>, date: "<YYYY-MM-DD>", log: boot-tests/<file>}` to the entry's `tests` list, set `status: boot-tested`, and open a pull request.
+4. Add `{backend: <name>, date: "<YYYY-MM-DD>", log: boot-tests/<file>, image_digest: "sha256:<64 hex characters>", build_sha256: "<64 hex characters>", bootstrap_sha256: "<64 hex characters>"}` to the entry's `tests` list. Copy all three hashes from the run's report, set `status: boot-tested`, and open a pull request.
+
+Every new run stores `image_digest`, `build_sha256` and `bootstrap_sha256`. The bootstrap hash covers `engines/<engine>/bootstrap.sh`, whose serving defaults can change without a new engine image. ablit records the hash when it creates the run and preserves it on resume. Before uploading the bundle, ablit checks that its script matches the recorded hash. A mismatch stops the run and starts cleanup. An old run without a recorded bootstrap hash reports `null` for that field and cannot approve the current build.
+
+With `--report`, ablit writes the hashes to a JSON report when the endpoint is ready. On macOS, the report is saved at `~/Library/Application Support/ablit/reports/<run>.json`. On Linux, it is saved at `$XDG_STATE_HOME/ablit/reports/<run>.json`, or `~/.local/state/ablit/reports/<run>.json` when `XDG_STATE_HOME` is unset. The report does not include logs. Use `ablit logs` to collect those separately.
+
+After changing an entry's source, artifacts, staging or profile, its engine image digest, or its bootstrap script, set `status: unverified` until a new boot test passes. Keep the older `tests` records as history. Changing descriptions, notes or source citations does not invalidate a test.
 
 ## Improving the code
 

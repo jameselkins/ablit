@@ -30,8 +30,8 @@ sources:
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: No publisher states these. They are defaults or estimates chosen by ablit.}
   - https://huggingface.co/dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF/blob/48e83e05611ef35d343ae5232f0078d85ff516e3/README.md
 tests:
-  - {backend: vast, date: "2026-10-26", log: boot-tests/nanbeige43-33b-uncensored-q4km-vast-2026-10-26.md}
-  - {backend: lium, date: "2026-10-26", log: boot-tests/nanbeige43-33b-uncensored-q4km-lium-2026-10-26.md}
+  - {backend: vast, date: "2026-10-26", log: boot-tests/nanbeige43-33b-uncensored-q4km-vast-2026-10-26.md, image_digest: "sha256:c65f01343624f55848a82a6b653880e53399377a92b371975eb3303c1d5647e7", build_sha256: 57f31616f661f60e0f702bf2eddf068bad2e2e722041e7ecee0f24b702b6adb7, bootstrap_sha256: c5d30667801c4c551500b71c20858ca405c8de120f21f679cb36e393bb9932ac}
+  - {backend: lium, date: "2026-10-26", log: boot-tests/nanbeige43-33b-uncensored-q4km-lium-2026-10-26.md, image_digest: "sha256:c65f01343624f55848a82a6b653880e53399377a92b371975eb3303c1d5647e7", build_sha256: 57f31616f661f60e0f702bf2eddf068bad2e2e722041e7ecee0f24b702b6adb7, bootstrap_sha256: c5d30667801c4c551500b71c20858ca405c8de120f21f679cb36e393bb9932ac}
 status: boot-tested
 notes:
   - A dense 33B Llama-architecture model with a 512K context in the source. ablit sets 32768 tokens so the model and its cache fit one 32 GB card.

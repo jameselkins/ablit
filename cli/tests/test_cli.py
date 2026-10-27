@@ -21,8 +21,8 @@ def test_catalog_list_shows_every_entry_and_its_status(capsys):
     assert code == 0, err
     for entry_id in ("ds41-1017-abl-fp8", "ds41-1017-xq-v3-uncensored", "llama31-8b-abliterated-q4km"):
         assert entry_id in out
-    assert out.count("unverified") == 4
-    assert out.count("boot-tested") == 5
+    assert out.count("unverified") == 6
+    assert out.count("boot-tested") == 3
 
 
 def test_catalog_show_explains_one_entry(capsys):
@@ -34,7 +34,7 @@ def test_catalog_show_explains_one_entry(capsys):
     assert "https://github.com/Indras-Mirror/Xolotl" in out
     code, out, err = run(capsys, "catalog", "show", "llama33-70b-fp8-dynamic")
     assert code == 0, err
-    assert "Nobody has booted this entry yet" in out
+    assert "Nobody has booted this exact build and profile yet" in out
 
 
 def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):
@@ -108,6 +108,13 @@ def test_up_needs_max_spend_and_has_no_default(capsys):
     code, out, err = run(capsys, "up", "llama31-8b-abliterated-q4km")
     assert code == 2
     assert "--max-spend is required" in err
+
+
+@pytest.mark.parametrize("model", ["ds41-september-gsq-uncensored", "ds41-1017-xq-v3-uncensored"])
+def test_historical_profiles_need_optin_before_any_marketplace_request(capsys, model):
+    code, _out, err = run(capsys, "up", model, "--yes", "--max-spend", "5")
+    assert code == exitcodes.USAGE
+    assert "unverified" in err and "--untested" in err
 
 
 def test_up_without_a_terminal_exits_2(capsys, monkeypatch):

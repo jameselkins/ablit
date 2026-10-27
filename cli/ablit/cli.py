@@ -21,7 +21,7 @@ from ablit.catalog import (
     resolve,
 )
 from ablit.backends import Backend, default_backends
-from ablit.catalog.models import Entry
+from ablit.catalog.models import Entry, build_sha256
 from ablit.catalog.staging import StagingError, compute_staging
 from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
 from ablit.plan import UnknownBackend, gpu_filter_message, report_json, run_plan
@@ -108,7 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
                     help="approve the quote without typing rent, for agents and scripts. "
                          "The cap, the cap check and the price recheck still apply.")
     up.add_argument("--report", action="store_true",
-                    help="write a local boot-test log with secrets removed")
+                    help="write a local JSON report with boot-test provenance when the endpoint is ready")
 
     status = sub.add_parser("status", help="run state, resource IDs, spend against the cap")
     status.add_argument("run", nargs="?", help=_RUN_HELP)
@@ -227,8 +227,11 @@ def _describe(entry: Entry) -> str:
     ]
     if entry.tests:
         lines.append("Tests:        " + "; ".join(f"{t['backend']} on {t['date']}" for t in entry.tests))
+        if entry.status == "unverified":
+            lines.append("The recorded tests cover older builds. Launching the current build needs --untested.")
     else:
-        lines.append("Tests:        none. Nobody has booted this entry yet.")
+        lines.append("Tests:        none. Nobody has booted this exact build and profile yet.")
+    lines.append(f"Build SHA256: {build_sha256(entry)}")
     if entry.notes:
         lines += ["", "Notes:"] + [f"  - {note}" for note in entry.notes]
     lines += ["", "Sources:"]

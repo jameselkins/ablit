@@ -61,7 +61,7 @@ sources:
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/serve/strata-ds41-1017.json", covers: [profile.context_tokens], note: "The author's 1017 server config, with --ctx 524288 and --arena-gib 64."}
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: "Figures chosen by ablit. The context is 131072 tokens so that Claude Code fits, and it is below the 524288 the author runs. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate."}
 tests:
-  - {backend: vast, date: "2026-10-26", log: boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md}
+  - {backend: vast, date: "2026-10-26", log: boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md, image_digest: "sha256:5d36c97c39cd195723a9a1f7a1a0c8875ab2a87551d0ab2db4efb68a20e0fb69", build_sha256: 114da1005eac13c715ccf938bd70340d24884618168956c6e8474e0ed8d560df, bootstrap_sha256: f5fbd1be3883ba8cccb9edde764c40db3b7d717ba7c45d64d0772d84fa5ee9c6}
 status: boot-tested
 notes:
   - The entry booted and served on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM, with a context of 131072 tokens. The 24 GB GPU floor is not yet tested. The 24 GB GPU and 90 GB RAM floors come from the model card and the engine README, which report one machine with an RTX 4090 and 90 GB of RAM.

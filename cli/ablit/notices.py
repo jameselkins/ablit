@@ -42,7 +42,7 @@ disk is still billed. The download and setup charges count toward your cap.
 """
 
 UNTESTED_NOTICE = (
-    "Nobody has booted this entry yet. The engine may fail to start, and you "
+    "Nobody has booted this exact build and profile yet. The engine may fail to start, and you "
     "pay for the time until ablit destroys the run."
 )
 

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import io
+import tarfile
 import time
 
 import httpx
 
 from ablit import engines
+from ablit.catalog.models import build_sha256
 from ablit.backends.errors import BackendError
 from ablit.credentials import CredentialError, secret_get
 from ablit.runs import RunBusy, RunError
@@ -172,11 +176,13 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         print(f"{run_id}: waiting for the marketplace to start the machine "
                               f"(state {record['marketplace_state']!r}, {int(now - record['started_at'])} s)", flush=True)
                 if want_ready and not uploaded and record.get("ssh_host"):
+                    bundle = engines.bundle(entry_from_record(record), record)
+                    check_bootstrap(record, bundle)
                     ssh = SSH(store, record)
                     try:
                         # Wait for the SSH launch environment before copying the scripts.
                         ssh.run("command -v python3 && command -v bash && command -v curl")
-                        ssh.upload(engines.bundle(entry_from_record(record), record))
+                        ssh.upload(bundle)
                         key = secret_get(run_id)
                         # A backend with no scoped key (RunPod) has no watchdog key to send.
                         scoped = bool(record.get("watchdog_key_id"))
@@ -224,9 +230,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     if record.get("report_requested"):
                         from ablit.runs.store import atomic_json
                         atomic_json(store.root / "reports" / (run_id + ".json"),
-                                    {"schema": 1, "model_id": record["model_id"], "image": record["image"],
-                                     "stages": record.get("stages", []), "ready": True,
-                                     "cap_usd": record["cap_usd"], "spend_estimate_usd": record["spend_estimate_usd"]})
+                                    boot_report(record))
                 if not want_ready and tunnel is None:
                     tunnel, port = SSH(store, record).open_tunnel(record["entry"]["profile"]["port"])
                     record["local_port"] = port
@@ -252,6 +256,27 @@ def monitor(store, record, driver, creds, *, want_ready=False):
             tunnel.terminate()
             tunnel.wait()
 
+
+
+def check_bootstrap(record: dict, bundle: bytes) -> None:
+    """Keep a resumed run attached to the script prepared for its original launch."""
+    with tarfile.open(fileobj=io.BytesIO(bundle)) as archive:
+        bootstrap = archive.extractfile("engine/bootstrap.sh")
+        if bootstrap is None:
+            raise ValueError("The launch bundle has no engine bootstrap.")
+        digest = hashlib.sha256(bootstrap.read()).hexdigest()
+    if record.get("bootstrap_sha256") and record["bootstrap_sha256"] != digest:
+        raise ValueError("The bootstrap changed since this run was created. Stop the run and start a new one.")
+
+
+def boot_report(record: dict) -> dict:
+    """Describe the actual run without claiming unknown legacy bootstrap provenance."""
+    return {"schema": 1, "model_id": record["model_id"], "image": record["image"],
+            "image_digest": record.get("image_digest", record["image"].split("@")[-1]),
+            "build_sha256": record.get("build_sha256") or build_sha256(entry_from_record(record)),
+            "bootstrap_sha256": record.get("bootstrap_sha256"),
+            "stages": record.get("stages", []), "ready": True,
+            "cap_usd": record["cap_usd"], "spend_estimate_usd": record["spend_estimate_usd"]}
 
 
 def progress_lines(record: dict, shown: dict) -> list[str]:

@@ -31,8 +31,8 @@ sources:
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: No publisher states these. They are defaults or estimates chosen by ablit.}
   - https://huggingface.co/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF/blob/9a44c6b2a6e355dfd5beea6f5d5ad47412b632da/README.md
 tests:
-  - {backend: vast, date: "2026-10-21", log: boot-tests/llama31-8b-abliterated-q4km-2026-10-21.md}
-  - {backend: runpod, date: "2026-10-22", log: boot-tests/llama31-8b-abliterated-q4km-runpod-2026-10-22.md}
+  - {backend: vast, date: "2026-10-21", log: boot-tests/llama31-8b-abliterated-q4km-2026-10-21.md, image_digest: "sha256:c65f01343624f55848a82a6b653880e53399377a92b371975eb3303c1d5647e7", build_sha256: c93a5b33cfc9b93ae47f43d7d27fe7b74365db759c8b853dd557dffef34fa13e, bootstrap_sha256: c5d30667801c4c551500b71c20858ca405c8de120f21f679cb36e393bb9932ac}
+  - {backend: runpod, date: "2026-10-22", log: boot-tests/llama31-8b-abliterated-q4km-runpod-2026-10-22.md, image_digest: "sha256:c65f01343624f55848a82a6b653880e53399377a92b371975eb3303c1d5647e7", build_sha256: c93a5b33cfc9b93ae47f43d7d27fe7b74365db759c8b853dd557dffef34fa13e, bootstrap_sha256: c5d30667801c4c551500b71c20858ca405c8de120f21f679cb36e393bb9932ac}
 status: boot-tested
 notes:
   - Booted on one RTX 3060 with 12 GB on Vast on 2026-10-21. The 8 GB floor itself is derived from the file size and key-value cache arithmetic, and no 8 GB GPU has been tried.

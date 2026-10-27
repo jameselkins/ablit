@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from ablit.catalog import schema_check, sources, staging
-from ablit.catalog.models import Entry
+from ablit.catalog.models import Entry, bootstrap_sha256, build_sha256
 
 
 class CatalogError(Exception):
@@ -104,6 +104,22 @@ def check_entry(data: dict[str, Any], schema: dict[str, Any] | None = None) -> l
         seen.add(key)
 
     entry = Entry.from_dict(data)
+    if entry.status == "boot-tested":
+        root = repo_root()
+        bootstrap: str | None
+        try:
+            lock = yaml.safe_load((root / "engines" / entry.profile.engine / "lock.yaml").read_text()) if root else {}
+            bootstrap = bootstrap_sha256(entry, root)
+        except (OSError, ValueError, yaml.YAMLError):
+            lock, bootstrap = {}, None
+        digest = lock.get("digest") if isinstance(lock, dict) else None
+        fingerprint = build_sha256(entry)
+        if (not digest or lock.get("name") != entry.profile.engine_lock
+                or not any(t.get("log") and t.get("image_digest") == digest and t.get("build_sha256") == fingerprint
+                           and t.get("bootstrap_sha256") == bootstrap
+                           for t in entry.tests)):
+            problems.append("status: boot-tested needs a matching boot test for the current image, build and bootstrap. "
+                            "Record a new test, or set status to unverified and keep the historical records.")
     if all(a.bytes is not None for a in entry.artifacts):
         try:
             report = staging.compute_staging(entry)

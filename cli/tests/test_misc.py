@@ -80,7 +80,7 @@ def test_build_catalog_is_deterministic_and_complete(repo_root: Path):
     assert not problems
     assert first == second
     document = json.loads(first)
-    assert document["catalog_version"] == "2026.10.20.1"
+    assert document["catalog_version"] == (repo_root / "catalog/VERSION").read_text().strip()
     assert document["schema"] == 1
     assert [e["id"] for e in document["entries"]] == sorted(e["id"] for e in document["entries"])
     assert len(document["entries"]) == 9
@@ -108,7 +108,7 @@ def test_build_catalog_script_prints_a_digest(repo_root: Path):
 
 
 def test_catalog_version_file(repo_root: Path):
-    assert (repo_root / "catalog" / "VERSION").read_text().strip() == "2026.10.20.1"
+    assert re.fullmatch(r"\d{4}\.\d{2}\.\d{2}\.\d+", (repo_root / "catalog/VERSION").read_text().strip())
 
 
 # --- notices ---------------------------------------------------------------
