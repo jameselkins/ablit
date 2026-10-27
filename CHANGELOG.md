@@ -8,6 +8,7 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 
 ### Added
 
+- The unverified `glm53-dolly2-security-fp8` entry for MoonMath's Dolly 2 Security checkpoint, with all model files pinned and an eight-H200 planning profile. Its vLLM launch remains blocked.
 - The `ds41-1017-xq-v4-uncensored` entry for the V4 build of the DeepSeek-V4.1-Flash 1017 model, boot-tested on Vast on 2026-10-26.
 - The boot-tested Nanbeige 4.3 33B uncensored entry for llama.cpp.
 - GPU model filters in `plan` and `up`, through `--gpu` and `--exclude-gpu`.

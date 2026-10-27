@@ -65,7 +65,7 @@ ablit catalog list
 ablit catalog show nanbeige43-33b-uncensored-q4km
 ```
 
-The [full catalog](https://github.com/jameselkins/ablit/tree/main/catalog/models/) also includes earlier DeepSeek builds and unverified Ornith entries. The September and V3 DeepSeek entries are `unverified` because their test records cover older engine images. An `unverified` entry needs `--untested` to launch. The vLLM entries can be planned, but launches are blocked until the engine image is pinned and tested.
+The [full catalog](https://github.com/jameselkins/ablit/tree/main/catalog/models/) also includes [Dolly 2 Security (GLM-5.3 FP8)](https://github.com/jameselkins/ablit/blob/main/catalog/models/glm53-dolly2-security-fp8.yaml), earlier DeepSeek builds and unverified Ornith entries. The September and V3 DeepSeek entries are `unverified` because their test records cover older engine images. An `unverified` entry needs `--untested` to launch. The vLLM entries, including Dolly 2 Security, can be planned, but launches are blocked until the engine image is pinned and tested.
 
 Use `--gpu 5090` or `--exclude-gpu 5090` with both `plan` and `up` to control which GPU models qualify. The [command reference](https://github.com/jameselkins/ablit/blob/main/docs/cli-reference.md) covers the other filters.
 

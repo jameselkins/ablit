@@ -19,9 +19,10 @@ def run(capsys, *argv: str):
 def test_catalog_list_shows_every_entry_and_its_status(capsys):
     code, out, err = run(capsys, "catalog", "list")
     assert code == 0, err
-    for entry_id in ("ds41-1017-abl-fp8", "ds41-1017-xq-v3-uncensored", "llama31-8b-abliterated-q4km"):
+    for entry_id in ("ds41-1017-abl-fp8", "ds41-1017-xq-v3-uncensored", "llama31-8b-abliterated-q4km",
+                     "glm53-dolly2-security-fp8"):
         assert entry_id in out
-    assert out.count("unverified") == 6
+    assert out.count("unverified") == 7
     assert out.count("boot-tested") == 3
 
 

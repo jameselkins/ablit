@@ -1,0 +1,331 @@
+# Status is unverified. Nobody has booted this entry with ablit.
+# Hardware floors are from the official base-model recipe or estimates, and are not yet tested.
+# Artifact sizes and hashes are filled by tools/verify_entry.py --fill.
+schema: 1
+id: glm53-dolly2-security-fp8
+display_name: Dolly 2 Security, GLM-5.3 uncensored FP8 (vLLM)
+source:
+  repo: MoonMath-ai/GLM-5.3-Uncensored-FP8
+  revision: 46cd6728912abe5703a8c897127c1b8aca92480e
+  license: other
+  base_model: zai-org/GLM-5.3
+  modification: abliterated
+artifacts:
+  - {path: model-00001-of-00282.safetensors, bytes: 4575191552, sha256: 4c02efff5ed60bca815ed6c341568417632689b62c4b9efbcd63d26faf9f22cd, role: weight}
+  - {path: model-00002-of-00282.safetensors, bytes: 2676684696, sha256: 8982d267c66b1d9d9f8dad2c47d52bc5f3f3bfc519fdfae6b6ef5658ab672816, role: weight}
+  - {path: model-00003-of-00282.safetensors, bytes: 2680868152, sha256: adfa19c5af3292383c9d7cab86619cfc66af56e9a5cbe355d9fe358ab7c75011, role: weight}
+  - {path: model-00004-of-00282.safetensors, bytes: 2680867944, sha256: 7e9132958126ea4408d7a78dabb904d5461c0a471b6030fadce8a4f5a115a4a3, role: weight}
+  - {path: model-00005-of-00282.safetensors, bytes: 2682470800, sha256: 4c6d4a2c7f06a631d2c30f39cb3fdc2d286bf0d046a47815c2ca04592fd42d95, role: weight}
+  - {path: model-00006-of-00282.safetensors, bytes: 2680868160, sha256: c9139b940a0e2d5ea44f2e68d74842a5d555b42fdda83602258f6618acf22db3, role: weight}
+  - {path: model-00007-of-00282.safetensors, bytes: 2680868152, sha256: a862ed4071c186d9d318ec37ba57336d7af9317d34eecba60d32b8a5d0defd41, role: weight}
+  - {path: model-00008-of-00282.safetensors, bytes: 2680867808, sha256: c9fadc23e215df01b8236aecde32a1d819bd1cfa3f4ee073b9223cb6d5d9672d, role: weight}
+  - {path: model-00009-of-00282.safetensors, bytes: 2685485336, sha256: 679508cd75b91d509d3220c62e7607ff7615ade8f429d5f8dd1ef9ea5a9c577a, role: weight}
+  - {path: model-00010-of-00282.safetensors, bytes: 2680868152, sha256: 50e4e79731d19e48fb64d74239c9738dfbc0e65e1abd969db21a45b36724af8e, role: weight}
+  - {path: model-00011-of-00282.safetensors, bytes: 2680868104, sha256: 22df0165bad597ef3f0d341df17a269ff1454569b4b565eae818ffdc2c9571d5, role: weight}
+  - {path: model-00012-of-00282.safetensors, bytes: 2684028272, sha256: 04f05ee003a1a9a7b2e2e018bb51d821bd47d8aec70035fd6a0b34bf5802be3a, role: weight}
+  - {path: model-00013-of-00282.safetensors, bytes: 2682324960, sha256: 1a8f17d2329c9414d7b5f40cbc78407912518d53d260030e378eebd2ef8ce89d, role: weight}
+  - {path: model-00014-of-00282.safetensors, bytes: 2680868152, sha256: 4f3ef289d2f0027753cd8455a4871be8ae720c883800469d90c84e8524d5449f, role: weight}
+  - {path: model-00015-of-00282.safetensors, bytes: 2680867968, sha256: ba1c6706bed494c0abaf62fc4aba6320beeb540e9c9b08d887e5cbfb1678fa90, role: weight}
+  - {path: model-00016-of-00282.safetensors, bytes: 2685485160, sha256: 20eab7068a509bf55912ab8d510762f3ecc49dfa22497c88eab518b6eede1d97, role: weight}
+  - {path: model-00017-of-00282.safetensors, bytes: 2680868168, sha256: 1188da1fdb6819574e9ec030e89355a53351a70ee65b5df35a5461a721585594, role: weight}
+  - {path: model-00018-of-00282.safetensors, bytes: 2680868152, sha256: 0e2716c39600e2af995a56197c0db49ba87480eecddba899094018335fca9651, role: weight}
+  - {path: model-00019-of-00282.safetensors, bytes: 2680867832, sha256: cbadfacaf1f41d704498046d2cd996c030eea398e0e6d8593916147296bc7d22, role: weight}
+  - {path: model-00020-of-00282.safetensors, bytes: 2682470912, sha256: 677fc2e73be61bcbc794f9f2860a401e502087d0fdff6ad4a24859f99c8b324d, role: weight}
+  - {path: model-00021-of-00282.safetensors, bytes: 2680868168, sha256: 126a83188231c53816209f2b3fdaa4f47e28c9a4e83bca5db42df46224b03b6c, role: weight}
+  - {path: model-00022-of-00282.safetensors, bytes: 2680868104, sha256: 2c2b1371a867fef9e2a6990ed1d63c96b70260d4305dba03c8043cda31eff671, role: weight}
+  - {path: model-00023-of-00282.safetensors, bytes: 2680867744, sha256: bdf502550f89331893f1bbb95c0204b7e15395145544f4f0877b8a5f82c0d492, role: weight}
+  - {path: model-00024-of-00282.safetensors, bytes: 2685485464, sha256: 89ea8c2ad83eb9afe5cf848518a7f3416f37a362a9b2cbfeabc7ae44488794e0, role: weight}
+  - {path: model-00025-of-00282.safetensors, bytes: 2680868152, sha256: 196528ba2a51978978258affa34ddae6d6edeaa97eedc165c44d9758facdcef8, role: weight}
+  - {path: model-00026-of-00282.safetensors, bytes: 2680867976, sha256: d5d286ceeeeabb66bb05a8797a2b79c96a4d15a7ddab4173b999edf356d32c45, role: weight}
+  - {path: model-00027-of-00282.safetensors, bytes: 2685485144, sha256: 867b76d7b6a555d3fbf66a850f3bca167b2ed8a21b6c38fa4e55aeccb99be0f5, role: weight}
+  - {path: model-00028-of-00282.safetensors, bytes: 2680868168, sha256: 260d304384c70d406fad7685c77d08d14d765b34e2b5287af539aecf8f705284, role: weight}
+  - {path: model-00029-of-00282.safetensors, bytes: 2680868152, sha256: 2f9307359b9dacae0e0e21a1110c853003d6ee751c96619cf1693a98723fbfe2, role: weight}
+  - {path: model-00030-of-00282.safetensors, bytes: 2680867840, sha256: 5c4ad28f240c935e65f70672f4f3a2352882805c4aeaf1aab89d0189b1c4a019, role: weight}
+  - {path: model-00031-of-00282.safetensors, bytes: 2685485280, sha256: 12155f5f465a29ad11a408bd005bd6c3d73e78bbb07ca5f92ac869b832d91bac, role: weight}
+  - {path: model-00032-of-00282.safetensors, bytes: 2680868168, sha256: d54324eaf350cf30a45f8267d2933a7c81db8efb02ddb4020a10cd4e40634ea0, role: weight}
+  - {path: model-00033-of-00282.safetensors, bytes: 2680868120, sha256: 7bd1df46982325c84538600917f0a199e606d682c82519ac4227d7afe58d4709, role: weight}
+  - {path: model-00034-of-00282.safetensors, bytes: 2680867736, sha256: 3d78a5ffb9e8382f38bdfdd4025ea5e52087b46644b6f5d7c96babd2732541e3, role: weight}
+  - {path: model-00035-of-00282.safetensors, bytes: 2682471048, sha256: 9063a77879ea9785476e1a90bed5c744539b0e131e414b7ac41f2155aad1b2b0, role: weight}
+  - {path: model-00036-of-00282.safetensors, bytes: 2680868152, sha256: 37b4b0c1e362794d4863e3239b5e6f1a0d23721c48c5b32e00ef82a1b1473998, role: weight}
+  - {path: model-00037-of-00282.safetensors, bytes: 2680868000, sha256: b497783d43a04e3ba9e80bfd3d69ec047d17cc140555db233e429419444bd96b, role: weight}
+  - {path: model-00038-of-00282.safetensors, bytes: 2683937192, sha256: 451ed958931cffc5bdbcd7a6eb17c08e3f97242bfe3e024a2be657ab0cc51526, role: weight}
+  - {path: model-00039-of-00282.safetensors, bytes: 2680868152, sha256: 64b07f54671c03d5bcc53a7b66755297e6e548c1ee1f2419aed523aeb8a57605, role: weight}
+  - {path: model-00040-of-00282.safetensors, bytes: 2680868152, sha256: a218c73afa057363ecaca8207cb4ae0d21b04faa52e178bbee3e4bd2e9a5bf84, role: weight}
+  - {path: model-00041-of-00282.safetensors, bytes: 2680867928, sha256: 141db32fae4bbc8344bd5cc52234423ed3bf31cba328beecc7f2efc84436913b, role: weight}
+  - {path: model-00042-of-00282.safetensors, bytes: 2685485208, sha256: 3e388b49ab9a7f8570fc0ef469e479abc706775601cf33d8cd77db78ecc599a9, role: weight}
+  - {path: model-00043-of-00282.safetensors, bytes: 2680868160, sha256: 397d63809f4566e1911ded6154ab00a588cf17775ccd941b53e72226fc14cbdf, role: weight}
+  - {path: model-00044-of-00282.safetensors, bytes: 2680868152, sha256: 0f5f331c6334ddca42934351a68cf1064f56931a8a6d320b7f805584d6b0f568, role: weight}
+  - {path: model-00045-of-00282.safetensors, bytes: 2680867792, sha256: dcdef67c76c89208635dc7df2a7b8e625a551bd8a934c059893f790fd6132bca, role: weight}
+  - {path: model-00046-of-00282.safetensors, bytes: 2685485352, sha256: ae7c2be183d24c1e5bcb074019accb817531373ddc20f42c8f0e4dc49f2a0035, role: weight}
+  - {path: model-00047-of-00282.safetensors, bytes: 2680868152, sha256: 9f89ed575c5756b0b2c344051ad1105ff93808ffafc1cbfd26f1f6dbaca1cab0, role: weight}
+  - {path: model-00048-of-00282.safetensors, bytes: 2680868088, sha256: 4702eaa2a3a07724d2c43cc5c44f184ea19d646beac8cc4923f84a38e314fe9a, role: weight}
+  - {path: model-00049-of-00282.safetensors, bytes: 2623720528, sha256: 4c8ea6b5921f65308145818fa0d19151ffdf45f3015bbb7c75f12caec2b9b7e5, role: weight}
+  - {path: model-00050-of-00282.safetensors, bytes: 2676687160, sha256: d6fa516986c3d5ac03a29c6947ce4745404f50c759ff08370bacfdf9db3ff6ce, role: weight}
+  - {path: model-00051-of-00282.safetensors, bytes: 2680868152, sha256: db30cdf12d6811fd39e64b96df4523f12da316d9b0b7cdb6070822dbc4be423e, role: weight}
+  - {path: model-00052-of-00282.safetensors, bytes: 2680867960, sha256: 3acfa83c099bfb527824f839ee3cba398190edb3d806877945a389e8ac32e709, role: weight}
+  - {path: model-00053-of-00282.safetensors, bytes: 2685485168, sha256: fef86cb36429d3f583ddb5da79b72b1fbbce5b133054a567317c565a2e0e59de, role: weight}
+  - {path: model-00054-of-00282.safetensors, bytes: 2680868168, sha256: e293f72d33a538055f455fa08e126883b77bc99372ec1b5ef2068c4a64446a64, role: weight}
+  - {path: model-00055-of-00282.safetensors, bytes: 2680868152, sha256: 1d03e3bfc03ba298f17484889003763f3879bc790a32bb07f426699525fa4823, role: weight}
+  - {path: model-00056-of-00282.safetensors, bytes: 2680867824, sha256: 56a3833bc2353f8c91910474c90d028366484b6028f6ebf3defde4be3249535b, role: weight}
+  - {path: model-00057-of-00282.safetensors, bytes: 2685485304, sha256: 84ed3442b2a48adb07700234936cad8e9fdfcac21ca2780131942b827c9b3681, role: weight}
+  - {path: model-00058-of-00282.safetensors, bytes: 2680868160, sha256: 287a2c1c65b76dc96a3fd1d4bdce5e2bb2021a596705ce4924bc8c07f1a5c0af, role: weight}
+  - {path: model-00059-of-00282.safetensors, bytes: 2680868104, sha256: c2dd0e684f7e8316ab249ad520d4c1faa0591227d650ac3ef9a8097681640f37, role: weight}
+  - {path: model-00060-of-00282.safetensors, bytes: 2680867744, sha256: 4a748d7cc03b3f9734eae34dbb178010898eb5edeeac88dadb45d3863e0cb3b5, role: weight}
+  - {path: model-00061-of-00282.safetensors, bytes: 2685485464, sha256: 42f17d1ec8f82637b72ccf991db91a686087f5e72814d50e7fc6ebbdba5ab6a8, role: weight}
+  - {path: model-00062-of-00282.safetensors, bytes: 2680868152, sha256: c9edd90a8a155920777637f886a557127a109cf7edce34682041dad9991c8cf5, role: weight}
+  - {path: model-00063-of-00282.safetensors, bytes: 2680867976, sha256: 8c340bb7b35b691f8d0f214b0f21f007b2918cbd25414351fe4a68bfa9cbb37e, role: weight}
+  - {path: model-00064-of-00282.safetensors, bytes: 2682470760, sha256: e3b6fc2976ff31e621d837cc2d7cb242d331525c78c6bb7d7f1ac69e30b7ed40, role: weight}
+  - {path: model-00065-of-00282.safetensors, bytes: 2680868168, sha256: ae2c031544c06927f689ff555a977de4fe15d933ee6da0de044108833edf1325, role: weight}
+  - {path: model-00066-of-00282.safetensors, bytes: 2680868152, sha256: 6a3c25cc7fbead69fa6c002be3ecb4bc701ca04e77196e3d350b5bf5abeba541, role: weight}
+  - {path: model-00067-of-00282.safetensors, bytes: 2680867840, sha256: 8f16dcf7efd6f0ee50543e6faff4214bb9225f668ac31b69d990868c9a5130ed, role: weight}
+  - {path: model-00068-of-00282.safetensors, bytes: 2685485280, sha256: 98ef71bb5d9d41f94d7a7b39c2ec9f9add6377ad2689622332cc0d36e50acbff, role: weight}
+  - {path: model-00069-of-00282.safetensors, bytes: 2680868168, sha256: 584611d867d19b8a0decb787a7db3108bf02b237505b859d1cd0d91a5036c5fb, role: weight}
+  - {path: model-00070-of-00282.safetensors, bytes: 2680868120, sha256: ac62c3fa02e53b48eb8068efcacdd2f1a34e65fd41f16d2d4ba2d95c722d107a, role: weight}
+  - {path: model-00071-of-00282.safetensors, bytes: 2680867744, sha256: 1908157cc8a8ca2e2cfb356cb5c244746cae018e7b1954b9934a46ff0523cfa1, role: weight}
+  - {path: model-00072-of-00282.safetensors, bytes: 2685485448, sha256: 46c4ffea0fbfede6086a67f262e71eadc860760ae3abb002860b73f9998df3f5, role: weight}
+  - {path: model-00073-of-00282.safetensors, bytes: 2680868152, sha256: 6ba58a024796ff51b9b8691b94961529952ef1308017af9088db19d7587c5abd, role: weight}
+  - {path: model-00074-of-00282.safetensors, bytes: 2680867992, sha256: ba94d4f269a89e6a61558d61c27512e4ae06129608f894116e1cb21525e033d6, role: weight}
+  - {path: model-00075-of-00282.safetensors, bytes: 2685485056, sha256: 2506263ed7866d59f362ef017008d8c7811acc6746886296470339ba7acd6c6a, role: weight}
+  - {path: model-00076-of-00282.safetensors, bytes: 2680867736, sha256: bbf814793d369b2f43d0938ee59fbcfc27ff4427bdc40158d3c3e82d6b8464f1, role: weight}
+  - {path: model-00077-of-00282.safetensors, bytes: 2680867728, sha256: c855d3fb6db13dc49c452a15f60cbaa50e60d6ed30b390e5edbcaf74d0f492c3, role: weight}
+  - {path: model-00078-of-00282.safetensors, bytes: 2680867432, sha256: 9b787a65cf54e5c163df8f6c40ddab7ce6b9d59bc4399eabce0def718ea48942, role: weight}
+  - {path: model-00079-of-00282.safetensors, bytes: 2685485064, sha256: 5b1e190ec4f31140aa13402d2353124932c634f39fb5747d1343dce93acc5055, role: weight}
+  - {path: model-00080-of-00282.safetensors, bytes: 2680868160, sha256: 6b299b029302d8bf8480eb62b472a143253b5738801222e6394dfb61f0043c44, role: weight}
+  - {path: model-00081-of-00282.safetensors, bytes: 2680868144, sha256: feb5224d40e88b0b7347161e7aa9daa371657f93fbcae900077be1eccb37b000, role: weight}
+  - {path: model-00082-of-00282.safetensors, bytes: 2680867736, sha256: 788a3e92dcc4b7c1b7553e3fcb82dff6a816d210696d9db1e80d77cc55fb35a8, role: weight}
+  - {path: model-00083-of-00282.safetensors, bytes: 2682471032, sha256: 6acd960ad2359c95b0c4662d884ba99a73fc926a42f3f4bb4e08bab626797da3, role: weight}
+  - {path: model-00084-of-00282.safetensors, bytes: 2680868152, sha256: 086ad72dad789cb344b293d23add684ebdf69b256dbf66e189c14528bcc1e8d4, role: weight}
+  - {path: model-00085-of-00282.safetensors, bytes: 2680868024, sha256: f0b7abc042140242d3ab952873c17a4b0d89e91c627b5f5c67cd51d55e8a4e8d, role: weight}
+  - {path: model-00086-of-00282.safetensors, bytes: 2685485104, sha256: 2a2d56a14c130cf6a160e7e3e9bee68767e70f900df1f90b68272c94db208807, role: weight}
+  - {path: model-00087-of-00282.safetensors, bytes: 2680868160, sha256: 6c62c069802015dbe8fa884884cef015d473172aa82851be6de7654130465358, role: weight}
+  - {path: model-00088-of-00282.safetensors, bytes: 2680868152, sha256: b9e941f9970c19d9f2ea30c67fc060b641be5f186036630ec73b92aef9fcf7e7, role: weight}
+  - {path: model-00089-of-00282.safetensors, bytes: 2680867888, sha256: fd4ed7e2b5e9ebdf3eff6c1e01150569bf4505bdfb59f104e1011134f95d8072, role: weight}
+  - {path: model-00090-of-00282.safetensors, bytes: 2685485248, sha256: bdc86261e462421a7020c2b7c25b0e65983ed790483fe9fcc02c25694b956309, role: weight}
+  - {path: model-00091-of-00282.safetensors, bytes: 2680868160, sha256: 9fc8f691a282b105a1fbe7b32b6f8c152bf7bdda2094355dadfd28ffbb1d85ee, role: weight}
+  - {path: model-00092-of-00282.safetensors, bytes: 2680868152, sha256: 06fd57ce9952ebe2abcf8cff5c3b31e665118312eae4e3896446be5c59932981, role: weight}
+  - {path: model-00093-of-00282.safetensors, bytes: 2680867752, sha256: ecbb436301020713ff2d06bb506fc6f3d8a4a90a44432cdccdcb041dae32ded4, role: weight}
+  - {path: model-00094-of-00282.safetensors, bytes: 2685485392, sha256: 6f9d893ba1c3bd8746fd003d66cf98c1a8387f2128dc68e6f5b62ac9f474c892, role: weight}
+  - {path: model-00095-of-00282.safetensors, bytes: 2680868152, sha256: b1e2413cf9c3021d6a93988be968a441e6ce5a40f46c12ed0a0209b14fae3f20, role: weight}
+  - {path: model-00096-of-00282.safetensors, bytes: 2680868040, sha256: 993c42090cfbca6c588977999fee7d117f7472fd9659b40b76b350dfc3ee487a, role: weight}
+  - {path: model-00097-of-00282.safetensors, bytes: 2682470704, sha256: fe1f9709789bb38fa8a66252217893699349af6a8115d50a78f95eeb1c0ca9c9, role: weight}
+  - {path: model-00098-of-00282.safetensors, bytes: 2680868168, sha256: 57bf504973f3de84a72546d44881d519cc5da83c5552eefc82ae894b090a6736, role: weight}
+  - {path: model-00099-of-00282.safetensors, bytes: 2680868152, sha256: dab6969c1fe6f6731b0682f523e73df7be9670a7815c490229d02b1c1f30aa1c, role: weight}
+  - {path: model-00100-of-00282.safetensors, bytes: 2680867904, sha256: eb7c911e0082e217887875a6d7bf7abb095fb279d28f8f4e34a7eb129c429091, role: weight}
+  - {path: model-00101-of-00282.safetensors, bytes: 2685485224, sha256: e61cd71458f27ceb7b85853136ca9335a19c307d29e0a409460ce83a20c4e566, role: weight}
+  - {path: model-00102-of-00282.safetensors, bytes: 2680868168, sha256: 0406ed5086572a74986a97a57239488516889c78d166ea393503d495f2c04bb1, role: weight}
+  - {path: model-00103-of-00282.safetensors, bytes: 2680868152, sha256: 03ceb434b479f6bc97642342eaf511a29a0599493a9f95c03e39c05c9bb7b06b, role: weight}
+  - {path: model-00104-of-00282.safetensors, bytes: 2680867768, sha256: 553749ed4d997dd9750729690681b168c00e7508a29f30270e1ecfec6df2b931, role: weight}
+  - {path: model-00105-of-00282.safetensors, bytes: 2685485376, sha256: 781a7814e265c900bc31aa988352e44cc33fdc5d0358b364a877230331be2faa, role: weight}
+  - {path: model-00106-of-00282.safetensors, bytes: 2680868152, sha256: 68fe262ef817d1d902f0dfab8049c21cbcebc89844bb48d1a9c569a234eb0d7d, role: weight}
+  - {path: model-00107-of-00282.safetensors, bytes: 2680868056, sha256: 4012a4df090daa3260d506313293644ef2b0284d0b7e071931cad88f19d347cf, role: weight}
+  - {path: model-00108-of-00282.safetensors, bytes: 2685485072, sha256: 107efdc2a9a7c9c9685ceadc56c60c1bdf80366b4729749f441abfb1bbdcf7cf, role: weight}
+  - {path: model-00109-of-00282.safetensors, bytes: 2680868168, sha256: 80307e5ac6eb4e06386866ea9392ba6889f0385a10b109db8555a421961165eb, role: weight}
+  - {path: model-00110-of-00282.safetensors, bytes: 2680868152, sha256: 4ce32ee06d64561684051fcbb607669cf9097c699894c8b49e407c2965b9b56c, role: weight}
+  - {path: model-00111-of-00282.safetensors, bytes: 2680867920, sha256: bc11e5f2e1d0c0f14bf62b1f3f28c04b537ae793f931b8de97f4bb04b67bb938, role: weight}
+  - {path: model-00112-of-00282.safetensors, bytes: 2682470816, sha256: 6e24f038e9657c54addb36986d2e270e053b70ed3a81bffe1412141e84effccd, role: weight}
+  - {path: model-00113-of-00282.safetensors, bytes: 2680868168, sha256: 778844c2010f1b7e2993f9c8055329e418cae481619f8919c267800ff488480c, role: weight}
+  - {path: model-00114-of-00282.safetensors, bytes: 2680868152, sha256: c4bc1c623e3f0aee3b6b9dce041aa5e1ec63fac1df223d82367bbf31185bec47, role: weight}
+  - {path: model-00115-of-00282.safetensors, bytes: 2680867784, sha256: 96850c03f3b658d65b7d1570a9545827939dc9294de961bab0348aad636e6b4c, role: weight}
+  - {path: model-00116-of-00282.safetensors, bytes: 2685485072, sha256: f2e4eead8ff5c643a76879047f91fb27076749f8a90034b43c3b0e5f47ee6efa, role: weight}
+  - {path: model-00117-of-00282.safetensors, bytes: 2680867728, sha256: 423a1bcd6ea96d03d009724d47be25512789b370d86982ab997fbc64f1196609, role: weight}
+  - {path: model-00118-of-00282.safetensors, bytes: 2680867656, sha256: 5ee6a08d91c1de772d6efe6c16d4f625f189417668b99842b639b71866b05ef9, role: weight}
+  - {path: model-00119-of-00282.safetensors, bytes: 2677081864, sha256: a848cd7a9f3d3bb7a685ab3bb65f0916902e3e9527ce62b56ea8ad1370d714f2, role: weight}
+  - {path: model-00120-of-00282.safetensors, bytes: 2676684696, sha256: 869c9361bf314ca0cc70614cc9993d7e752fa371166a4ec6760e19c0b5eaebfb, role: weight}
+  - {path: model-00121-of-00282.safetensors, bytes: 2680868152, sha256: 30b837b056b1d5eeab3fe174867c322f2c6048885e0e1828ec737067baf65f91, role: weight}
+  - {path: model-00122-of-00282.safetensors, bytes: 2680867944, sha256: 1bd4b5291c3c071559811303bab89a42de763449c9f75a260c11105ccac1e321, role: weight}
+  - {path: model-00123-of-00282.safetensors, bytes: 2685485184, sha256: 5d64a7407b5a60fb8233b4a725d98547cc1a57116554f1e61b7f1daf80ba18b8, role: weight}
+  - {path: model-00124-of-00282.safetensors, bytes: 2680868160, sha256: 4b6bcb09e85e004ae58e1c54331626c795ed21fa0da37a51a274e335962ee2bd, role: weight}
+  - {path: model-00125-of-00282.safetensors, bytes: 2680868152, sha256: fa4559231074cb6651eee088f9ce274d87ceff41eedaad71be81900b60431aa2, role: weight}
+  - {path: model-00126-of-00282.safetensors, bytes: 2680867808, sha256: 0030cafc0a73a96e957c2a03e964127a5ce4b23b84e65e42157ede4f3485f942, role: weight}
+  - {path: model-00127-of-00282.safetensors, bytes: 2685485336, sha256: 6cdb10aae5aca785ab2474a5f35f56598ed35f1657a49b9128530607ccc3a8ac, role: weight}
+  - {path: model-00128-of-00282.safetensors, bytes: 2680868152, sha256: bbbbdf192c5888dd06924e083501b10596a657d81694713c153ca5e9c53743b5, role: weight}
+  - {path: model-00129-of-00282.safetensors, bytes: 2680868096, sha256: 855e0e54a38ea421d401124873596b50276c1626f4724c6296323d962d86586a, role: weight}
+  - {path: model-00130-of-00282.safetensors, bytes: 2684554048, sha256: 06a02c9fff2b7e31797be78333886795b65c9c3e9c15ab6ff8ea0ee8110e1b8d, role: weight}
+  - {path: model-00131-of-00282.safetensors, bytes: 2678784808, sha256: 877096d4c839ae89dde0369842d5089ad51184d8cd21eea918644b53f375b634, role: weight}
+  - {path: model-00132-of-00282.safetensors, bytes: 2680868152, sha256: 2ecd925c522af5c12ce6bf10e6e445d1d1b88ce15efc97dd07951b18e9228776, role: weight}
+  - {path: model-00133-of-00282.safetensors, bytes: 2680867968, sha256: 95f24416605b47a9a393f4204e7d0d0b16f5664ccb4bc3b519dd1901ac959363, role: weight}
+  - {path: model-00134-of-00282.safetensors, bytes: 2685485160, sha256: d700a6733bd3ac9bb8c28f0266e58743ce9c8fd7d45aa210e98bad6a011100cf, role: weight}
+  - {path: model-00135-of-00282.safetensors, bytes: 2680868168, sha256: 8a231a6f99f04841ac3f13ef07afce52f6d2a8b608ea0a036dfb4038c47e29dd, role: weight}
+  - {path: model-00136-of-00282.safetensors, bytes: 2680868152, sha256: 69aa25d03836e667c0aca56822919bc08c36883a6ede47bf3db31d07d4e3d2a2, role: weight}
+  - {path: model-00137-of-00282.safetensors, bytes: 2680867832, sha256: 3f05dfd017e2ab11f48e785b40e61d5f7525db76df2d1f30e2535bd1a3e08f2d, role: weight}
+  - {path: model-00138-of-00282.safetensors, bytes: 2685485296, sha256: 2b22f42c556866ab2e3189a3cb70b3814cb19dcb428adac169cccf08bbf036a1, role: weight}
+  - {path: model-00139-of-00282.safetensors, bytes: 2680868168, sha256: 4dfdcbb3f53bcef2e9b24c0874a7ba933f680461c46ddc3cc84abaa7efeb982e, role: weight}
+  - {path: model-00140-of-00282.safetensors, bytes: 2680868104, sha256: dc7fb16a5c6943f20959b93ae8bab4b76e31d9c3d58879240bd589c620bae9a5, role: weight}
+  - {path: model-00141-of-00282.safetensors, bytes: 2680867744, sha256: f439eb66b7cd028cfeacae89b6ebc2957df5e166418fba003a13ba0029bfdceb, role: weight}
+  - {path: model-00142-of-00282.safetensors, bytes: 2685485472, sha256: c3027130ed9c7419619543299c6fb73423f79dbc25caae99c55228688f8d39cd, role: weight}
+  - {path: model-00143-of-00282.safetensors, bytes: 2680868152, sha256: 0106755dd48b27aeec2d47ffce65f4d820aa4d52dc58a5b6d1b6fc31edebfec9, role: weight}
+  - {path: model-00144-of-00282.safetensors, bytes: 2680867976, sha256: 36ce3db7e27f6ebc11607c93a365ffa6175c4e1845ab8bdfaec6d989e1796964, role: weight}
+  - {path: model-00145-of-00282.safetensors, bytes: 2682470752, sha256: ccfd9d25cf2e172350eb4c24be172e26dfe6a383baad82fd2161fa8fed1594d7, role: weight}
+  - {path: model-00146-of-00282.safetensors, bytes: 2680868168, sha256: 573719ed1f1706dbacea5206142e9de48a8c4fd8bdc0f20386cb82fd1eb29421, role: weight}
+  - {path: model-00147-of-00282.safetensors, bytes: 2680868152, sha256: 397887a211d7e951c892cc88b61b956de72c0794b574dafc13ab7c3f50f7abaf, role: weight}
+  - {path: model-00148-of-00282.safetensors, bytes: 2680867840, sha256: a2501843d0a8997ae758e90ca36512fc2007bbb47517b473cb181a539e87241a, role: weight}
+  - {path: model-00149-of-00282.safetensors, bytes: 2685485280, sha256: fdf826f36369feacc0108e62beade046e80a9c919e232c7656e7e5d206205e40, role: weight}
+  - {path: model-00150-of-00282.safetensors, bytes: 2680868168, sha256: adb19f6cf11742d84ddfd124e6461377b4bfe6dffe26a99c7678bea6c3e06f8c, role: weight}
+  - {path: model-00151-of-00282.safetensors, bytes: 2680868120, sha256: a646a6fa84f67715e352e1782c65345adf6b25095bd588e36bab88c34ac878cf, role: weight}
+  - {path: model-00152-of-00282.safetensors, bytes: 2680867736, sha256: 31274331170e4c06188e5d00c0a62fda4d89455987ed8e71fa515a3abaa68aa3, role: weight}
+  - {path: model-00153-of-00282.safetensors, bytes: 2685485448, sha256: 592ff3f6b1d7998d213e3b83aed81187bea3f53eebd8320c309570ff8363a0bd, role: weight}
+  - {path: model-00154-of-00282.safetensors, bytes: 2680868152, sha256: 88b9bb277cadd324c470f0dbbe40441edb0881d47e9533964b593dc5dcf62f06, role: weight}
+  - {path: model-00155-of-00282.safetensors, bytes: 2680868000, sha256: 0a910d8ce1c7439aa8d6feeecdb7b7877dc6c5aec0f7e2ae78b5c115e30ffed8, role: weight}
+  - {path: model-00156-of-00282.safetensors, bytes: 2685485056, sha256: 9cc62f457a2debee62fa8325335d839fc8059bca1ecdcd600ce6d2c78e085a37, role: weight}
+  - {path: model-00157-of-00282.safetensors, bytes: 2680867736, sha256: f28b200e50014d53ea421e9113a1513689c58d3c49f8785ee5fb9558411d38f0, role: weight}
+  - {path: model-00158-of-00282.safetensors, bytes: 2680867728, sha256: 2249410c738176c082f029367edbd92c4cedf95abcd5f575613ce3825efd9a25, role: weight}
+  - {path: model-00159-of-00282.safetensors, bytes: 2680867432, sha256: da2eeae3f9f2efa2fd33d44f804723cb7325600f15ad685a8872a361b0dfbc3f, role: weight}
+  - {path: model-00160-of-00282.safetensors, bytes: 2685485064, sha256: 0c63a172f915e1933f96eb7fa95648f21e35f567555127a4cf36d153960c666d, role: weight}
+  - {path: model-00161-of-00282.safetensors, bytes: 2680868160, sha256: 21436fa9d3072b7587264c950502d5e2f54fb9b03bf42f3d1bc4f703372dc6d7, role: weight}
+  - {path: model-00162-of-00282.safetensors, bytes: 2680868144, sha256: b7d9c62cd748882b4e833acf4c2e4a6003ad38cb276d4c6c6ed71864343ea235, role: weight}
+  - {path: model-00163-of-00282.safetensors, bytes: 2680867736, sha256: 1465710757ae557c442cc9b0800c5015a7eaf252a15b7024440ab170138448ce, role: weight}
+  - {path: model-00164-of-00282.safetensors, bytes: 2682471024, sha256: 95e3a87f5bea976bc91b5564225c563b1c09f7452dd90b59f9b63b8bffd56d10, role: weight}
+  - {path: model-00165-of-00282.safetensors, bytes: 2680868152, sha256: b74444c1fa3c163690ed625edde03af7c9a973dbae2896f6fe4326a93fd0ed1b, role: weight}
+  - {path: model-00166-of-00282.safetensors, bytes: 2680868024, sha256: c4cb452fa7e387e0c54c9db996497bc1cfe5e5d18770369a28ef2111a667e640, role: weight}
+  - {path: model-00167-of-00282.safetensors, bytes: 2685485112, sha256: 271456ce8cc0502ed8bfb360a2411bc6775effcaf64af027d44cfe91f3140e90, role: weight}
+  - {path: model-00168-of-00282.safetensors, bytes: 2680868160, sha256: 804048e3bc038a8664133fa482f12e98d42337d7c356e69068a24361b63c7f8c, role: weight}
+  - {path: model-00169-of-00282.safetensors, bytes: 2680868152, sha256: 768cceb1f8141a40a126cef9caa3b63403179c32b88ba927985faf9d5d30e706, role: weight}
+  - {path: model-00170-of-00282.safetensors, bytes: 2680867888, sha256: b9d2660175b949837fd02a780534b803d14966d773010bec00fb333db80af39a, role: weight}
+  - {path: model-00171-of-00282.safetensors, bytes: 2685485240, sha256: ba38097eefc7db42e5239c5db19c49b1ee2329cd20ba8f635a0e523fc883dfea, role: weight}
+  - {path: model-00172-of-00282.safetensors, bytes: 2680868160, sha256: 92cb82042d46309744c71bcdf188ce1b00738107263510d831be402d2a47a356, role: weight}
+  - {path: model-00173-of-00282.safetensors, bytes: 2680868152, sha256: 9206679cb1f9d6c9a98522a1c0e3bd805a95f055cc01fe19caf5babba1668e21, role: weight}
+  - {path: model-00174-of-00282.safetensors, bytes: 2680867752, sha256: 53dcbfcf2f622b1883acbdab87c121da02301fb84f1172785c37944f23fcc137, role: weight}
+  - {path: model-00175-of-00282.safetensors, bytes: 2685485392, sha256: e5cc1d6236e695fead5924a05b46750e26b66a8991d62dcca84834a5f0dfc8d1, role: weight}
+  - {path: model-00176-of-00282.safetensors, bytes: 2680868152, sha256: a8615a7dcc73b65bbd75ef9873c02bddf85c6b0276cefa8aa595d68df5dd6de9, role: weight}
+  - {path: model-00177-of-00282.safetensors, bytes: 2680868040, sha256: e5ca2a6e4520a867483412d4fd540785eceb07423d1d31b8fdce8476a3779995, role: weight}
+  - {path: model-00178-of-00282.safetensors, bytes: 2682470704, sha256: 92de4ce81987a9dcc82e93a05438abe32dd6c0d33a6e65f4c81ca48a737256e8, role: weight}
+  - {path: model-00179-of-00282.safetensors, bytes: 2680868168, sha256: f5087a96df411b3b9348ffd323619d8cc15d13b8547408e9b666f16c6811fd2e, role: weight}
+  - {path: model-00180-of-00282.safetensors, bytes: 2680868152, sha256: 9f5edd2f07f41266a42dba637bec2a94070f9d28118d4f5970472f537b8e9dd0, role: weight}
+  - {path: model-00181-of-00282.safetensors, bytes: 2680867904, sha256: b8eff84b77e67e6e1281a138b3744e9b1e15815050f565df03160a16cc8f4c8d, role: weight}
+  - {path: model-00182-of-00282.safetensors, bytes: 2685485224, sha256: 7339bb8c962752176868d1116562a8bb5c9bdae36fa0898eb93c654d952908d7, role: weight}
+  - {path: model-00183-of-00282.safetensors, bytes: 2680868168, sha256: 9cf6649ecf0ff433d416e4b854ae7456c0b6cfa4ef5cc8e191889e6c89bd10d6, role: weight}
+  - {path: model-00184-of-00282.safetensors, bytes: 2680868152, sha256: 0fa6ad54aad7ceb471df93446b85771c596e41e912c4ced32a04edac9dc9171b, role: weight}
+  - {path: model-00185-of-00282.safetensors, bytes: 2680867768, sha256: ca1a7fb9d89af51e94e5b3500befbcbbabed33aabd7c889870e82b0725e9e30c, role: weight}
+  - {path: model-00186-of-00282.safetensors, bytes: 2685485376, sha256: 6b1b02b4aeb36c8c8221adaf251f114583f323d0b6c88a490e8fce7cbaf5d1e6, role: weight}
+  - {path: model-00187-of-00282.safetensors, bytes: 2680868152, sha256: 5ce57d9a10b33863a39da275324ba2ab0686473d6713c958773a3962d7014e6e, role: weight}
+  - {path: model-00188-of-00282.safetensors, bytes: 2680868056, sha256: 3a2abb026461edfadfcadf986b09505559fba3eb4aa721536ca962dd58e00842, role: weight}
+  - {path: model-00189-of-00282.safetensors, bytes: 2685485072, sha256: 5f2aaa41cc2c32f8173529e6c7a0c558bf94ce079345a500b861f37e3f3c4766, role: weight}
+  - {path: model-00190-of-00282.safetensors, bytes: 2680868160, sha256: 5511281bb73727b0a6e207d0c2078a5084d87472a8e002a35e2cf48729d0c971, role: weight}
+  - {path: model-00191-of-00282.safetensors, bytes: 2680868152, sha256: 75f68c1b91c4de620be96b03410be296599ed0ab7882aec5b5056a3783321aa8, role: weight}
+  - {path: model-00192-of-00282.safetensors, bytes: 2680867920, sha256: 40b53348bec54c98e0aef9ba58ca26ce2c1c9163c7ac01e2ddaf390fee51744c, role: weight}
+  - {path: model-00193-of-00282.safetensors, bytes: 2682470816, sha256: f96d83dcb58698678b1452cc226b9b9d8635823c1e2c2671b516b38bb82f7869, role: weight}
+  - {path: model-00194-of-00282.safetensors, bytes: 2680868168, sha256: 01af9146b56f3d5a71c2c568bfe6a5ab41e2840ad7e1fd81903ef098a1cc62fe, role: weight}
+  - {path: model-00195-of-00282.safetensors, bytes: 2680868152, sha256: 019ac388b8ac651ac653e77cc67a1be26e1fb09c2ba0abfe8e9c0413f2b3a2f5, role: weight}
+  - {path: model-00196-of-00282.safetensors, bytes: 2680867784, sha256: a89c9600870f7a059d89e6360dfe12d2786ada52e8a1f775f599da72ff614cd0, role: weight}
+  - {path: model-00197-of-00282.safetensors, bytes: 2685485064, sha256: f265e424239b135b93a9ba57edcdf6627ae2f1ca1adf758134bf0ef48c99f845, role: weight}
+  - {path: model-00198-of-00282.safetensors, bytes: 2680867728, sha256: cfbbedda233adc781e3ad87d3bbd0eca0eecd45c8c0e54c7663b11dbca75f799, role: weight}
+  - {path: model-00199-of-00282.safetensors, bytes: 2680867656, sha256: bb158b965821241a4dafde91bb615c880dc7f1436e69441bd2784c34b2a5f5c8, role: weight}
+  - {path: model-00200-of-00282.safetensors, bytes: 2686653720, sha256: fe688993bba31c9c4682a783a47c0aa8bb331cee4d3c060aaf72e56882f7d53a, role: weight}
+  - {path: model-00201-of-00282.safetensors, bytes: 2676684688, sha256: 3205f2da5b253268669c7d16b143ab74e482acee6d515b17aee5afa4d74ce59c, role: weight}
+  - {path: model-00202-of-00282.safetensors, bytes: 2680868152, sha256: d24b1fd40007d2845fe7ec8643d7a6922ba81fee3433ee656947c8e07959e63e, role: weight}
+  - {path: model-00203-of-00282.safetensors, bytes: 2680867944, sha256: 37a6b162c21034807f67e21ef89747bdd960338391d03a453a774da3006d48a0, role: weight}
+  - {path: model-00204-of-00282.safetensors, bytes: 2685485184, sha256: d3ba4a01570495a20b77641e417c02bc5c4c5b86b417e50b8708ff81323b96a0, role: weight}
+  - {path: model-00205-of-00282.safetensors, bytes: 2680868160, sha256: cb746d35a86cf1c35a198152ce4a15d66c7e6cf1527e05be096f6b4984d905b5, role: weight}
+  - {path: model-00206-of-00282.safetensors, bytes: 2680868152, sha256: 9dba76fb039a822dd2b45adfdd9638be0ae56c01c5e3ac90db909745fd4468a1, role: weight}
+  - {path: model-00207-of-00282.safetensors, bytes: 2680867808, sha256: 53956155eed30d0c18a4ddc7c3fed5c8c308c2a44d81cb8d162bb0c893793c34, role: weight}
+  - {path: model-00208-of-00282.safetensors, bytes: 2685485336, sha256: b678827b86ff4e7b76af8c1769e378aedec9c5021a2be1f3d3a3de5ec5467b3f, role: weight}
+  - {path: model-00209-of-00282.safetensors, bytes: 2680868152, sha256: 8e20efee9f1219cb6e98f0fe98753f571e846666b2c533afe7ff4a68246f1894, role: weight}
+  - {path: model-00210-of-00282.safetensors, bytes: 2680868104, sha256: 3735ca8e6343645f357d2e9ed32f534289433d8040775c7ee0086c786451a37a, role: weight}
+  - {path: model-00211-of-00282.safetensors, bytes: 2685208080, sha256: 6b2a7cfa8a170839ce7055c0c6deb2e37bde0486186ef8db903c2a0aa36cbd62, role: weight}
+  - {path: model-00212-of-00282.safetensors, bytes: 2678130760, sha256: 11d30584b39dd7e560f5a1bef2a11436d2a43accb904b8148df10bede0b401c4, role: weight}
+  - {path: model-00213-of-00282.safetensors, bytes: 2680868152, sha256: 6e0c96b1cad243e90690e772e54a46b7e09811755c3f36d26f0e0c82e14992ce, role: weight}
+  - {path: model-00214-of-00282.safetensors, bytes: 2680867968, sha256: fd4766047879074be11c1db069059fb1e291ba8d2c56a7654cccdeb774177b4c, role: weight}
+  - {path: model-00215-of-00282.safetensors, bytes: 2685485160, sha256: d87a33432cf39d4a7e88bb0227b805f9288db6c9c0673dfa215324b5348cbafe, role: weight}
+  - {path: model-00216-of-00282.safetensors, bytes: 2680868168, sha256: ccdb7816bd94c1afa23e21ee0c8b7d9ed2bce2f3c0edb6389434baf196cc5fe1, role: weight}
+  - {path: model-00217-of-00282.safetensors, bytes: 2680868152, sha256: 949c2a8467cee84a105f5535026a69c6e97557f85423862b45fd50d54a6b9bd1, role: weight}
+  - {path: model-00218-of-00282.safetensors, bytes: 2680867832, sha256: ed4000c7fcf2bbf3564e548b39b11eb8f186e84d50de3ef24445ea69944e8b86, role: weight}
+  - {path: model-00219-of-00282.safetensors, bytes: 2685485304, sha256: 44b7dbccdc741827404d29ae4bc71bcc965e1dde71f29d851b8b36e9b2bff13f, role: weight}
+  - {path: model-00220-of-00282.safetensors, bytes: 2680868168, sha256: b82603cbf93a4334d133f1a25395eb6fb9ac8776074f7a0441829204099c050c, role: weight}
+  - {path: model-00221-of-00282.safetensors, bytes: 2680868104, sha256: 2cefdd24e83b0e629c53db21fa1c789ca89ba50a4b3e6a021a0f8d93a17c3c41, role: weight}
+  - {path: model-00222-of-00282.safetensors, bytes: 2680867744, sha256: 1dcaab808b010896273bd6bfed4f249da14ba88eed8ac3ede4d96662377eb092, role: weight}
+  - {path: model-00223-of-00282.safetensors, bytes: 2685485464, sha256: 554703e66b9d809b806cbc5c85c3a3cb7fbe8719b738ec3bb68dfa0774baa4f3, role: weight}
+  - {path: model-00224-of-00282.safetensors, bytes: 2680868152, sha256: 6c3aca96d3a6ee9223d461f6cc7a896e71fd2571e7491a863693279543cfaa42, role: weight}
+  - {path: model-00225-of-00282.safetensors, bytes: 2680867976, sha256: 1cb18998dd05b8966e7fddda77c0dd06879c69c22a633016a3939b8ecc4d6dfc, role: weight}
+  - {path: model-00226-of-00282.safetensors, bytes: 2682470760, sha256: c6298ce40561e34213e64184800263a9b49b3b7e4bb5e6f58054c2d34bb43252, role: weight}
+  - {path: model-00227-of-00282.safetensors, bytes: 2680868168, sha256: 183c77f9b8d7a29635fe52593fac8ae1f39ea5b7277f9b9f0bc6ed6891b54c5d, role: weight}
+  - {path: model-00228-of-00282.safetensors, bytes: 2680868152, sha256: 3fc5abbe504b741b96957bbb4da131fc561f8888293f56125d6b098a25371838, role: weight}
+  - {path: model-00229-of-00282.safetensors, bytes: 2680867848, sha256: 0322cea208640c5c6722a98c30566d11c87da480d1f87b6409e809d2a943631f, role: weight}
+  - {path: model-00230-of-00282.safetensors, bytes: 2685485280, sha256: ba2fec01a52ce1eca0b2186a27ee95f3e93333b8db56f0a732dee30bf0d8f73d, role: weight}
+  - {path: model-00231-of-00282.safetensors, bytes: 2680868168, sha256: 5cc44efb57de231872eb0aa850418967952c105335c155189b4feb70504607cb, role: weight}
+  - {path: model-00232-of-00282.safetensors, bytes: 2680868128, sha256: 4cd2fd89b4a47d363fc403898d00106affb839877d7a9b8a0d4d4045c7e553a9, role: weight}
+  - {path: model-00233-of-00282.safetensors, bytes: 2680867736, sha256: a02fc34a16a0a23112d55e53997f929b0d0127ada5497e5f59a2e627b38b2a1b, role: weight}
+  - {path: model-00234-of-00282.safetensors, bytes: 2685485440, sha256: a5ee673573342b5700afec40419ff7948c0d27b7ee574c5b519d88008500cec0, role: weight}
+  - {path: model-00235-of-00282.safetensors, bytes: 2680868152, sha256: 4afbc4d6642519e809d8f8ae118775dffb5f74a43c9c5c062ba862c42d1f9f39, role: weight}
+  - {path: model-00236-of-00282.safetensors, bytes: 2680868000, sha256: ec093b49d8cfab14843deda436d3502829512d2a3e51c0c600fb5b6cadd916af, role: weight}
+  - {path: model-00237-of-00282.safetensors, bytes: 2685485064, sha256: 95a995ba14c38bff94435fb4c26161dacde806432d5aa720b0f1bdc614633878, role: weight}
+  - {path: model-00238-of-00282.safetensors, bytes: 2680867736, sha256: 3a3143f1c02eeacdaae842dc6bd7549c233dd9c3520b76c4a0a51fed0bf28b45, role: weight}
+  - {path: model-00239-of-00282.safetensors, bytes: 2680867728, sha256: a5b3a07095b80d0374558674e9dafb0f720eb1aabec833c09141bf18a2c5b447, role: weight}
+  - {path: model-00240-of-00282.safetensors, bytes: 2680867440, sha256: 704657ba71e1a1e5d0a5a6cec520510045432081174a8c56b735966e2d58d85b, role: weight}
+  - {path: model-00241-of-00282.safetensors, bytes: 2685485056, sha256: a3f87ed61249edb7ff9d2c5c28474a97bc0ab584de267ab6130fb530650fcbb5, role: weight}
+  - {path: model-00242-of-00282.safetensors, bytes: 2680868160, sha256: 5c49cab3446c41f90824b73d22d81ab7046c2b60726594a59ed3cd349617dc00, role: weight}
+  - {path: model-00243-of-00282.safetensors, bytes: 2680868144, sha256: 02f4b5e65fefb0e7e8f662a4fa14c555de690eeea4331804844ded62dc39752d, role: weight}
+  - {path: model-00244-of-00282.safetensors, bytes: 2680867736, sha256: 453a019a5e938c2f8cbccd4c115cfe5c5c32cc67015f87b44f8119730a9a09dd, role: weight}
+  - {path: model-00245-of-00282.safetensors, bytes: 2682471024, sha256: 87fc190bc8aa687886b429aad6364f0aad963560a053d2f3308948e72c4b2b16, role: weight}
+  - {path: model-00246-of-00282.safetensors, bytes: 2680868152, sha256: d28f5494fe347b92c945f634fda8d423980b1286ca029b2aac8ae2910d9fbda6, role: weight}
+  - {path: model-00247-of-00282.safetensors, bytes: 2680868024, sha256: 79c82d126304f84441ff6710d823054901a2a86f9c303c208f8f8724b1ab02ca, role: weight}
+  - {path: model-00248-of-00282.safetensors, bytes: 2685485104, sha256: e5825bdf897b2c0810d4de3d10db82c7fc905ba503d9f28d4399b7f7fb165bdc, role: weight}
+  - {path: model-00249-of-00282.safetensors, bytes: 2680868168, sha256: 4bba94e6918c084613abf7347dc4af3746373110583bb0b548c4464dde76b417, role: weight}
+  - {path: model-00250-of-00282.safetensors, bytes: 2680868152, sha256: c23e531b93ae45842cbe4b74f6b6a65ec54c3dfd677c1504e2344ea6aad2fee3, role: weight}
+  - {path: model-00251-of-00282.safetensors, bytes: 2680867888, sha256: 401716206cd1f1e30be35f59c1d9f7d5edad121b6b5e1d55a16ee2689546e395, role: weight}
+  - {path: model-00252-of-00282.safetensors, bytes: 2685485240, sha256: 78bc1b4a6a2be5e4d4e9b2b14fa012eee252539bb69b1cb521ad734d265de7b1, role: weight}
+  - {path: model-00253-of-00282.safetensors, bytes: 2680868160, sha256: dd3ee76c0c6cab5dae93527538cdd6842155c95d18f5a8ebf78797696dad0774, role: weight}
+  - {path: model-00254-of-00282.safetensors, bytes: 2680868152, sha256: f205a5fd412d9cc885b5820e024558ade2ab56d4eb93b4c1cefbc6fdcd72df62, role: weight}
+  - {path: model-00255-of-00282.safetensors, bytes: 2680867752, sha256: 58ed016ea3f9eae5c5ec01b37ebde3f2cdb5966d20bb7cfba9de52972ff098e1, role: weight}
+  - {path: model-00256-of-00282.safetensors, bytes: 2685485392, sha256: 0b974c5a3838e2820796c7eb5831c01fa82a8c7f7c75bc950bb47946620567e9, role: weight}
+  - {path: model-00257-of-00282.safetensors, bytes: 2680868152, sha256: 0daca45cc89d6138967a29f74d2e78cf51a73784683ffb1c9fac7859ce1653d6, role: weight}
+  - {path: model-00258-of-00282.safetensors, bytes: 2680868040, sha256: 93efc57df883011368dc24ffb2d1df1926c2c653b467209d038355009e1fc988, role: weight}
+  - {path: model-00259-of-00282.safetensors, bytes: 2682470696, sha256: 6f0eb5b5cae8b06c72523a1b463b33993e732384f5dde912a18c97e7fa6341cc, role: weight}
+  - {path: model-00260-of-00282.safetensors, bytes: 2680868168, sha256: 4c3288654f86122ea96d4b12b7b93773c03db973fd81508b4e0b20d4a2aa5298, role: weight}
+  - {path: model-00261-of-00282.safetensors, bytes: 2680868152, sha256: f27bc94412e4c55fb748eef1a7db6badcd8628ccd994526826cff363dcabb4c1, role: weight}
+  - {path: model-00262-of-00282.safetensors, bytes: 2680867912, sha256: 3c6bf6da71cd65b6a8f5c7f62c02ec0228f597a4cc8d9104cf58fc0934ef02da, role: weight}
+  - {path: model-00263-of-00282.safetensors, bytes: 2685485224, sha256: b8c1e08addc4d4c9ed67d4ab66e43a77baa89e2c06715892414fcaf47c842862, role: weight}
+  - {path: model-00264-of-00282.safetensors, bytes: 2680868168, sha256: 6d57100763c9c2a0e3cfe6f1c84965737d140d054461adb1b72ba9018e72ab6b, role: weight}
+  - {path: model-00265-of-00282.safetensors, bytes: 2680868152, sha256: eac9f467f9215298881ba284c049b430e50dd43fa067e3d76d486de8080b7df6, role: weight}
+  - {path: model-00266-of-00282.safetensors, bytes: 2680867776, sha256: f658f4082b4f8dd82e7ad8bf77b9b5f3fc214c4a2758425ed3f615dc3d986d0d, role: weight}
+  - {path: model-00267-of-00282.safetensors, bytes: 2685485368, sha256: 18a4a558c5979b4e345505b4090531e365df432b0715a51b33a7a59126b46e20, role: weight}
+  - {path: model-00268-of-00282.safetensors, bytes: 2680868152, sha256: 99eb1a07f164a4bf5ec746d6e2bb1ce8cb86bff42746ba56a82fef6d52c66f03, role: weight}
+  - {path: model-00269-of-00282.safetensors, bytes: 2680868056, sha256: da46ca3d9a3722680fa7b0723b6600108023ea6d1ea7045f79c369a4cca0d338, role: weight}
+  - {path: model-00270-of-00282.safetensors, bytes: 2760987544, sha256: 2c161b47a3772bd581f2b7c31f067ee68701e219cf18a22ec4c0c5e3d0e05b0c, role: weight}
+  - {path: model-00271-of-00282.safetensors, bytes: 2680868136, sha256: 8d3347107d88fa54deba48f3fa1eb901111a93150e81fd0ca3bf94fd63041599, role: weight}
+  - {path: model-00272-of-00282.safetensors, bytes: 2680868152, sha256: 6a0765efcca20894da8ddb49d7073b1451fbd2b605311eb30c250d1afb9f3f83, role: weight}
+  - {path: model-00273-of-00282.safetensors, bytes: 2680867936, sha256: 10753d6c5e2c05d92d089826076e1a47cece8cb1e8050e6c7fe6307c2d0ec059, role: weight}
+  - {path: model-00274-of-00282.safetensors, bytes: 2682483072, sha256: aefd6b0f05ea846cd49739a8a9f15358bfad11784c015ca7523d54d00e0cf642, role: weight}
+  - {path: model-00275-of-00282.safetensors, bytes: 2680867736, sha256: e6731be2bb6637b772a275f3723c5b0aa1027db22a770f0ee13c77ae79c13b5e, role: weight}
+  - {path: model-00276-of-00282.safetensors, bytes: 2680867728, sha256: 20a7b5d542fe71084421af63a1b0959387e84c9787eedd0cc629bf26d32b129e, role: weight}
+  - {path: model-00277-of-00282.safetensors, bytes: 2680867376, sha256: 857c1806c68d32aa267f8f7dd641de7153a343129a128b3fc3feff741f07f411, role: weight}
+  - {path: model-00278-of-00282.safetensors, bytes: 2685484928, sha256: 00764ee71739be782fa9ad06cf3c91b324addb3fb6cb67125f28e2446daaaf97, role: weight}
+  - {path: model-00279-of-00282.safetensors, bytes: 2680867720, sha256: a5eb4089862e74f1fb7cc138fa02db8df4cd913356ad7750c365231cf5983eea, role: weight}
+  - {path: model-00280-of-00282.safetensors, bytes: 2680867672, sha256: 578dc311942f499bdacc12860c6ecd31779849aa1b9f0f5dcd1c16b0050d12d2, role: weight}
+  - {path: model-00281-of-00282.safetensors, bytes: 2664493192, sha256: c9731fe18a2c6dfd0d87120815c5ce4b4105d0570d26d995d6010a483b20d03e, role: weight}
+  - {path: model-00282-of-00282.safetensors, bytes: 146853792, sha256: dd71508f3fa578abe1886a51edd98fd5836fed748718ef56b0c9ac577be428b0, role: weight}
+  - {path: config.json, bytes: 29464, sha256: 3ac72612095574542f7fff847ada8e59d9199dd8af44bdf625d7e02615572e69, git_blob_id: f4dd8fe8be2a6fee923d5ecc8de0a14892631b61, role: config}
+  - {path: generation_config.json, bytes: 223, sha256: 768301ed933258ffa9125abecdb4be2b2ad2b2f62f68bb7c04b7e3c8e552b4fb, git_blob_id: 73d70c8634ca902b9fb5daf396dcd7a8c28debf2, role: config}
+  - {path: model.safetensors.index.json, bytes: 11359251, sha256: 7775731856a4621a9645596ea363380038bb003760cf5d0f013275f24a2b5ce2, role: config}
+  - {path: chat_template.jinja, bytes: 10464, sha256: 4a4b64df09bd4f54fb18a2cfc86b99c329d37362a8c289d466b443a99bac0645, git_blob_id: 4c431fa97c2b53e795fdc10cee6bbc9847f8e39a, role: tokenizer}
+  - {path: tokenizer.json, bytes: 20217442, sha256: 19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d, role: tokenizer}
+  - {path: tokenizer_config.json, bytes: 761, sha256: 98b1271574f41abf89427ae2dda030d94dc9478f0edc5a8bd240db213c6fd5fc, git_blob_id: e375fa0a4e16660ce0e2026e39374d35dad4c079, role: tokenizer}
+staging:
+  - {step: download, artifacts: all}
+profile:
+  engine: vllm
+  engine_lock: vllm-0.31
+  gpu: {vendor: nvidia, count: 8, vram_gb_each: 141, vram_gb_total: 1128, compute_capability_min: 9.0}
+  host_ram_gb: 256
+  storage: {random_read_required: false}
+  context_tokens: 131072
+  concurrency: 1
+  port: 8000
+  startup_hours_estimate: 1.0
+  min_download_mbps: 1000
+sources:
+  - {url: "https://github.com/vllm-project/recipes/blob/0a6b6cb30572bd14d67e54dde41e3f4c7069330b/models/zai-org/GLM-5.3.yaml", covers: [profile.gpu.count, profile.gpu.vram_gb_each, profile.gpu.vram_gb_total, profile.gpu.compute_capability_min], note: "The official base-model FP8 recipe uses eight H200 GPUs with 141 GB each. The 1128 GB total is eight times 141 GB, and compute capability 9.0 is the conservative Hopper requirement derived from that node. This exact checkpoint has not been tested by ablit."}
+  - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.host_ram_gb, profile.context_tokens, profile.concurrency, profile.port, profile.startup_hours_estimate, profile.min_download_mbps], note: "The 256 GB host RAM floor and one-hour startup allowance are estimates chosen by ablit. Context is limited to 131072 tokens with one request at a time. Port 8000 and the 1000 Mbps download floor are serving choices, not publisher hardware requirements."}
+  - https://huggingface.co/MoonMath-ai/GLM-5.3-Uncensored-FP8/blob/46cd6728912abe5703a8c897127c1b8aca92480e/README.md
+  - https://huggingface.co/MoonMath-ai/GLM-5.3-Uncensored-FP8/blob/46cd6728912abe5703a8c897127c1b8aca92480e/config.json
+  - https://huggingface.co/zai-org/GLM-5.3/blob/ba32f8c19c8738e2c57c71798c601d477a7bf844/LICENSE
+tests: []
+status: unverified
+notes:
+  - Hardware floors are not yet tested. The GPU profile follows the official base-model recipe, rather than a paid test of this abliterated checkpoint.
+  - MoonMath publishes this checkpoint as Dolly 2 Security on Zro. The pinned config uses GlmMoeDsaForCausalLM with blockwise FP8 weights, and all 282 weight shards are listed along with the config, index and tokenizer files.
+  - The checkpoint inherits the custom GLM-5.3 license. The model card declares license other and license_name glm-5.3. Read the pinned base-model license before use or redistribution.
+  - The 256 GB host RAM floor and one-hour startup estimate are conservative choices by ablit, not measured minima. Download time is counted separately from startup.
+  - The base model supports 1048576 tokens of context. This profile uses 131072 tokens and one concurrent request; the smaller context is an ablit choice.
+  - The current vLLM engine is available for planning only. Paid launches are blocked until its image is pinned and the backend is enabled.
+  - The official recipe requires vLLM 0.29.0 or newer and uses FP8 KV cache plus glm47 reasoning and tool-call parsers. Those serving settings and this checkpoint still need a boot test.
+  - The publisher reports evaluation results for this model. ablit has not reproduced those evaluations.

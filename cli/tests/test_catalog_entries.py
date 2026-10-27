@@ -14,6 +14,7 @@ from ablit.catalog.models import Entry
 from ablit.catalog.staging import compute_staging
 
 SEED_IDS = {
+    "glm53-dolly2-security-fp8",
     "ds41-1017-abl-fp8",
     "ds41-september-gsq-uncensored",
     "ds41-1017-xq-v3-uncensored",
@@ -141,6 +142,7 @@ def test_load_catalog_and_resolve_by_id_and_repo(repo_root: Path):
     assert not result.problems
     assert {e.id for e in result.entries} == SEED_IDS
     assert resolve(result.entries, "llama31-8b-abliterated-q4km").profile.engine == "llamacpp"
+    assert resolve(result.entries, "MoonMath-ai/GLM-5.3-Uncensored-FP8").id == "glm53-dolly2-security-fp8"
     single = resolve(result.entries, "mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF")
     assert single.id == "llama31-8b-abliterated-q4km"
     from ablit.catalog import AmbiguousModel, ModelNotInCatalog
