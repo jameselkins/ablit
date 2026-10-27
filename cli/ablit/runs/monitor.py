@@ -237,7 +237,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     store.save(record)
                     endpoint(record)
                 if tunnel is not None and tunnel.poll() is not None:
-                    raise RunError("The tunnel closed. Billing continues. Re-run tunnel or down.")
+                    path = SSH(store, record).directory / "tunnel.log"
+                    raise RunError(f"The tunnel closed (SSH exit {tunnel.poll()}). Its error log is at {path}.")
     except KeyboardInterrupt:
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
         # Leaving before there is an endpoint is not a success. Billing is not confirmed stopped.

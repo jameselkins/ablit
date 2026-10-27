@@ -128,14 +128,19 @@ class SSH:
             sock.bind(("127.0.0.1", 0))
             port = sock.getsockname()[1]
         args = self.args()
-        proc = subprocess.Popen([*args[:-1], "-N", "-o", "ExitOnForwardFailure=yes",
-                                 "-L", f"127.0.0.1:{port}:127.0.0.1:{remote_port}", args[-1]],
-                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        error_log = self.directory / "tunnel.log"
+        descriptor = os.open(error_log, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "ab", buffering=0) as errors:
+            proc = subprocess.Popen([*args[:-1], "-N", "-o", "ExitOnForwardFailure=yes",
+                                     "-L", f"127.0.0.1:{port}:127.0.0.1:{remote_port}", args[-1]],
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors)
         try:
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
-                if proc.poll() is not None:
-                    raise RunError("The SSH tunnel exited before it opened.")
+                code = proc.poll()
+                if code is not None:
+                    raise RunError(f"The SSH tunnel exited before it opened (exit {code}). Its error log is at {error_log}.")
                 try:
                     with socket.create_connection(("127.0.0.1", port), timeout=0.5):
                         return proc, port

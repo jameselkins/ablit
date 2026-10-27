@@ -43,6 +43,7 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 - The Xolotl bootstrap works with Bash 3.2, and agent instructions explain that `up` stays running after readiness.
 - Resuming `up` cannot take over a run on a different marketplace or share a run with another live `up` process.
 - Remote progress and failure records are treated as untrusted input.
+- SSH tunnel failures retain a private error log and show the exit code, so a lost connection can be investigated.
 
 ## [0.1.2] - 2026-10-21
 
