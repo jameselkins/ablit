@@ -1,5 +1,5 @@
-# Status is boot-tested: it booted on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM.
-# The hardware floors below are source or derived figures, and the 24 GB GPU floor has not been tested.
+# Status is boot-tested: it booted on Vast on 48 GB and 24 GB GPUs.
+# The 24 GB GPU floor passed boot and health checks with 128 GB of host RAM on 2026-10-27.
 # Sizes and hashes were filled in by tools/verify_entry.py --fill.
 schema: 1
 id: ds41-1017-xq-v4-uncensored
@@ -61,10 +61,12 @@ sources:
   - {url: "https://github.com/Indras-Mirror/Xolotl/blob/961d390fea6d848431822f7c6e94a6e5c0775133/tools/v41/serve/strata-ds41-1017.json", covers: [profile.context_tokens], note: "The author's 1017 server config, with --ctx 524288 and --arena-gib 64."}
   - {url: "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md#numbers-chosen-by-ablit", covers: [profile.context_tokens, profile.concurrency, profile.startup_hours_estimate, profile.min_download_mbps], note: "Figures chosen by ablit. The context is 131072 tokens so that Claude Code fits, and it is below the 524288 the author runs. The download floor is 1000 Mbps because of the 372 GB download. The startup time follows the formula in CONTRIBUTING.md and is an estimate."}
 tests:
+  - {backend: vast, date: "2026-10-27", log: boot-tests/ds41-1017-xq-v4-uncensored-vast-2026-10-27.md, image_digest: "sha256:5d36c97c39cd195723a9a1f7a1a0c8875ab2a87551d0ab2db4efb68a20e0fb69", build_sha256: 114da1005eac13c715ccf938bd70340d24884618168956c6e8474e0ed8d560df, bootstrap_sha256: f5fbd1be3883ba8cccb9edde764c40db3b7d717ba7c45d64d0772d84fa5ee9c6}
   - {backend: vast, date: "2026-10-26", log: boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md, image_digest: "sha256:5d36c97c39cd195723a9a1f7a1a0c8875ab2a87551d0ab2db4efb68a20e0fb69", build_sha256: 114da1005eac13c715ccf938bd70340d24884618168956c6e8474e0ed8d560df, bootstrap_sha256: f5fbd1be3883ba8cccb9edde764c40db3b7d717ba7c45d64d0772d84fa5ee9c6}
 status: boot-tested
 notes:
-  - The entry booted and served on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM, with a context of 131072 tokens. The 24 GB GPU floor is not yet tested. The 24 GB GPU and 90 GB RAM floors come from the model card and the engine README, which report one machine with an RTX 4090 and 90 GB of RAM.
+  - A Claude Code 2.1.311 search task on a 24 GB RTX 4090 produced code that passed 12 unit tests and independent search checks, but the session was interrupted after the local computer slept. A complete Claude Code session remains unverified.
+  - The entry booted and served on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM, with a context of 131072 tokens. On 2026-10-27, boot and API health checks also passed on a 24 GB RTX 3090 Ti with 128 GB of host RAM. Its SSH tunnel closed before a coding test ran. The 24 GB GPU and 90 GB RAM floors come from the model card and the engine README, which report one machine with an RTX 4090 and 90 GB of RAM.
   - This is the V4 build, the one the author recommends. Its hottest 1,056 experts stay in DeepSeek's native FP4 (MXFP4), The expert map check in ds41_geometry.hpp at Xolotl 03be8a6 refuses that type, so the entry uses the 961d390 engine lock. The model card also says its speed figures need Xolotl from 2026-10-25 or newer.
   - The author reports higher agreement with the full model than V3 (86.9 percent top-1 and KL 0.306 through the engine, against 82.9 percent and 0.405 for V3), at the same file size.
   - The rank file is v4/rank-1017-v4.bin, which the model card says to use. The repo also holds v4/rank-1017-v3.bin, which V4 first shipped with, and the entry leaves it out.

@@ -4,7 +4,7 @@ ablit runs abliterated and uncensored language models on rented GPUs, using your
 
 The quote includes the model download, startup time, disk and transfer charges. Model revisions and engine images are pinned, and `ablit down` destroys the rental and confirms that billing has stopped.
 
-Status: alpha. Three catalog entries have [boot test records](catalog/boot-tests/) that match their current build, profile, engine image and bootstrap script. Renting has been tested on Vast, RunPod Secure Cloud and Lium. Clore rentals remain untested.
+Status: alpha. Three catalog entries have [boot test records](https://github.com/jameselkins/ablit/tree/main/catalog/boot-tests/) that match their current build, profile, engine image and bootstrap script. Renting has been tested on Vast, RunPod Secure Cloud and Lium. Clore rentals remain untested.
 
 ## Quickstart
 
@@ -52,9 +52,9 @@ Start with the 8B entry to check the rental workflow. Nanbeige and DeepSeek have
 | `nanbeige43-33b-uncensored-q4km` | One 32 GB GPU, 32 GB RAM | 20.1 GB | 32,768 tokens |
 | `ds41-1017-xq-v4-uncensored` | One 24 GB GPU, 90 GB RAM | 371.7 GB | 131,072 tokens |
 
-All three entries have boot tests, but only the machines in their records have been tested. The 8 GB Llama floor and the 24 GB DeepSeek floor remain untested. Nanbeige's license reserves hosted inference rights, so read the model license before serving other people.
+All three entries have boot tests, but only the machines in their records have been tested. The 8 GB Llama floor remains untested. DeepSeek passed boot and API health checks on a [24 GB RTX 3090 Ti](https://github.com/jameselkins/ablit/blob/main/catalog/boot-tests/ds41-1017-xq-v4-uncensored-vast-2026-10-27.md) with 128 GB of host RAM. Nanbeige's license reserves hosted inference rights, so read the model license before serving other people.
 
-On 2026-10-26, the 552B DeepSeek V4 entry ran on one 48 GB RTX PRO 5000 with 96 GB of RAM. It was ready in about 25 minutes, including the download, and the engine generated 28 to 36 tokens per second. The run's estimated cost was $0.74. The [test record](catalog/boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md) includes prompt processing, caching and tool use results. Prices and speeds depend on the machine.
+On 2026-10-26, the 552B DeepSeek V4 entry ran on one 48 GB RTX PRO 5000 with 96 GB of RAM. It was ready in about 25 minutes, including the download, and the engine generated 28 to 36 tokens per second. The run's estimated cost was $0.74. The [test record](https://github.com/jameselkins/ablit/blob/main/catalog/boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md) includes prompt processing, caching and tool use results. Prices and speeds depend on the machine.
 
 DeepSeek uses [Xolotl](https://github.com/Indras-Mirror/Xolotl), a research engine that keeps experts across GPU memory, RAM and disk. Llama and Nanbeige use [llama.cpp](https://github.com/ggml-org/llama.cpp). Both engines are configured for one request at a time.
 
@@ -65,17 +65,19 @@ ablit catalog list
 ablit catalog show nanbeige43-33b-uncensored-q4km
 ```
 
-The [full catalog](catalog/models/) also includes earlier DeepSeek builds and unverified Ornith entries. The September and V3 DeepSeek entries are `unverified` because their test records cover older engine images. An `unverified` entry needs `--untested` to launch. The vLLM entries can be planned, but launches are blocked until the engine image is pinned and tested.
+The [full catalog](https://github.com/jameselkins/ablit/tree/main/catalog/models/) also includes earlier DeepSeek builds and unverified Ornith entries. The September and V3 DeepSeek entries are `unverified` because their test records cover older engine images. An `unverified` entry needs `--untested` to launch. The vLLM entries can be planned, but launches are blocked until the engine image is pinned and tested.
 
-Use `--gpu 5090` or `--exclude-gpu 5090` with both `plan` and `up` to control which GPU models qualify. The [command reference](docs/cli-reference.md) covers the other filters.
+Use `--gpu 5090` or `--exclude-gpu 5090` with both `plan` and `up` to control which GPU models qualify. The [command reference](https://github.com/jameselkins/ablit/blob/main/docs/cli-reference.md) covers the other filters.
 
 ## Use it with Claude Code
 
 When a llama.cpp or Xolotl endpoint is ready, `ablit up` prints the shell exports for Claude Code. Paste the block into another terminal, then run `claude`. The block sets the base URL and all model aliases, and reads the endpoint key from your keyring with `ablit status <run> --key-only`.
 
-The 8B entry's 4,096-token context is too small for Claude Code's system prompt and tools, which take about 15,000 to 25,000 tokens. Use an entry with more context, such as Nanbeige or DeepSeek V4. Streaming and tool calls through `/v1/messages` passed direct API tests; a complete Claude Code session has not been tested.
+The 8B entry's 4,096-token context is too small for Claude Code's system prompt and tools, which usually take about 15,000 to 25,000 tokens. Start with Nanbeige for a coding test, or choose DeepSeek V4 for more context.
 
-DeepSeek's follow-up turns took 30 to 35 seconds to reread a 20,000-token prompt with thinking enabled. With thinking disabled in direct API requests, the engine reused the conversation and answered short follow-ups in 3 to 5 seconds. See the [test record](catalog/boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md) for the settings and measurements.
+On 2026-10-27, Nanbeige completed a search bug fix and an add/remove feature in a resumed Claude Code 2.1.311 session. The tasks took 7.1 and 3.8 minutes on a 48 GB RTX A6000, with all 20 final tests and independent checks passing. The [test record](https://github.com/jameselkins/ablit/blob/main/catalog/boot-tests/nanbeige43-33b-uncensored-q4km-lium-2026-10-27.md) includes failed attempts, and the [fixture and prompts](https://github.com/jameselkins/ablit/blob/main/docs/claude-code-smoke-test.md) let you repeat the small coding test.
+
+DeepSeek produced a search fix that passed 12 tests, but the session was interrupted after the local computer slept. A complete Claude Code session remains unverified. The [test record](https://github.com/jameselkins/ablit/blob/main/catalog/boot-tests/ds41-1017-xq-v4-uncensored-vast-2026-10-27.md) records the interruption and earlier rental failures.
 
 ## Marketplaces and spending checks
 
@@ -88,7 +90,7 @@ DeepSeek's follow-up turns took 30 to 35 seconds to reread a 20,000-token prompt
 | [Lium](https://lium.io) | Tested | The cap relies on the local check. A provider deletion deadline, set in whole hours from the cap, provides an additional limit and remains untested. |
 | [Clore.ai](https://clore.ai) | Untested | The cap relies on the local check. If your computer is off, the order continues until the account balance runs out. |
 
-The local check runs while `up`, `tunnel` or `status --watch` is attached. RunPod, Lium and Clore do not receive your account key on the rented machine. Their [backend notes](backends/) explain the limits and test coverage.
+The local check runs while `up`, `tunnel` or `status --watch` is attached. RunPod, Lium and Clore do not receive your account key on the rented machine. Their [backend notes](https://github.com/jameselkins/ablit/tree/main/backends/) explain the limits and test coverage.
 
 ### How the spend cap works
 
@@ -116,7 +118,7 @@ unattended.
 | `ablit tunnel [run]` | Reopens the tunnel and resumes the local cap check. |
 | `ablit down [run]` | Destroys the rental and confirms that billing has stopped. |
 
-`plan` and `status` accept `--json`. Agents should read [AGENTS.md](AGENTS.md) for exit codes, readiness checks and renting with `--yes`. The [command reference](docs/cli-reference.md) lists every flag.
+`plan` and `status` accept `--json`. Agents should read [AGENTS.md](https://github.com/jameselkins/ablit/blob/main/AGENTS.md) for exit codes, readiness checks and renting with `--yes`. The [command reference](https://github.com/jameselkins/ablit/blob/main/docs/cli-reference.md) lists every flag.
 
 ## Privacy and keys
 
@@ -130,10 +132,10 @@ Renting gives you control over the pinned build and its logs. The marketplace an
 
 ablit has a referral ID for Vast.ai and none for RunPod or Clore. It has none for Lium either. If you create a new Vast account through the optional paid link, the maintainer earns 3% of your spending as Vast credits for the life of the account (checked 2026-10-21).
 
-Setup offers a plain link alongside the paid one. Commissions never affect offer ranking or your prices, and `ablit setup --no-referral` turns the links off. [POLICY.md](POLICY.md) has the rules and the tests that enforce them.
+Setup offers a plain link alongside the paid one. Commissions never affect offer ranking or your prices, and `ablit setup --no-referral` turns the links off. [POLICY.md](https://github.com/jameselkins/ablit/blob/main/POLICY.md) has the rules and the tests that enforce them.
 
 ## Documentation and contributing
 
-Read the [command reference](docs/cli-reference.md) for usage, the [architecture](docs/architecture.md) for implementation details, and the [design decisions](docs/design-decisions.md) for scope. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to add a catalog entry or record a boot test. Report security issues through [SECURITY.md](SECURITY.md).
+Read the [command reference](https://github.com/jameselkins/ablit/blob/main/docs/cli-reference.md) for usage, the [architecture](https://github.com/jameselkins/ablit/blob/main/docs/architecture.md) for implementation details, and the [design decisions](https://github.com/jameselkins/ablit/blob/main/docs/design-decisions.md) for scope. [CONTRIBUTING.md](https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md) explains how to add a catalog entry or record a boot test. Report security issues through [SECURITY.md](https://github.com/jameselkins/ablit/blob/main/SECURITY.md).
 
-The code is licensed under [Apache-2.0](LICENSE), and the catalog data under [CC0-1.0](catalog/LICENSE). Each model has its own license, recorded in its catalog entry.
+The code is licensed under [Apache-2.0](https://github.com/jameselkins/ablit/blob/main/LICENSE), and the catalog data under [CC0-1.0](https://github.com/jameselkins/ablit/blob/main/catalog/LICENSE). Each model has its own license, recorded in its catalog entry.

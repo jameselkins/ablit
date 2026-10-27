@@ -13,13 +13,13 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 - GPU model filters in `plan` and `up`, through `--gpu` and `--exclude-gpu`.
 - A Claude Code configuration block printed when a compatible endpoint is ready.
 - Boot test records tied to the tested model files, serving profile, image digest and bootstrap script. New run records and JSON reports carry the hashes.
+- A reproducible Claude Code coding fixture and paid test records, including passing Nanbeige search and add/remove tasks and DeepSeek boot checks on a 24 GB GPU. DeepSeek's coding session was interrupted and remains unverified.
 - A pinned Xolotl `961d390` image digest in the engine lock. The image builds against llama.cpp `6050b467`, and the bootstrap passes `--tier-batch-pcie 0.25`.
 - Clore renting in `ablit up`, connected to the Clore driver.
 - The Lium marketplace backend, with keyless search, renting in `ablit up`, setup and `backends/lium.md`. Renting passed one paid round trip on 2026-10-26.
 - A pinned Xolotl `03be8a6` image digest in the engine lock, with the conversation cache set to 4096 MiB.
 - A boot test record for the Xolotl entry on `03be8a6`, and an 8B RunPod boot test record.
-- A comparison of Morph with the other hosted services in the documentation.
-- Two unverified llama.cpp entries for Ornith-1.5-122B UNCENSORED (IQ2_XXS and Q4_K_M, text only), the qwen35moe architecture in the llama.cpp engine lock, and Lyber in the hosted service comparison.
+- Two unverified llama.cpp entries for Ornith-1.5-122B UNCENSORED (IQ2_XXS and Q4_K_M, text only), and the qwen35moe architecture in the llama.cpp engine lock.
 - A ruff check, a mypy check, Python 3.13 in the CI matrix, a Dependabot configuration, a pre-commit configuration with ruff and gitleaks, and this changelog.
 
 ### Changed
