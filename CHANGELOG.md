@@ -4,9 +4,15 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-27
+
 ### Added
 
 - The `ds41-1017-xq-v4-uncensored` entry for the V4 build of the DeepSeek-V4.1-Flash 1017 model, boot-tested on Vast on 2026-10-26.
+- The boot-tested Nanbeige 4.3 33B uncensored entry for llama.cpp.
+- GPU model filters in `plan` and `up`, through `--gpu` and `--exclude-gpu`.
+- A Claude Code configuration block printed when a compatible endpoint is ready.
+- Boot test records tied to the tested model files, serving profile, image digest and bootstrap script. New run records and JSON reports carry the hashes.
 - A pinned Xolotl `961d390` image digest in the engine lock. The image builds against llama.cpp `6050b467`, and the bootstrap passes `--tier-batch-pcie 0.25`.
 - Clore renting in `ablit up`, connected to the Clore driver.
 - The Lium marketplace backend, with keyless search, renting in `ablit up`, setup and `backends/lium.md`. Renting passed one paid round trip on 2026-10-26.
@@ -19,6 +25,7 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 ### Changed
 
 - The Xolotl entries serve 131072 tokens of context instead of 4096, so Claude Code's system prompt and tools fit.
+- The September and V3 DeepSeek entries require `--untested` again because their recorded tests cover older engine images and profiles. Historical test records are preserved.
 - CI runs the shell tests with macOS's bundled Bash and checks launch bundles from an installed wheel.
 - Mypy checks function bodies that have no type annotations.
 - `ablit up` stops waiting silently on a machine that does not answer SSH.
@@ -34,6 +41,8 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 - Failed searches mark the comparison incomplete, and `up` refuses incomplete quotes.
 - Monitor lock contention skips a poll instead of triggering cleanup.
 - The Xolotl bootstrap works with Bash 3.2, and agent instructions explain that `up` stays running after readiness.
+- Resuming `up` cannot take over a run on a different marketplace or share a run with another live `up` process.
+- Remote progress and failure records are treated as untrusted input.
 
 ## [0.1.2] - 2026-10-21
 
@@ -85,7 +94,8 @@ All notable changes to ablit are recorded in this file. The format follows [Keep
 - llama-server starts with its library path, fails fast when the engine exits, and keeps its logs.
 - The live_plan tests clear CI variables.
 
-[Unreleased]: https://github.com/jameselkins/ablit/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/jameselkins/ablit/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/jameselkins/ablit/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jameselkins/ablit/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jameselkins/ablit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jameselkins/ablit/releases/tag/v0.1.0
