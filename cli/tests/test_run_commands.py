@@ -491,6 +491,21 @@ def test_up_cancels_when_the_offer_no_longer_meets_the_search_filters(monkeypatc
     assert RunStore().all() == []
 
 
+def test_up_cancels_when_the_updated_speed_makes_the_cap_too_small(monkeypatch, capsys):
+    launch_environment(monkeypatch)
+    fast = vast_row(7101, base=4, inet_down_cost=0, internet_down_cost_per_tb=0)
+    slow = {**fast, "inet_down": 500}
+    with respx.mock(assert_all_called=False) as router:
+        router.post(VAST_URL).mock(side_effect=[
+            httpx.Response(200, json={"offers": [fast]}),
+            httpx.Response(200, json={"offers": [slow]}),
+        ])
+        assert main(["up", MODEL, "--max-spend", "1.90", "--yes"], environ={}) == 5
+        assert [call.request.url.path for call in router.calls] == ["/api/v0/bundles/"] * 2
+    assert "The updated download speed raises the minimum spend cap" in capsys.readouterr().out
+    assert RunStore().all() == []
+
+
 def test_a_new_instance_without_a_status_is_not_destroyed(monkeypatch):
     store = RunStore()
     r = saved_run(store)

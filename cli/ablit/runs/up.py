@@ -282,7 +282,8 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
                 return 3
             offer = report.ranked[0].offer
             use_driver, use_creds = drivers[offer.backend], all_creds[offer.backend]
-            smallest = minimum_cap(offer, req, args.min_download or req.min_download_mbps)
+            floor_mbps = args.min_download or req.min_download_mbps
+            smallest = minimum_cap(offer, req, floor_mbps)
             print(f"Smallest cap covering setup, ten minutes and the watchdog reserve: ${smallest:.2f}")
             if args.max_spend < smallest:
                 return 5
@@ -307,6 +308,11 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
                 return 5
             if not apply_filter_chain([again], req, opts).kept:
                 print("The offer no longer meets the search filters. Confirmation cancelled. Run up again for a new quote.")
+                return 5
+            smallest = minimum_cap(again, req, floor_mbps)
+            if args.max_spend < smallest:
+                print(f"The updated download speed raises the minimum spend cap to ${smallest:.2f}. "
+                      "Confirmation cancelled. Run up again for a new quote.")
                 return 5
             if engines.engine_lock(entry) != lock:
                 print("The image lock changed. Confirmation cancelled.")
