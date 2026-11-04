@@ -27,6 +27,7 @@ from ablit.runs import RunBusy, RunError
 from ablit.runs.lifecycle import allocation, down
 from ablit.runs.monitor import monitor
 from ablit.runs.ssh import SSH
+from ablit.select import apply_filter_chain
 from ablit.select.cost import total_cost
 from ablit.select.request import request_from_entry
 from ablit.watchdog.ablit_watchdog import Config, reserve
@@ -303,6 +304,9 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
                      "download_mbps": offer.download_mbps}
             if again is None or replace(again, **drift) != offer:
                 print("The offer or price changed. Confirmation cancelled. Run up again for a new quote.")
+                return 5
+            if not apply_filter_chain([again], req, opts).kept:
+                print("The offer no longer meets the search filters. Confirmation cancelled. Run up again for a new quote.")
                 return 5
             if engines.engine_lock(entry) != lock:
                 print("The image lock changed. Confirmation cancelled.")

@@ -76,7 +76,7 @@ The quote shows these items:
 4. Totals for 1 hour, 24 hours, 7 days and `--hours`, each including download charges and the hours spent downloading and starting.
 5. The cap, the time at which spend would reach it, and the spend cap notice.
 
-Any change to the price, offer, build or cap cancels the confirmation. If the offer is gone at re-query, ablit plans again and asks again.
+After confirmation, ablit checks the offer again before renting. It cancels if the offer disappears, the price changes or the offer no longer passes the search filters. Run `ablit up` again for a new quote.
 
 The spend cap notice is printed on every quote, in the README and in `ablit up --help`. A test checks that this page and the README hold the exact text.
 

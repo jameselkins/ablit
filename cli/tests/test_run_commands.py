@@ -473,6 +473,24 @@ def test_reliability_and_speed_drift_keep_the_confirmation(monkeypatch):
         assert create.call_count == 1
 
 
+@pytest.mark.parametrize(("change", "flags"), [
+    ({"duration": 4510}, []),  # covers startup and use, but not the model download
+    ({"inet_down": 400}, []),
+    ({"reliability": 0.96}, ["--min-reliability", "0.97"]),
+])
+def test_up_cancels_when_the_offer_no_longer_meets_the_search_filters(monkeypatch, capsys, change, flags):
+    launch_environment(monkeypatch)
+    with respx.mock(assert_all_called=False) as router:
+        router.post(VAST_URL).mock(side_effect=[
+            httpx.Response(200, json={"offers": [vast_row(7101, host_id=7301)]}),
+            httpx.Response(200, json={"offers": [vast_row(7101, host_id=7301, **change)]}),
+        ])
+        assert main(["up", MODEL, "--untested", "--max-spend", "5", "--yes", *flags], environ={}) == 5
+        assert [call.request.url.path for call in router.calls] == ["/api/v0/bundles/"] * 2
+    assert "The offer no longer meets the search filters." in capsys.readouterr().out
+    assert RunStore().all() == []
+
+
 def test_a_new_instance_without_a_status_is_not_destroyed(monkeypatch):
     store = RunStore()
     r = saved_run(store)
