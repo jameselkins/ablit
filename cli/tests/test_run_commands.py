@@ -351,6 +351,17 @@ def test_status_reports_exit_8_from_saved_watchdog_evidence_without_a_marketplac
     assert json.loads(capsys.readouterr().out)["runs"][0]["stop_reason"] == "watchdog_cap"
 
 
+def test_down_can_confirm_a_saved_billing_stop_without_a_marketplace_key(capsys):
+    store = RunStore()
+    run = saved_run(store)
+    with respx.mock:
+        assert main(["down", run["run_id"]], environ={}) == 4
+        run["state"] = "billing_stopped_confirmed"
+        store.save(run)
+        assert main(["down", run["run_id"]], environ={}) == 0
+    assert "Billing stopped." in capsys.readouterr().out
+
+
 def test_status_all_keeps_an_earlier_pending_cleanup_exit_code(capsys):
     store = RunStore()
     saved_run(store)

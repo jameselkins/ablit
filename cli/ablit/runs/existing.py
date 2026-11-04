@@ -25,9 +25,9 @@ def existing(args, driver, environ, store, drivers=None):
     if args.command == "status":
         return status(args, records, drivers, environ, store)
     record = records[0]
-    driver, creds = pair(record, drivers, environ)
     if args.command == "down":
-        return down_command(record, store, driver, creds)
+        return down_command(record["run_id"], store, drivers, environ)
+    driver, creds = pair(record, drivers, environ)
     if args.command == "logs":
         return logs(args, record, store, creds)
     return tunnel(record, store, driver, creds)
