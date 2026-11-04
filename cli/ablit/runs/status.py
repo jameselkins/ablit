@@ -50,9 +50,9 @@ def status(args, records, drivers, environ, store):
                     if args.watch and local_stop_needed(record, time.time()):
                         record["stop_reason"] = record.get("stop_reason") or "local_cap"
                         store.save(record)
-                        code = status_down() or 6
+                        code = max(code, status_down() or 6)
                     elif record["marketplace_state"] == "absent" and record.get("resource_ids"):
-                        code = status_down()
+                        code = max(code, status_down())
                 if record["state"] in ("termination_requested", "resources_terminated"):
                     code = max(code, 7)
                 if record.get("stop_reason") == "watchdog_cap" and record["state"] == "billing_stopped_confirmed":

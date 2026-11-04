@@ -352,6 +352,27 @@ def test_status_reports_exit_8_from_saved_watchdog_evidence(monkeypatch, capsys)
     assert json.loads(capsys.readouterr().out)["runs"][0]["stop_reason"] == "watchdog_cap"
 
 
+def test_status_all_keeps_an_earlier_pending_cleanup_exit_code(capsys):
+    store = RunStore()
+    saved_run(store)
+    saved_run(store)
+    pending, stopped = store.all()
+    stopped.update(resource_ids=["7202"], watchdog_key_id="7402")
+    store.save(stopped)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    with respx.mock as router:
+        router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
+        router.delete(ROOT + "/api/v0/instances/7201/").respond(404)
+        router.delete(ROOT + "/api/v0/instances/7202/").respond(404)
+        router.delete(ROOT + "/api/v0/auth/apikeys/7401/").respond(403)
+        router.delete(ROOT + "/api/v0/auth/apikeys/7402/").respond(200, json="Successfully Deleted API Key")
+        assert main(["status", "--all", "--json"], environ={}) == 7
+    runs = json.loads(capsys.readouterr().out)["runs"]
+    assert runs[0]["run_id"] == pending["run_id"]
+    assert runs[0]["pending_cleanup"] == ["Watchdog key deletion is unconfirmed."]
+    assert runs[1]["state"] == "billing_stopped_confirmed"
+
+
 def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billing_on_interrupt(monkeypatch, capsys):
     store = RunStore()
     r = saved_run(store)
