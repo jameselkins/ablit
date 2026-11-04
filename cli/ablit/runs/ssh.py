@@ -134,8 +134,9 @@ class SSH:
         try:
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
-                if proc.poll() is not None:
-                    raise RunError("The SSH tunnel exited before it opened.")
+                exit_code = proc.poll()
+                if exit_code is not None:
+                    raise RunError(f"The SSH tunnel exited with code {exit_code} before it opened.")
                 try:
                     with socket.create_connection(("127.0.0.1", port), timeout=0.5):
                         return proc, port

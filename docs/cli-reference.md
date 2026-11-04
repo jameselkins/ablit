@@ -139,8 +139,11 @@ export ANTHROPIC_DEFAULT_OPUS_MODEL=<served name>
 export ANTHROPIC_DEFAULT_FABLE_MODEL=<served name>
 export CLAUDE_CODE_SUBAGENT_MODEL=<served name>
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-Closing this tunnel doesn't stop billing. Run `ablit down <run>` to stop it.
+To end the rental and stop billing, run `ablit down <run>`.
 ```
+
+If SSH exits while ablit is still watching the run, ablit tries to end the
+rental and reports whether it confirmed that billing stopped.
 
 The Claude Code block appears only when the engine lock sets `anthropic_messages: true`, which the llama.cpp and Xolotl locks do. The base URL has no `/v1`, because Claude Code adds `/v1/messages` itself. Claude Code's system prompt and tools take about 15K to 25K tokens, so when the entry serves fewer than 25,000 tokens of context the block ends with a line that says the endpoint will likely refuse Claude Code's requests.
 

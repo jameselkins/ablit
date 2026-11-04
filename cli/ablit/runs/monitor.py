@@ -45,7 +45,7 @@ def endpoint(record: dict) -> None:
     if record.get("anthropic_messages"):
         print()
         print(claude_code_block(record))
-    print(f"Closing this tunnel doesn't stop billing. Run `ablit down {run_id}` to stop it.", flush=True)
+    print(f"To end the rental and stop billing, run `ablit down {run_id}`.", flush=True)
 
 
 def claude_code_block(record: dict) -> str:
@@ -232,8 +232,9 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     record["local_port"] = port
                     store.save(record)
                     endpoint(record)
-                if tunnel is not None and tunnel.poll() is not None:
-                    raise RunError("The tunnel closed. Billing continues. Re-run tunnel or down.")
+                tunnel_exit = tunnel.poll() if tunnel is not None else None
+                if tunnel_exit is not None:
+                    raise RunError(f"The SSH tunnel closed with exit code {tunnel_exit}.")
     except KeyboardInterrupt:
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
         # Leaving before there is an endpoint is not a success. Billing is not confirmed stopped.
