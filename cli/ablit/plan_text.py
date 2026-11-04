@@ -58,7 +58,7 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
         f"  Time before use: download {_hours(ranked.download_hours, 2)}, startup {_hours(report.req.startup_hours, 2)} (an estimate)"
     )
     totals = totals_for(ranked, report)
-    lines.append("  Totals, including download charges and the hours spent downloading and starting:")
+    lines.append("  Estimated totals for this offer, including download and startup costs:")
     for row in totals:
         lines.append(f"    {row['label']:<14} {_usd(row['total'])}")
     cap = cap_info(ranked, report)

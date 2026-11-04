@@ -31,7 +31,7 @@ The driver sends the user's key in an `Authorization: Bearer` header only when o
 | `rentable` | Must be true. |
 | `gpu_frac` | Must be 1. A lower value means the host shares each GPU between renters. |
 | `verified` | Shown in the quote, and used by `--trust verified`. |
-| Remaining rental duration | Must cover the startup estimate plus `--hours`. |
+| Remaining rental duration | Must cover the estimated download time, startup time and session length in `--hours`. ablit checks download time after it reads each offer's speed. |
 
 The GPU-only sticker price is shown in a separate column of the quote, and it is never used for ranking.
 

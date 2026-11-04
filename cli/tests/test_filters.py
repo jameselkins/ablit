@@ -85,10 +85,19 @@ def test_spot_flag_allows_interruptible_offers():
     assert apply_filter_chain(offers, REQ, PlanOptions(spot=True)).kept
 
 
-def test_remaining_rental_must_cover_startup_plus_hours():
-    offers = [make_offer("a", remaining_hours=1.4), make_offer("b", remaining_hours=1.6)]
-    kept = apply_filter_chain(offers, REQ, PlanOptions(hours=1.0)).kept
-    assert [o.offer_id for o in kept] == ["b"]
+def test_remaining_rental_must_cover_download_startup_and_session():
+    req = dataclasses.replace(REQ, download_gb=225, min_download_mbps=250)
+    opts = PlanOptions(hours=1.0, min_download_mbps=500)
+    offers = [
+        make_offer("short", remaining_hours=1.9),
+        make_offer("exact", remaining_hours=2.0),
+        make_offer("slow", remaining_hours=2.0, download_mbps=500),
+        make_offer("unadvertised-speed", remaining_hours=2.5, download_mbps=None),
+        make_offer("unknown-duration"),
+    ]
+    result = apply_filter_chain(offers, req, opts)
+    assert [o.offer_id for o in result.kept] == ["exact", "unadvertised-speed", "unknown-duration"]
+    assert result.steps[3].reasons == {"rental ends too soon": 2}
 
 
 def test_user_filters_apply_only_when_set():

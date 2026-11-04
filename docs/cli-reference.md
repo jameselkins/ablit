@@ -51,6 +51,21 @@ Resuming recovers a run whose `up` exited before the engine was ready, e.g. afte
 
 A paid `up` asks the user to type `rent`. With `--yes`, the required `--max-spend`, the cap check and the price recheck still apply. A paid `up` with neither a terminal nor `--yes` exits with code 2.
 
+## Comparing GPU prices
+
+`ablit plan` ranks offers by the estimated cost for the session length in
+`--hours`, which defaults to one hour. The 1 hour, 24 hour and 7 day totals are
+estimates for each displayed offer. To find the cheapest offer for seven days
+of use, rerun the search with `--hours 168` so ablit checks how long each offer
+can run and ranks it for that session length.
+
+When you compare a plan with a published GPU rate, check the price date, GPU
+variant, GPU count and rental tier. A rate per GPU hour covers one GPU for one
+hour, while the plan shows prices for the whole offer. Check which charges each
+rate includes before comparing it with `gpu_only_hourly_usd` or
+`hourly_all_in_usd` in `ablit plan --json`. The plan's session totals also count
+download and startup time, transfer charges and any fixed fees.
+
 ## Quote
 
 The quote shows these items:

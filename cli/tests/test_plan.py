@@ -77,6 +77,7 @@ def test_text_report_has_every_part(capsys):
     for field_name in ("Offer:", "GPU:", "Host RAM:", "Disk:", "Download:", "Host:", "Price:", "Transfer:", "One-time:"):
         assert field_name in out
     assert "GPU only:" in out
+    assert "Estimated totals for this offer, including download and startup costs:" in out
     assert "speed not advertised, measured after boot" in out  # RunPod offers
     assert "Mbps advertised" in out  # Vast offers
     assert "Filter steps, over the" in out and "engine floor" in out and "disk floor" in out

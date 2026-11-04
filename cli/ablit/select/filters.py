@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable
 
+from ablit.select.cost import download_hours, effective_speed
 from ablit.select.gpu_names import gpu_matches
 from ablit.select.types import FilterResult, HardwareRequest, Offer, PlanOptions, StepReport
 
@@ -73,6 +74,7 @@ def download_floor(floor_mbps: float) -> Check:
 
 def availability(req: HardwareRequest, opts: PlanOptions) -> Check:
     """On demand unless spot is allowed, rentable, and enough rental time left."""
+    floor_mbps = floor_for(req, opts)
 
     def check(offer: Offer) -> str | None:
         if offer.interruptible and not opts.spot:
@@ -81,8 +83,10 @@ def availability(req: HardwareRequest, opts: PlanOptions) -> Check:
             return "not rentable"
         if not offer.ssh_reachable:
             return "Community Cloud pods may have no public IP for SSH"
-        if offer.remaining_hours is not None and offer.remaining_hours < req.startup_hours + opts.hours:
-            return "rental ends too soon"
+        if offer.remaining_hours is not None:
+            download = download_hours(req.download_gb, effective_speed(offer, floor_mbps))
+            if offer.remaining_hours < download + req.startup_hours + opts.hours:
+                return "rental ends too soon"
         return None
 
     return check
