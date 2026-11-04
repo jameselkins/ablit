@@ -89,6 +89,13 @@ def test_text_report_has_every_part(capsys):
     assert "cheapest of the" not in out  # both searches were complete
 
 
+def test_text_report_marks_estimates_that_exceed_the_rental_time(capsys):
+    offer = vast_row(9100, allocated=ALLOCATED, duration=24 * 3600)
+    _, out, _ = run_plan(capsys, "--backends", "vast", vast=FakeVast([offer]), expect_exit=0)
+    marked = [line.strip() for line in out.splitlines() if "exceeds advertised rental time" in line]
+    assert [line.split("$")[0].strip() for line in marked] == ["24 hours", "7 days"]
+
+
 def test_the_chosen_offer_is_the_one_with_the_lowest_total(capsys):
     code, out, err = run_plan(capsys, "--json", vast=FakeVast(vast_rows()), runpod=FakeRunPod(runpod_types()))
     data = json.loads(out)

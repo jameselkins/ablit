@@ -55,9 +55,10 @@ A paid `up` asks the user to type `rent`. With `--yes`, the required `--max-spen
 
 `ablit plan` ranks offers by the estimated cost for the session length in
 `--hours`, which defaults to one hour. The 1 hour, 24 hour and 7 day totals are
-estimates for each displayed offer. To find the cheapest offer for seven days
-of use, rerun the search with `--hours 168` so ablit checks how long each offer
-can run and ranks it for that session length.
+estimates for each displayed offer. The text report marks a total if the
+download, startup and session would exceed the advertised rental time. To
+find the cheapest offer for seven days of use, rerun the search with
+`--hours 168` so ablit ranks offers for that session length.
 
 When you compare a plan with a published GPU rate, check the price date, GPU
 variant, GPU count and rental tier. A rate per GPU hour covers one GPU for one
