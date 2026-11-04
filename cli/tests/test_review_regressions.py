@@ -203,6 +203,35 @@ def test_status_watch_keeps_watchdog_evidence_when_it_takes_over(monkeypatch, ca
     assert json.loads(capsys.readouterr().out)["runs"][0]["stop_reason"] == "watchdog_cap"
 
 
+def test_status_watch_all_keeps_polling_after_a_historical_watchdog_stop(monkeypatch, capsys):
+    store = RunStore()
+    stopped = saved_run(store)
+    stopped.update(state="billing_stopped_confirmed", stop_reason="watchdog_cap")
+    store.save(stopped)
+    active = saved_run(store)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    checked = []
+
+    def refresh(store_, record, *args):
+        checked.append(record["run_id"])
+        record.update(marketplace_state="running", spend_estimate_usd=0)
+        if len(checked) == 2:
+            record.update(spend_estimate_usd=record["cap_usd"], stop_reason="watchdog_cap")
+
+    def down(store_, record, *args):
+        record["state"] = "billing_stopped_confirmed"
+        store_.save(record)
+        return 0
+
+    monkeypatch.setattr(status_mod, "refresh", refresh)
+    monkeypatch.setattr(status_mod, "down", down)
+    monkeypatch.setattr(status_mod.time, "sleep", lambda _: None)
+    assert main(["status", "--all", "--watch", "--json"], environ={}) == 8
+    assert checked == [active["run_id"], active["run_id"]]
+    assert store.load(active["run_id"])["state"] == "billing_stopped_confirmed"
+    assert stopped["run_id"] in capsys.readouterr().out
+
+
 def test_up_refuses_an_incomplete_quote_before_any_create(monkeypatch):
     launch_environment(monkeypatch)
     original_plan = up_mod.run_plan

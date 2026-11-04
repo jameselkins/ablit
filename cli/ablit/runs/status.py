@@ -24,6 +24,9 @@ def key_only(record) -> int:
 
 
 def status(args, records, drivers, environ, store):
+    watching_active_runs = args.watch and args.all and any(
+        record["state"] != "billing_stopped_confirmed" for record in records
+    )
     while True:
         output, code = [], 0
         for selected in records:
@@ -55,7 +58,9 @@ def status(args, records, drivers, environ, store):
                         code = max(code, status_down())
                 if record["state"] in ("termination_requested", "resources_terminated"):
                     code = max(code, 7)
-                if record.get("stop_reason") == "watchdog_cap" and record["state"] == "billing_stopped_confirmed":
+                historical_stop = watching_active_runs and selected["state"] == "billing_stopped_confirmed"
+                if (not historical_stop and record.get("stop_reason") == "watchdog_cap"
+                        and record["state"] == "billing_stopped_confirmed"):
                     code = max(code, 8)
                 view = {k: v for k, v in record.items() if k not in ("entry", "quote", "offer")}
                 view["hourly_rate_usd"] = record["offer"]["hourly_all_in"]

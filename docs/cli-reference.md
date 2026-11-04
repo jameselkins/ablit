@@ -17,6 +17,9 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 
 `ablit up` stays running after it prints the endpoint, because it keeps the SSH tunnel open and checks spending. Scripts should keep the process running and poll `ablit status --json` for `state: "running"` and `local_port`. Interrupting `up` closes the tunnel and stops the local check, and billing continues until the machine is destroyed.
 
+When `ablit status --all --watch` starts with an active run, it keeps showing
+old watchdog stops and continues checking the active run.
+
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.
 
 ## Flags for plan and up
