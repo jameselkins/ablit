@@ -42,6 +42,8 @@ A paid `up` holds a lock while it quotes and rents. A second `up` waits up to 15
 
 Top-level keys of `plan --json`: `schema`, `command`, `checked_at`, `result`, `complete`, `incomplete_label`, `model`, `request`, `options`, `chosen`, `next`, `qualified_count`, `checked_count`, `qualified_gpu_models`, `filter_steps`, `backends`, `notices`. When `complete` is false, at least one marketplace did not answer, and the ranking may miss offers.
 
+Each row in an offer's `totals` has a `fits_rental_duration` field. It is `true` when the advertised rental time covers the estimated download, startup and session, and `false` when the rental ends sooner. It is `null` when the marketplace does not report a rental limit.
+
 Messages and errors go to standard error as plain sentences.
 
 ## Exit codes

@@ -59,10 +59,9 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
     )
     totals = totals_for(ranked, report)
     lines.append("  Estimated totals for this offer, including download and startup costs:")
-    setup_hours = ranked.download_hours + report.req.startup_hours
     for row in totals:
         total = f"    {row['label']:<14} {_usd(row['total'])}"
-        if o.remaining_hours is not None and setup_hours + row["hours"] > o.remaining_hours:
+        if row["fits_rental_duration"] is False:
             total += " (exceeds advertised rental time)"
         lines.append(total)
     cap = cap_info(ranked, report)

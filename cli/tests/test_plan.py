@@ -96,6 +96,17 @@ def test_text_report_marks_estimates_that_exceed_the_rental_time(capsys):
     assert [line.split("$")[0].strip() for line in marked] == ["24 hours", "7 days"]
 
 
+@pytest.mark.parametrize(("duration", "fits"), [
+    (24 * 3600, [True, False, False, True]),
+    (None, [None, None, None, None]),
+])
+def test_json_totals_report_whether_the_rental_time_is_long_enough(capsys, duration, fits):
+    offer = vast_row(9100, allocated=ALLOCATED, duration=duration)
+    _, out, _ = run_plan(capsys, "--json", "--backends", "vast", vast=FakeVast([offer]), expect_exit=0)
+    totals = json.loads(out)["chosen"]["totals"]
+    assert [row["fits_rental_duration"] for row in totals] == fits
+
+
 def test_the_chosen_offer_is_the_one_with_the_lowest_total(capsys):
     code, out, err = run_plan(capsys, "--json", vast=FakeVast(vast_rows()), runpod=FakeRunPod(runpod_types()))
     data = json.loads(out)

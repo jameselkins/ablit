@@ -220,9 +220,11 @@ def totals_for(ranked: RankedOffer, report: PlanReport) -> list[dict[str, Any]]:
     floor = floor_for(report.req, report.opts)
     rows = [(label, hours) for label, hours in FIXED_TOTALS]
     rows.append((f"--hours ({report.opts.hours:g})", report.opts.hours))
+    remaining_hours = ranked.offer.remaining_hours
     out = []
     for label, hours in rows:
         breakdown = cost_breakdown(ranked.offer, report.req, hours, floor)
+        rental_hours = breakdown.download_hours + breakdown.startup_hours + hours
         out.append(
             {
                 "label": label,
@@ -231,6 +233,7 @@ def totals_for(ranked: RankedOffer, report: PlanReport) -> list[dict[str, Any]]:
                 "compute": breakdown.compute,
                 "transfer": breakdown.transfer,
                 "fixed": breakdown.fixed,
+                "fits_rental_duration": None if remaining_hours is None else rental_hours <= remaining_hours,
             }
         )
     return out
