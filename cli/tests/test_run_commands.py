@@ -299,6 +299,25 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
     assert output.count("[redacted]") == 2
 
 
+def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypatch, capsys):
+    from ablit.backends import Creds
+
+    store = RunStore()
+    run = saved_run(store)
+    flags = ["logs", run["run_id"], "--saved"]
+    with respx.mock:
+        assert main(flags, environ={}) == 2
+        assert "No saved log" in capsys.readouterr().err
+
+        monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: b"bootstrap failed\n\x1binvented-account-key\n")
+        monitor_mod.save_remote_logs(store, run, Creds("invented-account-key"))
+        capsys.readouterr()
+        assert main(flags, environ={}) == 0
+        assert capsys.readouterr().out == "bootstrap failed\n[redacted]\n"
+        assert main([*flags, "--stage", "bootstrap"], environ={}) == 2
+        assert "--saved cannot be combined" in capsys.readouterr().err
+
+
 def test_status_shows_the_cleaned_remote_progress(monkeypatch, capsys):
     store = RunStore()
     r = saved_run(store)

@@ -124,6 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     logs.add_argument("run", nargs="?", help=_RUN_HELP)
     logs.add_argument("--stage", choices=("bootstrap", "engine", "watchdog"))
     logs.add_argument("-f", dest="follow", action="store_true", help="keep streaming")
+    logs.add_argument("--saved", action="store_true", help="read the local log saved after a failure")
 
     tunnel = sub.add_parser("tunnel", help="re-open the SSH tunnel to a running endpoint")
     tunnel.add_argument("run", nargs="?", help=_RUN_HELP)

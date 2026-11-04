@@ -241,7 +241,7 @@ def save_remote_logs(store, record: dict, creds) -> None:
     """
     try:
         text = SSH(store, record).run("tail -n 300 /ablit/logs/*.log 2>/dev/null", timeout=20)
-        path = store.root / "logs" / f"{record['run_id']}.log"
+        path = store.saved_log_path(record["run_id"])
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         path.write_text(strip_control(run_redactor(record, creds)(text.decode("utf-8", "replace"))), encoding="utf-8")
         path.chmod(0o600)

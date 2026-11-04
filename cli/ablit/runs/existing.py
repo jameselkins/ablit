@@ -7,7 +7,7 @@ import json
 from ablit.runs import RunError
 from ablit.runs.common import pair
 from ablit.runs.down import down_command
-from ablit.runs.logs import logs
+from ablit.runs.logs import logs, saved_logs
 from ablit.runs.status import key_only, status
 from ablit.runs.tunnel import tunnel
 
@@ -27,6 +27,8 @@ def existing(args, driver, environ, store, drivers=None):
     record = records[0]
     if args.command == "down":
         return down_command(record["run_id"], store, drivers, environ)
+    if args.command == "logs" and args.saved:
+        return saved_logs(args, record, store)
     driver, creds = pair(record, drivers, environ)
     if args.command == "logs":
         return logs(args, record, store, creds)

@@ -64,6 +64,9 @@ class RunStore:
             raise RunError("The run ID contains invalid characters.")
         return self.runs / f"{run_id}.json"
 
+    def saved_log_path(self, run_id: str) -> Path:
+        return self.root / "logs" / self.path(run_id).with_suffix(".log").name
+
     def load(self, run_id: str) -> dict:
         try:
             data = json.loads(self.path(run_id).read_text(encoding="utf-8"))
