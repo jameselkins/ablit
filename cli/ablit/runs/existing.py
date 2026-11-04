@@ -22,10 +22,10 @@ def existing(args, driver, environ, store, drivers=None):
         print(json.dumps({"schema": 1, "runs": []}) if getattr(args, "json", False) else "No runs.")
         return 0
     drivers = drivers or {"vast": driver}
-    driver, creds = pair(records[0], drivers, environ)
     if args.command == "status":
         return status(args, records, drivers, environ, store)
     record = records[0]
+    driver, creds = pair(record, drivers, environ)
     if args.command == "down":
         return down_command(record, store, driver, creds)
     if args.command == "logs":

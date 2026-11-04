@@ -19,6 +19,8 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 
 When `ablit status --all --watch` starts with an active run, it keeps showing
 old watchdog stops and continues checking the active run.
+`ablit status` can show saved runs with confirmed billing stops without a
+marketplace key.
 
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.
 

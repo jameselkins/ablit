@@ -341,12 +341,11 @@ def test_the_remote_probe_reads_every_progress_file_and_skips_a_broken_one(tmp_p
     assert probe["stages"] == ["04-speed.done"]
 
 
-def test_status_reports_exit_8_from_saved_watchdog_evidence(monkeypatch, capsys):
+def test_status_reports_exit_8_from_saved_watchdog_evidence_without_a_marketplace_key(capsys):
     store = RunStore()
     r = saved_run(store)
     r.update(state="billing_stopped_confirmed", stop_reason="watchdog_cap")
     store.save(r)
-    keys.secret_set("accounts/vast", "invented-account-key")
     with respx.mock:
         assert main(["status", r["run_id"], "--json"], environ={}) == 8
     assert json.loads(capsys.readouterr().out)["runs"][0]["stop_reason"] == "watchdog_cap"

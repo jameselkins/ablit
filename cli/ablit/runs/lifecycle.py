@@ -44,7 +44,7 @@ def allocation(record: dict) -> Allocation:
 
 
 def run_redactor(record: dict, creds) -> Redactor:
-    secrets = [creds.api_key]
+    secrets = [creds.api_key] if creds is not None else []
     for name in (record["run_id"], "watchdog/" + record["run_id"]):
         try:
             secrets.append(secret_get(name))

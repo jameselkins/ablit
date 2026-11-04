@@ -40,12 +40,18 @@ def status(args, records, drivers, environ, store):
                     print(f"{selected['run_id']}: another command holds the run lock, so this is the saved state.",
                           file=sys.stderr)
                 record = store.load(selected["run_id"])
-                driver, creds = pair(record, drivers, environ)
+                billing_stopped = record["state"] == "billing_stopped_confirmed"
+                try:
+                    driver, creds = pair(record, drivers, environ)
+                except CredentialError:
+                    if not billing_stopped:
+                        raise
+                    driver, creds = None, None
                 redactor = run_redactor(record, creds)
                 def status_down():
                     with contextlib.redirect_stdout(sys.stderr):
                         return down(store, record, driver, creds)  # noqa: B023 (called only within this iteration)
-                if locked and record["state"] != "billing_stopped_confirmed":
+                if locked and not billing_stopped:
                     if record.get("create_sent") and not record.get("resource_ids"):
                         found = driver.reconcile(record["run_id"], creds)
                         record["resource_ids"] = found.resource_ids
