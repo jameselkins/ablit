@@ -66,6 +66,31 @@ rate includes before comparing it with `gpu_only_hourly_usd` or
 `hourly_all_in_usd` in `ablit plan --json`. The plan's session totals also count
 download and startup time, transfer charges and any fixed fees.
 
+### Checking a plan against Lantern Works
+
+Run a plan for one provider and GPU model. For example, check RunPod's RTX 4090
+rate with this command.
+
+```sh
+ablit plan llama31-8b-abliterated-q4km --backends runpod --gpu 'RTX 4090' --json
+```
+
+In the [Lantern Works price feed](https://thelanternworks.com/api/v1/gpu-prices.json),
+look for the same provider, GPU variant and rental tier. Check `verified_at`
+for when Lantern Works last confirmed the price. For a rate per GPU, divide
+the corresponding plan rate by `chosen.gpu_count`.
+
+| Lantern Works rate | Field to read under `chosen` |
+|---|---|
+| RunPod Secure Cloud on demand | `gpu_only_hourly_usd`, before volume disk. |
+| Vast marketplace median based on `dph_total` | `hourly_all_in_usd`, which includes the disk allocated for your plan. Check the disk basis before comparing. |
+| Clore marketplace median based on host USD listings | `gpu_only_hourly_usd`, the host rate before the renter fee and order fee. |
+
+Use the Vast and Clore medians as context for what other hosts charge. Use
+the plan to check whether a live offer fits your model and what the session
+would cost. Lantern Works publishes the price data under CC BY 4.0.
+[Lantern Works methodology](https://thelanternworks.com/methodology/)
+
 ## Quote
 
 The quote shows these items:
