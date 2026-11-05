@@ -33,7 +33,7 @@ from ablit.select.request import request_from_entry
 
 CONTRIBUTING_URL = "https://github.com/jameselkins/ablit/blob/main/CONTRIBUTING.md"
 
-_RUN_HELP = "run ID. Defaults to the only active run."
+_RUN_HELP = "run ID. Defaults to the only active run, or the last started run if all runs have stopped."
 
 
 def _add_selection_flags(parser: argparse.ArgumentParser) -> None:

@@ -363,6 +363,22 @@ def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypa
         assert "--saved cannot be combined" in capsys.readouterr().err
 
 
+def test_saved_logs_defaults_to_the_last_started_run_when_all_runs_are_stopped(capsys):
+    store = RunStore()
+    for run_id, started_at in (("z-older", 1000), ("a-newer", 2000)):
+        store.save({"run_id": run_id, "state": "billing_stopped_confirmed", "started_at": started_at})
+        path = store.saved_log_path(run_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{run_id} failed\n", encoding="utf-8")
+    store.save({"run_id": "zz-undated", "state": "billing_stopped_confirmed"})
+
+    with respx.mock:
+        assert main(["logs", "--saved"], environ={}) == 0
+        assert capsys.readouterr().out == "a-newer failed\n"
+        assert main(["logs", "z-older", "--saved"], environ={}) == 0
+        assert capsys.readouterr().out == "z-older failed\n"
+
+
 def test_saving_a_failure_log_keeps_the_previous_copy_if_replacement_fails(monkeypatch):
     from ablit.backends import Creds
 

@@ -90,7 +90,7 @@ class RunStore:
             return self.load(run_id)
         records = self.all()
         active = [r for r in records if r["state"] != "billing_stopped_confirmed"]
-        candidates = active or records[-1:]
+        candidates = active or sorted(records, key=lambda r: r.get("started_at", 0))[-1:]
         if len(candidates) != 1:
             raise RunError("Name a run ID. Use `ablit status --all` to list runs.")
         return candidates[0]
