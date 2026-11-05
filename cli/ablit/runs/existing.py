@@ -30,6 +30,9 @@ def existing(args, driver, environ, store, drivers=None):
     if args.command == "logs" and args.saved:
         return saved_logs(args, record, store)
     if args.command == "logs":
+        if record["state"] == "billing_stopped_confirmed":
+            raise RunError("Billing has stopped for this run. Use "
+                           f"`ablit logs {record['run_id']} --saved` to read any saved failure log.")
         _, creds = pair(record, drivers, environ)
         return logs(args, record, store, creds)
     return tunnel(record, store, drivers, environ)

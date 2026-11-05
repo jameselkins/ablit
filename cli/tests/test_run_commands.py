@@ -337,6 +337,27 @@ def test_logs_can_read_bootstrap_output_before_other_stages_start(monkeypatch, t
     assert main(flags, environ={}) == 2
 
 
+@pytest.mark.parametrize("with_key", [False, True])
+def test_logs_for_a_stopped_run_points_to_the_saved_copy_without_using_ssh(monkeypatch, capsys, with_key):
+    store = RunStore()
+    run = saved_run(store)
+    run["state"] = "billing_stopped_confirmed"
+    store.save(run)
+    if with_key:
+        keys.secret_set("accounts/vast", "invented-account-key")
+
+    def unexpected_ssh(*args, **kwargs):
+        pytest.fail("a stopped run must not be contacted over SSH")
+
+    monkeypatch.setattr(SSH, "logs", unexpected_ssh)
+    with respx.mock:
+        assert main(["logs", run["run_id"]], environ={}) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Billing has stopped for this run." in captured.err
+    assert f"ablit logs {run['run_id']} --saved" in captured.err
+
+
 def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypatch, capsys):
     from ablit.backends import Creds
 
