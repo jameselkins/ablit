@@ -108,7 +108,7 @@ def _retry_delay(response: httpx.Response, attempt: int) -> float:
     https://docs.runpod.io/api-reference-v2/migrate-from-v1
     """
     wait = response.headers.get("Retry-After", "")
-    return min(float(wait), 60.0) if wait.isdigit() else backoff(attempt)
+    return min(float(wait), 60.0) if wait.isascii() and wait.isdigit() else backoff(attempt)
 
 
 def volume_disk_hourly(disk_gb: float) -> float:

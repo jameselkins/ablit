@@ -237,7 +237,7 @@ def offer_from_node(row: Any, gpu_count: int) -> Offer:
 def _retry_delay(response: httpx.Response, attempt: int) -> float:
     """Seconds to wait before a retry. A 429 answer carries a Retry-After header."""
     wait = response.headers.get("Retry-After", "")
-    return min(float(wait), 60.0) if wait.isdigit() else backoff(attempt)
+    return min(float(wait), 60.0) if wait.isascii() and wait.isdigit() else backoff(attempt)
 
 
 class LiumBackend(RentalBackend):

@@ -204,7 +204,7 @@ def _disk_request_gb(disk_gb: float) -> int:
 def retry_delay(response: httpx.Response, attempt: int) -> float:
     """Seconds to wait before a retry. Honor Retry-After when Vast sends seconds."""
     value = response.headers.get("Retry-After", "")
-    if value.isdigit():
+    if value.isascii() and value.isdigit():
         return min(float(value), 60.0)
     # Vast sends the end of its rate-limit window as seconds since the epoch.
     reset = response.headers.get("x-ratelimit-reset", "")
