@@ -12,7 +12,7 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `ablit status [run]` | Run state, resource IDs, time of the last marketplace check, spend against the cap, bootstrap stage, and pending cleanup. Supports `--all`, `--json`, `--watch` and `--show-key`. `--key-only` prints only the endpoint key of one run, so a shell can capture it with `$(...)`. It reads the keyring, contacts no marketplace, and can't be combined with the other flags. |
 | `ablit logs [run] [--stage bootstrap\|engine\|watchdog] [-f]` | Streams available logs from the machine over SSH, with secrets removed. |
 | `ablit logs [run] --saved` | Reads the local copy of the logs that ablit was able to save after a failure. The copy includes all saved stages and needs no marketplace key. |
-| `ablit tunnel [run]` | Re-opens the SSH tunnel to a running endpoint. |
+| `ablit tunnel [run]` | Re-opens the SSH tunnel to a running endpoint. For other run states, explains whether to resume startup, finish cleanup or start a new rental. |
 | `ablit down [run]` | Destroys every billable resource the run created and confirms with the marketplace. Never asks for confirmation. Works even for a backend whose new launches are disabled. |
 | `ablit catalog list\|show <id>\|validate <file>` | Lists entries and their test status, explains one entry, or checks a contributor's file. |
 

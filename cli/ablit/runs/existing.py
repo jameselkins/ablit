@@ -29,7 +29,7 @@ def existing(args, driver, environ, store, drivers=None):
         return down_command(record["run_id"], store, drivers, environ)
     if args.command == "logs" and args.saved:
         return saved_logs(args, record, store)
-    driver, creds = pair(record, drivers, environ)
     if args.command == "logs":
+        _, creds = pair(record, drivers, environ)
         return logs(args, record, store, creds)
-    return tunnel(record, store, driver, creds)
+    return tunnel(record, store, drivers, environ)

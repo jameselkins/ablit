@@ -379,6 +379,43 @@ def test_saved_logs_defaults_to_the_last_started_run_when_all_runs_are_stopped(c
         assert capsys.readouterr().out == "z-older failed\n"
 
 
+@pytest.mark.parametrize(("state", "code", "message"), [
+    ("creating", 2, "The run is still starting."),
+    ("termination_requested", 7, "Cleanup is pending."),
+    ("resources_terminated", 7, "Cleanup is pending."),
+    ("billing_stopped_confirmed", 2, "Billing has stopped for this run."),
+])
+def test_tunnel_reports_a_non_running_run_before_asking_for_credentials(capsys, state, code, message):
+    store = RunStore()
+    run = saved_run(store)
+    run["state"] = state
+    store.save(run)
+    with respx.mock:
+        assert main(["tunnel", run["run_id"]], environ={}) == code
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert message in captured.err
+    if state in ("termination_requested", "resources_terminated"):
+        assert f"ablit down {run['run_id']}" in captured.err
+
+
+def test_tunnel_for_a_running_run_resolves_credentials_and_returns_the_monitor_result(monkeypatch):
+    run = saved_run(RunStore())
+    with respx.mock:
+        assert main(["tunnel", run["run_id"]], environ={}) == 4
+    keys.secret_set("accounts/vast", "invented-account-key")
+    calls = []
+
+    def monitor(store, record, driver, creds):
+        calls.append((record["run_id"], driver.name, creds.api_key))
+        return 8
+
+    monkeypatch.setattr("ablit.runs.tunnel.monitor", monitor)
+    with respx.mock:
+        assert main(["tunnel", run["run_id"]], environ={}) == 8
+    assert calls == [(run["run_id"], "vast", "invented-account-key")]
+
+
 def test_saving_a_failure_log_keeps_the_previous_copy_if_replacement_fails(monkeypatch):
     from ablit.backends import Creds
 
