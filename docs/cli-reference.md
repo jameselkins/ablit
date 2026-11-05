@@ -74,6 +74,10 @@ download, startup and session would exceed the advertised rental time. To
 find the cheapest offer for seven days of use, rerun the search with
 `--hours 168` so ablit ranks offers for that session length.
 
+When a search is incomplete and no offer qualifies, the text report and JSON
+`incomplete_label` say how many offers were checked. The comparison may have
+missed a qualifying offer.
+
 When you compare a plan with a published GPU rate, check the price date, GPU
 variant, GPU count and rental tier. A rate per GPU hour covers one GPU for one
 hour, while the plan shows prices for the whole offer. Check which charges each

@@ -256,6 +256,22 @@ def test_when_every_backend_fails_the_exit_code_is_3_and_both_are_named(capsys):
     assert "The comparison did not include vast." in out and "The comparison did not include runpod." in out
 
 
+@pytest.mark.parametrize("rows", [[], [vast_row(9300, gpu_ram=4096, gpu_total_ram=4096)]])
+def test_an_incomplete_search_without_a_qualifying_offer_does_not_claim_a_cheapest_result(capsys, rows):
+    def down(request):
+        raise httpx.ConnectError("simulated outage", request=request)
+
+    code, out, err = run_plan(capsys, vast=FakeVast(rows), runpod=down)
+    assert code == exitcodes.NOT_SUPPORTED
+    assert "Search incomplete after checking" in out
+    assert "cheapest" not in out.lower()
+    code, out, err = run_plan(capsys, "--json", vast=FakeVast(rows), runpod=down)
+    data = json.loads(out)
+    assert data["complete"] is False and data["chosen"] is None
+    assert data["checked_count"] == len(rows)
+    assert data["incomplete_label"] == f"search incomplete after checking {data['checked_count']} offers"
+
+
 def test_an_unrecognized_response_fails_that_backend_only(capsys):
     rows = [vast_row(9301, num_gpus="one")]
     code, out, err = run_plan(capsys, vast=FakeVast(rows), runpod=FakeRunPod(runpod_types()))

@@ -148,7 +148,7 @@ def render(report: PlanReport) -> str:
     else:
         lines.append("No offer qualified.")
         if report.label:
-            lines.append(f"  {report.label[0].upper()}{report.label[1:]}, so a cheaper or different offer may exist beyond them.")
+            lines.append(f"  {report.label[0].upper()}{report.label[1:]}. A qualifying offer may have been missed.")
 
     lines.append("")
     lines.append(f"Filter steps, over the {report.checked} offers checked")

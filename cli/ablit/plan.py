@@ -82,6 +82,8 @@ class PlanReport:
         """The wording for an incomplete search, or None when every searched backend was complete."""
         if self.complete:
             return None
+        if not self.ranked:
+            return f"search incomplete after checking {self.checked} offers"
         return f"cheapest of the {self.checked} offers checked"
 
     @property
