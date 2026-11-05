@@ -299,6 +299,29 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
     assert output.count("[redacted]") == 2
 
 
+def test_logs_can_read_bootstrap_output_before_other_stages_start(monkeypatch, tmp_path, capsys):
+    import shlex
+    import subprocess
+
+    run = saved_run(RunStore())
+    keys.secret_set("accounts/vast", "invented-account-key")
+    log = tmp_path / "bootstrap.log"
+    log.write_text("booting\n", encoding="utf-8")
+    popen = subprocess.Popen
+
+    def run_locally(args, **kwargs):
+        command = args[-1].replace("/ablit/logs/", shlex.quote(str(tmp_path)) + "/")
+        return popen(["/bin/sh", "-c", command], **kwargs)
+
+    monkeypatch.setattr("ablit.runs.ssh.subprocess.Popen", run_locally)
+    flags = ["logs", run["run_id"]]
+    assert main(flags, environ={}) == 0
+    assert "booting\n" in capsys.readouterr().out
+    assert main([*flags, "--stage", "engine"], environ={}) == 2
+    log.unlink()
+    assert main(flags, environ={}) == 2
+
+
 def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypatch, capsys):
     from ablit.backends import Creds
 

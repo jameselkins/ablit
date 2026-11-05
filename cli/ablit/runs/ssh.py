@@ -150,7 +150,18 @@ class SSH:
 
     def logs(self, stage: str | None, follow: bool, redactor: Redactor) -> None:
         files = [stage] if stage else ["bootstrap", "engine", "watchdog"]
-        command = "tail " + ("-F " if follow else "-n 200 ") + " ".join(f"/ablit/logs/{s}.log" for s in files)
+        paths = " ".join(f"/ablit/logs/{name}.log" for name in files)
+        if follow:
+            command = f"tail -F {paths}"
+        elif stage:
+            command = f"tail -n 200 {paths}"
+        else:
+            # Later stages may not have created their logs yet.
+            command = (
+                f"set --; for file in {paths}; do "
+                'if [ -f "$file" ]; then set -- "$@" "$file"; fi; '
+                'done; [ "$#" -gt 0 ] && tail -v -n 200 "$@"'
+            )
         proc = subprocess.Popen([*self.args(), command], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                 text=True, encoding="utf-8", errors="replace")
         try:
