@@ -37,11 +37,15 @@ def number(
         raise UnknownFieldType(f"{_describe(backend, where, key)} is null")
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise UnknownFieldType(f"{_describe(backend, where, key)} has type {type(value).__name__}, not a number")
-    if not math.isfinite(value):
+    try:
+        numeric_value = float(value)
+    except OverflowError as error:
+        raise UnknownFieldType(f"{_describe(backend, where, key)} is outside the supported numeric range") from error
+    if not math.isfinite(numeric_value):
         raise UnknownFieldType(f"{_describe(backend, where, key)} is not a finite number")
     if minimum is not None and value < minimum:
         raise UnknownFieldType(f"{_describe(backend, where, key)} is {value}, below the expected minimum {minimum}")
-    return float(value)
+    return numeric_value
 
 
 def integer(row: Mapping[str, Any], key: str, *, backend: str, where: str = "a row", minimum: int | None = None) -> int:

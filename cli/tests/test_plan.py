@@ -272,11 +272,16 @@ def test_an_incomplete_search_without_a_qualifying_offer_does_not_claim_a_cheape
     assert data["incomplete_label"] == f"search incomplete after checking {data['checked_count']} offers"
 
 
-def test_an_unrecognized_response_fails_that_backend_only(capsys):
-    rows = [vast_row(9301, num_gpus="one")]
+@pytest.mark.parametrize(("field", "value"), [
+    pytest.param("num_gpus", "one", id="string_count"),
+    pytest.param("gpu_ram", 10 ** 400, id="positive_overflow"),
+    pytest.param("gpu_ram", -(10 ** 400), id="negative_overflow"),
+])
+def test_an_unrecognized_response_fails_that_backend_only(capsys, field, value):
+    rows = [vast_row(9301, **{field: value})]
     code, out, err = run_plan(capsys, vast=FakeVast(rows), runpod=FakeRunPod(runpod_types()))
     assert code == 0, err
-    assert "vast: failed." in out and "num_gpus" in out
+    assert "vast: failed." in out and field in out
     assert "Chosen offer" in out
 
 
