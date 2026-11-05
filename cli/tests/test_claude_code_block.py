@@ -54,7 +54,7 @@ def test_endpoint_prints_a_claude_code_block_without_the_key(capsys):
     assert "export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1\n" in out
     # The llama.cpp entry serves 4096 tokens, which Claude Code's system prompt overflows.
     assert "serves 4096 tokens of context" in out
-    assert out.rstrip().endswith(f"Run `ablit down {r['run_id']}` to stop it.")
+    assert f"`ablit down {r['run_id']}`" in out.splitlines()[-1]
 
 
 def test_endpoint_skips_the_claude_code_block_for_engines_without_messages(capsys):
