@@ -14,6 +14,7 @@ from ablit.plan import (
     cap_info,
     totals_for,
 )
+from ablit.redact import strip_control
 from ablit.select import RankedOffer, StepReport
 from ablit.select.filters import floor_for
 
@@ -172,4 +173,4 @@ def render(report: PlanReport) -> str:
     lines.append(cap_notice(report).rstrip())
     lines.append("")
     lines.append("ablit plan rents nothing.")
-    return "\n".join(lines) + "\n"
+    return strip_control("\n".join(lines) + "\n")

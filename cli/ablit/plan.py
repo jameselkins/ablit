@@ -21,6 +21,7 @@ from ablit.backends.errors import BackendError, CredentialsRejected
 from ablit.catalog.loader import repo_root
 from ablit.catalog.models import Entry
 from ablit.notices import LOCAL_CAP_NOTES, SPEND_CAP_NOTICE, UNTESTED_NOTICE, spend_cap_notice
+from ablit.redact import strip_control
 from ablit.select import (
     HardwareRequest,
     PlanOptions,
@@ -206,7 +207,7 @@ def gpu_filter_message(report: PlanReport) -> str | None:
     if report.ranked or not (opts.gpu or opts.exclude_gpu) or not report.qualified_gpu_models:
         return None
     flags = " and ".join(flag for flag, names in (("--gpu", opts.gpu), ("--exclude-gpu", opts.exclude_gpu)) if names)
-    return (
+    return strip_control(
         f"No offer qualified with the GPU models that {flags} allow. "
         f"These GPU models qualified before that filter: {', '.join(report.qualified_gpu_models)}."
     )

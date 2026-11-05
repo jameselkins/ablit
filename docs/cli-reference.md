@@ -64,6 +64,9 @@ A paid `up` asks the user to type `rent`. With `--yes`, the required `--max-spen
 
 ## Comparing GPU prices
 
+Text quotes and GPU filter messages remove terminal control characters from
+marketplace data before displaying it.
+
 `ablit plan` ranks offers by the estimated cost for the session length in
 `--hours`, which defaults to one hour. The 1 hour, 24 hour and 7 day totals are
 estimates for each displayed offer. The text report marks a total if the

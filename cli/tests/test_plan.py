@@ -65,6 +65,15 @@ def run_plan(capsys, *argv, vast=None, runpod=None, environ=None, backends=None,
 # --- the report ----------------------------------------------------------
 
 
+@pytest.mark.parametrize("flags", [(), ("--gpu", "A100")])
+def test_text_output_removes_terminal_controls_from_marketplace_gpu_names(capsys, flags):
+    row = vast_row(9100, gpu_name="RTX 3090\x1b[2J\x07\x9b0m")
+    code, out, err = run_plan(capsys, *flags, vast=FakeVast([row]), runpod=FakeRunPod([]))
+    assert code == (exitcodes.NOT_SUPPORTED if flags else exitcodes.OK)
+    assert "RTX 3090" in out + err
+    assert not any(control in out + err for control in ("\x1b", "\x07", "\x9b"))
+
+
 def test_text_report_has_every_part(capsys):
     code, out, err = run_plan(capsys, "--hours", "3", "--max-spend", "20",
                               vast=FakeVast(vast_rows()), runpod=FakeRunPod(runpod_types()))
