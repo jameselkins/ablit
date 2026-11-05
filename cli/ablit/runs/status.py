@@ -44,7 +44,7 @@ def status(args, records, drivers, environ, store):
                 try:
                     driver, creds = pair(record, drivers, environ)
                 except CredentialError:
-                    if not billing_stopped:
+                    if locked and not billing_stopped:
                         raise
                     driver, creds = None, None
                 redactor = run_redactor(record, creds)

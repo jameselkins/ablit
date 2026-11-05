@@ -26,8 +26,11 @@ def prepared(monkeypatch, **changes):
     return store, run
 
 
-def test_status_shows_the_saved_state_while_another_command_holds_the_lock(monkeypatch, capsys):
+@pytest.mark.parametrize("with_key", [True, False])
+def test_status_shows_the_saved_state_while_another_command_holds_the_lock(monkeypatch, capsys, with_key):
     store, run = prepared(monkeypatch)
+    if not with_key:
+        keys.secret_delete("accounts/vast")
     with respx.mock as router:  # any marketplace call would fail, because no route exists
         with store.lock(run["run_id"]):
             assert main(["status", run["run_id"], "--json"], environ={}) == 0
@@ -36,6 +39,9 @@ def test_status_shows_the_saved_state_while_another_command_holds_the_lock(monke
     assert data["runs"][0]["run_id"] == run["run_id"]
     assert "saved state" in captured.err
     assert len(router.calls) == 0
+    if not with_key:
+        with respx.mock:
+            assert main(["status", run["run_id"], "--json"], environ={}) == 4
 
 
 def test_monitor_skips_a_pass_when_the_lock_is_busy_and_does_not_stop_the_run(monkeypatch, capsys):
