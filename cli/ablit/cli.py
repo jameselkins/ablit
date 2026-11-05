@@ -26,6 +26,7 @@ from ablit.catalog.staging import StagingError, compute_staging
 from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
 from ablit.plan import UnknownBackend, gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
+from ablit.redact import strip_control
 from ablit.select import PlanOptions
 from ablit.runs import RunError, RunStore
 from ablit.select.gpu_names import parse_gpu_names
@@ -447,13 +448,13 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
     try:
         return _main(argv, backends=backends, environ=environ)
     except (CredentialError, CredentialsRejected) as error:
-        print(f"ablit: {error}", file=sys.stderr)
+        print(strip_control(f"ablit: {error}"), file=sys.stderr)
         return exitcodes.CREDENTIALS
     except WorkloadRejected:
         print("ablit: the marketplace rejected the workload. Run down to confirm cleanup.", file=sys.stderr)
         return exitcodes.WORKLOAD_REJECTED
     except RunError as error:
-        print(f"ablit: {error}", file=sys.stderr)
+        print(strip_control(f"ablit: {error}"), file=sys.stderr)
         return exitcodes.USAGE
     except (EOFError, KeyboardInterrupt):
         print("Billing continues for existing rentals. Use `ablit status --all` and `ablit down <run>`.", file=sys.stderr)
@@ -461,7 +462,7 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
     except Exception as error:
         # BackendError, HTTP, OS and value errors land here, and so does any bug. Exit 1 promises
         # that no run is billing, so check the runs before using it.
-        print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
+        print(strip_control(f"ablit: {type(error).__name__}: {error}"), file=sys.stderr)
         return _unexpected_exit()
 
 

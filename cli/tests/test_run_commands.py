@@ -14,7 +14,7 @@ from ablit import credentials as keys
 from ablit.backends.vast import VastBackend
 from ablit.catalog import load_catalog, resolve
 from ablit.cli import main
-from ablit.runs import RunStore
+from ablit.runs import RunError, RunStore
 from ablit.runs import down as down_mod, monitor as monitor_mod, up as up_mod
 from ablit.runs.ssh import SSH
 from market_fixtures import FakeVast, vast_row, VAST_URL
@@ -270,6 +270,23 @@ def saved_run(store):
                 watchdog_key_id="7401", watchdog_key_sent=True, create_sent=True)
     store.save(data)
     return data
+
+
+@pytest.mark.parametrize(("error_type", "code"), [(keys.CredentialError, 4), (RunError, 2), (RuntimeError, 7)])
+def test_cli_errors_remove_terminal_controls_and_keep_the_exit_code(monkeypatch, capsys, error_type, code):
+    run = saved_run(RunStore())
+    keys.secret_set("accounts/vast", "invented-account-key")
+
+    def failed_refresh(*args, **kwargs):
+        raise error_type("invented failure\x1b[2J\x07\x9b0m")
+
+    monkeypatch.setattr("ablit.runs.status.refresh", failed_refresh)
+    with respx.mock:
+        assert main(["status", run["run_id"], "--json"], environ={}) == code
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "invented failure" in captured.err
+    assert not any(control in captured.err for control in ("\x1b", "\x07", "\x9b"))
 
 
 def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypatch, capsys):
