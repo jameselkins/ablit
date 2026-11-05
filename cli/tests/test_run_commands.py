@@ -290,7 +290,7 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
         view = json.loads(capsys.readouterr().out)
         assert view["runs"][0]["endpoint_key"] == "invented-endpoint-key"
     class Process:
-        stdout = io.StringIO("invented-endpoint-key invented-account-key\n")
+        stdout = io.StringIO("invented-endpoint-key invented-\x1baccount-key\n")
         def wait(self): return 0
         def poll(self): return 0
     monkeypatch.setattr("ablit.runs.ssh.subprocess.Popen", lambda *a, **kw: Process())
@@ -309,7 +309,7 @@ def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypa
         assert main(flags, environ={}) == 2
         assert "No saved log" in capsys.readouterr().err
 
-        monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: b"bootstrap failed\n\x1binvented-account-key\n")
+        monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: b"bootstrap failed\ninvented-\x1baccount-key\n")
         monitor_mod.save_remote_logs(store, run, Creds("invented-account-key"))
         capsys.readouterr()
         assert main(flags, environ={}) == 0

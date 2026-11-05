@@ -60,6 +60,10 @@ class Redactor:
             return text
         return pattern.sub(MASK, text)
 
+    def remote_text(self, text: str) -> str:
+        """Redact secrets before and after removing terminal controls."""
+        return self(strip_control(self(text)))
+
 
 def redact(text: str, secrets: Iterable[str | None]) -> str:
     """Return `text` with every secret in `secrets` replaced by a mask."""

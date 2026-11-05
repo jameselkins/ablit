@@ -12,7 +12,7 @@ import httpx
 from ablit.backends.base import Allocation, Inventory
 from ablit.backends.errors import BackendError
 from ablit.credentials import CredentialError, secret_delete, secret_get
-from ablit.redact import Redactor, strip_control
+from ablit.redact import Redactor
 from ablit.runs import RunError
 from ablit.runs.ssh import SSH
 from ablit.watchdog.ablit_watchdog import Config, reserve
@@ -122,8 +122,9 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
                 if not isinstance(failed, dict):
                     raise RunError("The remote failure record has an unknown shape.")
                 reason = str(failed.get("reason", "unknown"))
+                detail = run_redactor(record, creds).remote_text(f"{reason}: {failed.get('detail', '')}")
                 record["failure"] = {"reason": "speed_below_floor" if reason == "speed_below_floor" else "bootstrap_failed",
-                                     "detail": strip_control(run_redactor(record, creds)(f"{reason}: {failed.get('detail', '')}"))[:500]}
+                                     "detail": detail[:500]}
             if "ready" in probe:
                 record["ready"] = True
         except (RunError, OSError, ValueError, httpx.HTTPError, subprocess.SubprocessError):
@@ -243,7 +244,7 @@ def save_remote_logs(store, record: dict, creds) -> None:
         text = SSH(store, record).run("tail -n 300 /ablit/logs/*.log 2>/dev/null", timeout=20)
         path = store.saved_log_path(record["run_id"])
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.write_text(strip_control(run_redactor(record, creds)(text.decode("utf-8", "replace"))), encoding="utf-8")
+        path.write_text(run_redactor(record, creds).remote_text(text.decode("utf-8", "replace")), encoding="utf-8")
         path.chmod(0o600)
         print(f"{record['run_id']}: saved the machine's logs to {path}", flush=True)
     except Exception:

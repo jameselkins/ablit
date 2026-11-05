@@ -12,7 +12,7 @@ import socket
 import subprocess
 import time
 
-from ablit.redact import strip_control
+from ablit.redact import Redactor
 from ablit.runs import RunError
 
 # The endpoint secret arrives on stdin and exists only in the child's environment.
@@ -148,14 +148,14 @@ class SSH:
             proc.wait()
             raise
 
-    def logs(self, stage: str | None, follow: bool, redactor) -> None:
+    def logs(self, stage: str | None, follow: bool, redactor: Redactor) -> None:
         files = [stage] if stage else ["bootstrap", "engine", "watchdog"]
         command = "tail " + ("-F " if follow else "-n 200 ") + " ".join(f"/ablit/logs/{s}.log" for s in files)
         proc = subprocess.Popen([*self.args(), command], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                 text=True, encoding="utf-8", errors="replace")
         try:
             for line in proc.stdout:
-                print(strip_control(redactor(line)), end="", flush=True)
+                print(redactor.remote_text(line), end="", flush=True)
             if proc.wait():
                 raise RunError("Remote logs are unavailable.")
         finally:
