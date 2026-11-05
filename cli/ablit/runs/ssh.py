@@ -163,7 +163,8 @@ class SSH:
                 'done; [ "$#" -gt 0 ] && tail -v -n 200 "$@"'
             )
         try:
-            proc = subprocess.Popen([*self.args(), command], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            proc = subprocess.Popen([*self.args(), command], stdin=subprocess.DEVNULL,
+                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                     text=True, encoding="utf-8", errors="replace")
         except OSError as error:
             raise RunError(f"SSH could not start ({error.__class__.__name__}).") from error

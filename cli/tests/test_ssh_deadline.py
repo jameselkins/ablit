@@ -154,6 +154,25 @@ def test_ssh_run_reports_a_missing_ssh_program_as_run_error(monkeypatch):
         SSH(store, run).run("ignored")
 
 
+@pytest.mark.parametrize("follow", [False, True])
+def test_reading_remote_logs_leaves_the_callers_piped_input_unread(tmp_path, follow):
+    script = '''import sys
+from pathlib import Path
+from ablit.redact import Redactor
+from ablit.runs import RunStore
+from ablit.runs.ssh import SSH
+
+ssh = SSH(RunStore(Path(sys.argv[1])), {"run_id": "test-run"})
+ssh.args = lambda: [sys.executable, "-c", "import sys; sys.stdin.read(); print('log output')"]
+ssh.logs(None, sys.argv[2] == "True", Redactor())
+print(sys.stdin.read(), end="")
+'''
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path), str(follow)],
+                            input="next input\n", capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "log output\nnext input\n"
+
+
 def test_refresh_treats_a_subprocess_timeout_from_the_probe_as_unavailable(monkeypatch):
     store = RunStore()
     run = running_run(store)
