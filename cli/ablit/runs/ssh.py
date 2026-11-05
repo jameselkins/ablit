@@ -162,8 +162,11 @@ class SSH:
                 'if [ -f "$file" ]; then set -- "$@" "$file"; fi; '
                 'done; [ "$#" -gt 0 ] && tail -v -n 200 "$@"'
             )
-        proc = subprocess.Popen([*self.args(), command], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                text=True, encoding="utf-8", errors="replace")
+        try:
+            proc = subprocess.Popen([*self.args(), command], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    text=True, encoding="utf-8", errors="replace")
+        except OSError as error:
+            raise RunError(f"SSH could not start ({error.__class__.__name__}).") from error
         try:
             for line in proc.stdout:
                 print(redactor.remote_text(line), end="", flush=True)

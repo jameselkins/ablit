@@ -299,6 +299,21 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
     assert output.count("[redacted]") == 2
 
 
+@pytest.mark.parametrize("error_type", [FileNotFoundError, PermissionError])
+def test_logs_reports_a_local_ssh_start_failure_without_exposing_its_details(monkeypatch, capsys, error_type):
+    run = saved_run(RunStore())
+    keys.secret_set("accounts/vast", "invented-account-key")
+
+    def fail_start(*args, **kwargs):
+        raise error_type("invented-account-key private error details")
+
+    monkeypatch.setattr("ablit.runs.ssh.subprocess.Popen", fail_start)
+    assert main(["logs", run["run_id"]], environ={}) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == f"ablit: SSH could not start ({error_type.__name__}).\n"
+
+
 def test_logs_can_read_bootstrap_output_before_other_stages_start(monkeypatch, tmp_path, capsys):
     import shlex
     import subprocess
