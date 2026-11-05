@@ -33,14 +33,13 @@ def state_dir() -> Path:
     return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))) / "ablit"
 
 
-def atomic_json(path: Path, data: dict) -> None:
-    """Flush a private temporary file, replace the record, then flush its directory."""
+def atomic_text(path: Path, text: str) -> None:
+    """Flush a private temporary file, replace the destination, then flush its directory."""
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, indent=2, allow_nan=False)
-            handle.write("\n")
+            handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(name, path)
@@ -52,6 +51,10 @@ def atomic_json(path: Path, data: dict) -> None:
     finally:
         if os.path.exists(name):
             os.unlink(name)
+
+
+def atomic_json(path: Path, data: dict) -> None:
+    atomic_text(path, json.dumps(data, indent=2, allow_nan=False) + "\n")
 
 
 class RunStore:

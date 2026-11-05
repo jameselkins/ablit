@@ -15,6 +15,7 @@ from ablit.credentials import CredentialError, secret_delete, secret_get
 from ablit.redact import Redactor
 from ablit.runs import RunError
 from ablit.runs.ssh import SSH
+from ablit.runs.store import atomic_text
 from ablit.watchdog.ablit_watchdog import Config, reserve
 
 CONSOLE = "https://cloud.vast.ai/instances/"
@@ -243,9 +244,7 @@ def save_remote_logs(store, record: dict, creds) -> None:
     try:
         text = SSH(store, record).run("tail -n 300 /ablit/logs/*.log 2>/dev/null", timeout=20)
         path = store.saved_log_path(record["run_id"])
-        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.write_text(run_redactor(record, creds).remote_text(text.decode("utf-8", "replace")), encoding="utf-8")
-        path.chmod(0o600)
+        atomic_text(path, run_redactor(record, creds).remote_text(text.decode("utf-8", "replace")))
         print(f"{record['run_id']}: saved the machine's logs to {path}", flush=True)
     except Exception:
         pass

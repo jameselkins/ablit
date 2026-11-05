@@ -318,6 +318,27 @@ def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypa
         assert "--saved cannot be combined" in capsys.readouterr().err
 
 
+def test_saving_a_failure_log_keeps_the_previous_copy_if_replacement_fails(monkeypatch):
+    from ablit.backends import Creds
+
+    store = RunStore()
+    run = saved_run(store)
+    creds = Creds("invented-account-key")
+    monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: b"first log\n")
+    monitor_mod.save_remote_logs(store, run, creds)
+    path = store.saved_log_path(run["run_id"])
+    assert path.stat().st_mode & 0o777 == 0o600
+
+    def fail_replace(source, destination):
+        raise OSError("invented rename failure")
+
+    monkeypatch.setattr("ablit.runs.store.os.replace", fail_replace)
+    monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: b"replacement log\n")
+    monitor_mod.save_remote_logs(store, run, creds)
+    assert path.read_text(encoding="utf-8") == "first log\n"
+    assert not list(path.parent.glob(".pending-*"))
+
+
 def test_status_shows_the_cleaned_remote_progress(monkeypatch, capsys):
     store = RunStore()
     r = saved_run(store)
