@@ -70,6 +70,10 @@ def status(args, records, drivers, environ, store):
                     code = max(code, 8)
                 view = {k: v for k, v in record.items() if k not in ("entry", "quote", "offer")}
                 view["hourly_rate_usd"] = record["offer"]["hourly_all_in"]
+                try:
+                    view["saved_log_available"] = store.saved_log_path(record["run_id"]).is_file()
+                except OSError:
+                    view["saved_log_available"] = False
                 view = json.loads(redactor(json.dumps(view)))
                 if args.show_key:
                     key = secret_get(record["run_id"])

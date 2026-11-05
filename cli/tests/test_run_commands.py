@@ -304,14 +304,21 @@ def test_logs_saved_reads_failure_diagnostics_without_a_marketplace_key(monkeypa
 
     store = RunStore()
     run = saved_run(store)
+    run["state"] = "billing_stopped_confirmed"
+    store.save(run)
     flags = ["logs", run["run_id"], "--saved"]
+    status_flags = ["status", run["run_id"], "--json"]
     with respx.mock:
         assert main(flags, environ={}) == 2
         assert "No saved log" in capsys.readouterr().err
+        assert main(status_flags, environ={}) == 0
+        assert json.loads(capsys.readouterr().out)["runs"][0]["saved_log_available"] is False
 
         monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: b"bootstrap failed\ninvented-\x1baccount-key\n")
         monitor_mod.save_remote_logs(store, run, Creds("invented-account-key"))
-        capsys.readouterr()
+        assert f"ablit logs {run['run_id']} --saved" in capsys.readouterr().out
+        assert main(status_flags, environ={}) == 0
+        assert json.loads(capsys.readouterr().out)["runs"][0]["saved_log_available"] is True
         assert main(flags, environ={}) == 0
         assert capsys.readouterr().out == "bootstrap failed\n[redacted]\n"
         assert main([*flags, "--stage", "bootstrap"], environ={}) == 2

@@ -44,6 +44,8 @@ Top-level keys of `plan --json`: `schema`, `command`, `checked_at`, `result`, `c
 
 Each row in an offer's `totals` has a `fits_rental_duration` field. It is `true` when the advertised rental time covers the estimated download, startup and session, and `false` when the rental ends sooner. It is `null` when the marketplace does not report a rental limit.
 
+When a run in `ablit status --json` has `saved_log_available: true`, read the local failure log with `ablit logs <run> --saved`.
+
 Messages and errors go to standard error as plain sentences.
 
 ## Exit codes

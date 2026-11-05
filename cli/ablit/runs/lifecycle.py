@@ -246,5 +246,6 @@ def save_remote_logs(store, record: dict, creds) -> None:
         path = store.saved_log_path(record["run_id"])
         atomic_text(path, run_redactor(record, creds).remote_text(text.decode("utf-8", "replace")))
         print(f"{record['run_id']}: saved the machine's logs to {path}", flush=True)
+        print(f"Read them with `ablit logs {record['run_id']} --saved`.", flush=True)
     except Exception:
         pass
