@@ -30,6 +30,9 @@ The key goes in `Authorization: Bearer <key>`. The schema's security scheme says
 
 Rate limits are per minute, hour and day, and a 429 answer carries `Retry-After` (https://docs.runpod.io/api-reference-v2/overview and the schema). The driver retries reads and deletes on 429 and 5xx. It never retries a create.
 
+The driver redacts the supplied API key from REST error details before shortening
+the diagnostic for display.
+
 ## Search
 
 RunPod uses GraphQL for search. The driver asks for GPU types with their lowest price for the requested arrangement.

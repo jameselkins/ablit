@@ -319,6 +319,17 @@ def test_destroy_treats_a_missing_pod_as_done_and_refuses_a_bad_key_or_id(driver
         driver.destroy(Inventory(RUN, "runpod", ["../account"]), KEY)
 
 
+@pytest.mark.parametrize("key", ["invented-runpod-key", "invented-long-runpod-key-" * 20], ids=["normal_key", "long_key"])
+def test_rest_error_details_redact_the_key_before_truncation(driver, key):
+    with respx.mock as router:
+        router.get(PODS).respond(400, json={"detail": f"request failed with key {key}"})
+        with pytest.raises(RequestRejected) as error:
+            driver.test_credentials(Creds(key))
+    message = str(error.value)
+    assert "[redacted]" in message
+    assert key[:16] not in message
+
+
 def test_destroy_retries_a_rate_limit_and_a_server_error_because_a_delete_can_be_repeated(driver):
     waits = []
     driver._sleep = waits.append

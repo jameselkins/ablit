@@ -340,7 +340,7 @@ class RunPodBackend(RentalBackend):
         if status in (401, 403):
             raise CredentialsRejected(self.name, status, "the API key or its permissions were refused")
         if not response.is_success:
-            raise RequestRejected(self.name, status, self._problem_detail(response))
+            raise RequestRejected(self.name, status, self._problem_detail(response, creds))
         if status == 204 or not response.content:
             return None
         try:
@@ -349,14 +349,19 @@ class RunPodBackend(RentalBackend):
             raise ResponseNotRecognized("runpod: expected JSON") from error
 
     @staticmethod
-    def _problem_detail(response: httpx.Response) -> str:
+    def _problem_detail(response: httpx.Response, creds: Creds | None = None) -> str:
         """Read the `detail` of an RFC 9457 error body. Errors have title, status and detail."""
         try:
             data = response.json()
         except ValueError:
             return "the request failed"
         detail = data.get("detail") if isinstance(data, dict) else None
-        return detail[:200] if isinstance(detail, str) and detail else "the request failed"
+        if not isinstance(detail, str) or not detail:
+            return "the request failed"
+        redactor = Redactor()
+        if creds is not None and len(creds.api_key) >= MIN_SECRET_LENGTH:
+            redactor.add(creds.api_key)
+        return redactor.remote_text(detail)[:200]
 
     def test_credentials(self, creds: Creds) -> None:
         """One read-only call. It needs the pods:read scope, so a key without it is refused."""
