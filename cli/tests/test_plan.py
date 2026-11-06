@@ -14,6 +14,7 @@ import respx
 
 from ablit import exitcodes
 from ablit.backends import RunPodBackend, VastBackend
+from ablit.backends.errors import BackendError, CredentialsRejected
 from ablit.catalog import load_catalog, resolve
 from ablit.cli import main
 from ablit.notices import UNTESTED_NOTICE
@@ -293,6 +294,25 @@ def test_a_rejected_key_fails_that_backend_only(capsys):
     assert code == 0, err
     assert "vast: failed." in out and "API key was refused" in out
     assert "invented-test-key" not in out + err
+
+
+@pytest.mark.parametrize("flags", [(), ("--json",)], ids=["text", "json"])
+@pytest.mark.parametrize("error_factory", [
+    pytest.param(httpx.ConnectError, id="network"),
+    pytest.param(BackendError, id="backend"),
+    pytest.param(lambda message: CredentialsRejected("vast", 401, message), id="credentials"),
+])
+def test_plan_failure_diagnostics_redact_the_supplied_backend_key(monkeypatch, capsys, flags, error_factory):
+    key = "invented-marketplace-key"
+
+    def failed_search(*args, **kwargs):
+        raise error_factory(f"request failed with key {key}")
+
+    monkeypatch.setattr(VastBackend, "search", failed_search)
+    code, out, err = run_plan(capsys, *flags, runpod=FakeRunPod(runpod_types()), environ={"VAST_API_KEY": key})
+    assert code == exitcodes.OK
+    assert key not in out + err
+    assert "[redacted]" in out
 
 
 def test_backends_flag_limits_the_search_and_lists_what_was_left_out(capsys):

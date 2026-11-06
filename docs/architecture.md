@@ -92,7 +92,7 @@ Vast returns at most 64 rows per query, so the first 64 rows by hourly price can
 5. If the lowest total is at or below that bound, stop.
 6. Otherwise query again with `dph_base >= last_base` and drop rows already seen. If Vast refuses that query, returns rows below the cursor, or returns a full page at one GPU-only price, or after 10 queries, stop and label the result "cheapest of the N offers checked".
 
-If a backend fails or times out, the output names it and says the comparison did not include it.
+If a backend fails or times out, the output names it and says the comparison did not include it. Failure reports redact the supplied marketplace key in both text and JSON output.
 
 The report is incomplete if any requested backend fails or returns an incomplete search. `plan` still shows the offers it found, and `up` refuses an incomplete quote with exit code 5 before registering a key or renting a machine.
 

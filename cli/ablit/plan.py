@@ -21,7 +21,7 @@ from ablit.backends.errors import BackendError, CredentialsRejected
 from ablit.catalog.loader import repo_root
 from ablit.catalog.models import Entry
 from ablit.notices import LOCAL_CAP_NOTES, SPEND_CAP_NOTICE, UNTESTED_NOTICE, spend_cap_notice
-from ablit.redact import strip_control
+from ablit.redact import MIN_SECRET_LENGTH, Redactor, strip_control
 from ablit.select import (
     HardwareRequest,
     PlanOptions,
@@ -154,21 +154,24 @@ def run_plan(
     for name in chosen:
         backend = backends[name]
         creds = creds_from_env(name, environ)
+        redactor = Redactor()
+        if creds is not None and len(creds.api_key) >= MIN_SECRET_LENGTH:
+            redactor.add(creds.api_key)
         try:
             found = backend.search(req, creds, opts)
         except httpx.TimeoutException as error:
             reports.append(BackendReport(name, STATUS_TIMED_OUT, f"timed out ({type(error).__name__})"))
             continue
         except httpx.HTTPError as error:
-            reports.append(BackendReport(name, STATUS_FAILED, f"network error: {error}"))
+            reports.append(BackendReport(name, STATUS_FAILED, redactor.remote_text(f"network error: {error}")))
             continue
         except CredentialsRejected as error:
             if strict_credentials:
                 raise
-            reports.append(BackendReport(name, STATUS_FAILED, str(error)))
+            reports.append(BackendReport(name, STATUS_FAILED, redactor.remote_text(str(error))))
             continue
         except BackendError as error:
-            reports.append(BackendReport(name, STATUS_FAILED, str(error)))
+            reports.append(BackendReport(name, STATUS_FAILED, redactor.remote_text(str(error))))
             continue
         per_backend[name] = list(found.offers)
         all_offers.extend(found.offers)
