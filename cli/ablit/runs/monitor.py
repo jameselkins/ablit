@@ -11,7 +11,7 @@ from ablit import engines
 from ablit.backends.errors import BackendError
 from ablit.credentials import CredentialError, secret_get
 from ablit.runs import RunBusy, RunError
-from ablit.runs.lifecycle import down, local_stop_needed, reason, refresh, save_remote_logs
+from ablit.runs.lifecycle import down, estimate_spend, local_stop_needed, reason, refresh, save_remote_logs
 from ablit.runs.ssh import SSH
 
 POLL_SECONDS = 10
@@ -114,6 +114,14 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     refresh(store, record, driver, creds)
                     failure_started = None
                 except (BackendError, httpx.HTTPError) as error:
+                    record["spend_estimate_usd"] = max(
+                        record.get("spend_estimate_usd", 0), estimate_spend(record, time.time()),
+                    )
+                    if local_stop_needed(record, time.time()):
+                        record["stop_reason"] = record.get("stop_reason") or "local_cap"
+                        store.save(record)
+                        code = down(store, record, driver, creds)
+                        return code or (8 if record["stop_reason"] == "watchdog_cap" else 6)
                     # A short network or marketplace outage should not end a paid
                     # run. The watchdog on the box keeps counting meanwhile. After
                     # five minutes without an answer, stop the run.

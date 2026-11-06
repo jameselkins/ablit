@@ -810,6 +810,47 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("cleanup_code", [0, 7])
+@pytest.mark.parametrize("marketplace_state", [None, "running"])
+@pytest.mark.parametrize(("observed_rate", "transfer", "fixed", "cap", "estimate"), [
+    (None, 0, 0, 0.52, 0.5),
+    (2.0, 0.2, 0.1, 1.2, 1.3),
+])
+def test_spend_cap_is_checked_during_a_marketplace_outage(
+    monkeypatch, cleanup_code, marketplace_state, observed_rate, transfer, fixed, cap, estimate,
+):
+    from ablit.backends import Creds
+    store = RunStore()
+    record = saved_run(store)
+    record.update(started_at=0.0, cap_usd=cap, spend_estimate_usd=0.0, transfer_estimate_usd=transfer)
+    if marketplace_state is not None:
+        record["marketplace_state"] = marketplace_state
+    record["offer"].update(hourly_all_in=1.0, bandwidth_cost_per_gb=0.0, fixed_fees=fixed)
+    if observed_rate is not None:
+        record["observed_hourly_rate"] = observed_rate
+    store.save(record)
+    cleanups = []
+
+    def refreshed(*args):
+        raise httpx.ReadTimeout("invented outage")
+
+    def interrupt(seconds):
+        raise KeyboardInterrupt
+
+    def down(*args):
+        cleanups.append(store.load(record["run_id"]))
+        return cleanup_code
+
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod.time, "time", lambda: 1800.0)
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    monkeypatch.setattr(monitor_mod, "down", down)
+    assert monitor_mod.monitor(store, record, None, Creds("invented-account-key"), want_ready=True) == (cleanup_code or 6)
+    assert len(cleanups) == 1
+    assert cleanups[0]["stop_reason"] == "local_cap"
+    assert cleanups[0]["spend_estimate_usd"] == pytest.approx(estimate)
+
+
 @pytest.mark.parametrize(("request_seconds", "poll_seconds", "expected_checks"), [(300, 10, 1), (160, 10, 2), (1, 300, 1)])
 def test_marketplace_outage_limit_counts_time_spent_waiting_for_requests(
     monkeypatch, request_seconds, poll_seconds, expected_checks,

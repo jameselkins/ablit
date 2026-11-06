@@ -132,19 +132,24 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
             record["ssh_check"] = "unavailable"
         else:
             record.pop("ssh_check", None)
-    rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
-    elapsed = max(time.time() - record["started_at"], 0) / 3600
-    # The API documents the rate but no cumulative transfer charge. Count the
-    # quoted image and model transfer locally, and take the larger heartbeat total.
-    estimated = rate * elapsed + record.get("transfer_estimate_usd", 0) + record["offer"].get("fixed_fees", 0)
-    record["spend_estimate_usd"] = max(estimated, record.get("heartbeat", {}).get("spend", 0))
+    record["spend_estimate_usd"] = estimate_spend(record, time.time())
     store.save(record)
     return record
 
 
+def estimate_spend(record: dict, now: float) -> float:
+    """Estimate spending from known prices, elapsed time and watchdog evidence."""
+    rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
+    elapsed = max(now - record["started_at"], 0) / 3600
+    # The API documents the rate but no cumulative transfer charge. Count the
+    # quoted image and model transfer locally, and take the larger heartbeat total.
+    estimated = rate * elapsed + record.get("transfer_estimate_usd", 0) + record["offer"].get("fixed_fees", 0)
+    return max(estimated, record.get("heartbeat", {}).get("spend", 0))
+
+
 def local_stop_needed(record: dict, now: float) -> bool:
     """Enforce the cap locally even when a live watchdog cannot destroy the machine."""
-    if record["marketplace_state"] == "absent":
+    if record.get("marketplace_state") == "absent":
         return False
     cfg = Config(record["started_at"], record["offer"]["hourly_all_in"],
                  record["offer"]["bandwidth_cost_per_gb"], record["cap_usd"],

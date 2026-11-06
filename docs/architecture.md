@@ -49,6 +49,8 @@ The code for these steps is in `cli/ablit/runs/`. The first four steps keep abli
 
 During an outage, `up` and `tunnel` count API calls, retry waits and polling delays toward the limit of five minutes. A successful marketplace check resets the timer, and failures past the limit trigger cleanup.
 
+While marketplace checks fail, the monitor still updates estimated spending from known prices and elapsed time. If the local cap check requires a stop, it attempts cleanup immediately instead of waiting for the outage limit.
+
 The host deny list stores IDs under their marketplace, so a failed host on one marketplace cannot exclude a host on another. Older files are read using the marketplace in matching saved run records. Without a matching run, a UUID is treated as a Lium host and other IDs as Vast hosts. The next write saves the new format. If an old ID matches runs on several marketplaces, its denial is kept on each one because the original file does not identify which failed.
 
 ## Planner
