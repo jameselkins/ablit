@@ -119,7 +119,11 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers():
             httpx.Response(401), httpx.Response(403)])
         chat = router.post(base + "/v1/chat/completions").mock(side_effect=[
             httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
-            httpx.Response(200, text='data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n')])
+            httpx.Response(200, text=(
+                'data: {"choices": [{"delta": {"content": "x"}}]}\n\n'
+                'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
+                'data: {"choices": [], "usage": {"completion_tokens": 1}}\n\n'
+                'data: [DONE]\n\n'))])
         engines.health(base, "invented-endpoint-key", "invented-model")
         assert models.call_count == 3 and chat.call_count == 2
         assert models.calls[0].request.headers["authorization"] == "Bearer invented-endpoint-key"
@@ -131,6 +135,15 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers():
     ": heartbeat\n\ndata: [DONE]\n\n",
     "data: [DONE]\n\ndata: [DONE]\n\n",
     'data: {"choices": [{"delta": {"content": "x"}}]}\n\n',
+    'data: {"error": {"message": "invented stream failure"}}\n\ndata: [DONE]\n\n',
+    'data: []\n\ndata: [DONE]\n\n',
+    'data: {"choices": [], "usage": {"completion_tokens": 0}}\n\ndata: [DONE]\n\n',
+    'data: {"choices": [{"message": {"content": "x"}}]}\n\ndata: [DONE]\n\n',
+    'data: {"choices": [{"delta": "x"}]}\n\ndata: [DONE]\n\n',
+    'data: {"choices": [null]}\n\ndata: [DONE]\n\n',
+    'data: not-json\n\ndata: [DONE]\n\n',
+    ('data: {"choices": [{"delta": {"content": "x"}}]}\n\n'
+     'data: {"error": {"message": "invented stream failure"}}\n\ndata: [DONE]\n\n'),
 ])
 def test_health_requires_a_stream_chunk_and_the_end_marker(stream):
     base = "http://127.0.0.1:18001"

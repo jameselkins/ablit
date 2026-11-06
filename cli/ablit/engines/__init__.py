@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import shlex
 import tarfile
 from importlib import resources
@@ -149,7 +150,21 @@ def health(base: str, key: str, model: str) -> None:
         with client.stream("POST", "/v1/chat/completions", json={**body, "stream": True}) as stream:
             stream.raise_for_status()
             lines = list(stream.iter_lines())
-            has_chunk = any(line.startswith("data: ") and line != "data: [DONE]" for line in lines)
+            has_chunk = False
+            for line in lines:
+                if not line.startswith("data: ") or line == "data: [DONE]":
+                    continue
+                try:
+                    chunk = json.loads(line[6:])
+                except ValueError as error:
+                    raise ValueError("The stream returned invalid JSON.") from error
+                if (not isinstance(chunk, dict) or "error" in chunk
+                        or not isinstance(chunk.get("choices"), list)):
+                    raise ValueError("The stream returned an invalid completion chunk.")
+                for choice in chunk["choices"]:
+                    if not isinstance(choice, dict) or not isinstance(choice.get("delta"), dict):
+                        raise ValueError("The stream returned an invalid completion choice.")
+                    has_chunk = True
             if not has_chunk:
                 raise ValueError("The stream returned no data chunks.")
             if "data: [DONE]" not in lines:
