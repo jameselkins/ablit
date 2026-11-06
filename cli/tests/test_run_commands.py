@@ -517,6 +517,32 @@ def test_the_remote_probe_reads_every_progress_file_and_skips_a_broken_one(tmp_p
     assert probe["stages"] == ["04-speed.done"]
 
 
+@pytest.mark.parametrize("incomplete", ["heartbeat", "ready", "failed", "speed"])
+def test_an_incomplete_status_file_does_not_hide_other_probe_data(tmp_path, incomplete):
+    import subprocess
+    from ablit.runs.ssh import PROBE
+    status = {
+        "heartbeat": {"at": 1, "spend": 0.25, "action": "continue"},
+        "ready": {"ready_at": 1, "port": 8000},
+        "failed": {"reason": "check", "detail": "disk full"},
+        "speed": {"measured_mbps": 1000},
+    }
+    for name, data in status.items():
+        (tmp_path / f"{name}.json").write_text(json.dumps(data))
+    path = tmp_path / f"{incomplete}.json"
+    path.write_text('{"incomplete": ')
+    script = PROBE.replace("/ablit/", str(tmp_path) + "/")
+    result = subprocess.run([sys.executable, "-I", "-c", script], capture_output=True, text=True, check=True)
+    probe = json.loads(result.stdout)
+    assert incomplete not in probe
+    assert {name: probe[name] for name in status if name != incomplete} == {
+        name: data for name, data in status.items() if name != incomplete
+    }
+    path.write_text(json.dumps(status[incomplete]))
+    result = subprocess.run([sys.executable, "-I", "-c", script], capture_output=True, text=True, check=True)
+    assert json.loads(result.stdout)[incomplete] == status[incomplete]
+
+
 def test_status_reports_exit_8_from_saved_watchdog_evidence_without_a_marketplace_key(capsys):
     store = RunStore()
     r = saved_run(store)

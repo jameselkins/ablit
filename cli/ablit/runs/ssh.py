@@ -38,7 +38,7 @@ result={}
 for name in ('heartbeat','ready','failed','speed'):
  try:
   with open('/ablit/'+name+'.json') as f: result[name]=json.load(f)
- except FileNotFoundError: pass
+ except (FileNotFoundError,ValueError): pass
 result['stages']=[os.path.basename(p) for p in sorted(glob.glob('/ablit/stages/*.done'))]
 result['progress']={}
 for p in sorted(glob.glob('/ablit/progress/*.json')):

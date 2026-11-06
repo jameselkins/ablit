@@ -150,4 +150,6 @@ The bootstrap runs nine stages. Each writes a marker under `/ablit/stages/`, so 
 
 Progress goes to `/ablit/progress/download.json`, `join.json` and `extract.json`. Each holds `bytes_done`, `bytes_total`, `mbps`, `files_done`, `files_total` and a time. `ablit status` shows them in the run record, and `ablit up` prints a line each time a step passes another ten percent. The CLI keeps only the known steps and numeric fields, and drops a malformed file.
 
+The SSH probe reads each status file independently. An incomplete JSON write in one file does not hide the other status data, and later probes read the file again.
+
 A redaction filter removes the endpoint key and marketplace keys from logs, run files and output. Tests use fake secrets to check it.
