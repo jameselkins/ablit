@@ -114,7 +114,7 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
             stages = probe.get("stages", [])
             expected = {"01-start.done", "02-check.done", "03-randread.done", "04-speed.done", "05-download.done",
                         "06-staging.done", "07-engine.done", "08-health.done", "09-ready.done"}
-            if not isinstance(stages, list) or any(s not in expected for s in stages):
+            if not isinstance(stages, list) or any(not isinstance(s, str) or s not in expected for s in stages):
                 raise RunError("The stage list contains unknown markers.")
             record["stages"] = stages
             record["progress"] = clean_progress(probe.get("progress"))

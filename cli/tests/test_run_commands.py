@@ -829,6 +829,21 @@ def test_a_probe_reply_with_the_wrong_shape_keeps_the_run_loop_going(monkeypatch
     assert record["ssh_check"] == "unavailable" and "failure" not in record
 
 
+@pytest.mark.parametrize("stages", [[[]], [{}], ["04-speed.done", {"stage": "05-download.done"}]])
+def test_invalid_stage_entries_do_not_interrupt_spending_checks(monkeypatch, stages):
+    from ablit.backends import Creds
+    from ablit.runs.lifecycle import local_stop_needed, refresh
+    store = RunStore()
+    record = saved_run(store)
+    record.update(cap_usd=0.01, started_at=1.0)
+    monkeypatch.setattr(SSH, "probe", lambda self: {"stages": stages})
+    refreshed = refresh(store, record, _RunningDriver(), Creds("invented-account-key"))
+    assert refreshed["ssh_check"] == "unavailable"
+    assert "failure" not in refreshed
+    assert local_stop_needed(refreshed, 3601.0)
+    assert store.load(record["run_id"])["spend_estimate_usd"] == refreshed["spend_estimate_usd"]
+
+
 def test_a_remote_failure_detail_loses_its_terminal_control_characters(monkeypatch):
     from ablit.backends import Creds
     from ablit.runs.lifecycle import refresh
