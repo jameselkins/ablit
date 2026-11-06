@@ -133,6 +133,32 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers():
 @pytest.mark.parametrize("response", [
     None,
     [],
+    {"data": []},
+    {"data": [None]},
+    {"data": ["invented-model"]},
+    {"data": [{}]},
+    {"data": [{"id": ""}]},
+    {"data": [{"id": 7}]},
+    {"data": [{"id": True}]},
+    {"error": {"message": "invented failure"}, "data": [{"id": "invented-model"}]},
+    {"data": [{"id": "invented-model"}, {}]},
+])
+def test_health_rejects_invalid_model_listings(response):
+    base = "http://127.0.0.1:18001"
+    with respx.mock(assert_all_called=False) as router:
+        router.get(base + "/v1/models").mock(side_effect=[
+            httpx.Response(200, text=json.dumps(response)), httpx.Response(401), httpx.Response(403)])
+        chat = router.post(base + "/v1/chat/completions").mock(side_effect=[
+            httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
+            httpx.Response(200, text='data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n')])
+        with pytest.raises(ValueError, match="models response"):
+            engines.health(base, "invented-endpoint-key", "invented-model")
+        assert chat.call_count == 0
+
+
+@pytest.mark.parametrize("response", [
+    None,
+    [],
     {"choices": []},
     {"choices": "x"},
     {"choices": {"message": {"content": "x"}}},

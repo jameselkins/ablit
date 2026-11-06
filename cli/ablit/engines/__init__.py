@@ -140,7 +140,12 @@ def health(base: str, key: str, model: str) -> None:
     with httpx.Client(base_url=base, timeout=60, headers={"Authorization": f"Bearer {key}"}, trust_env=False) as client:
         result = client.get("/v1/models")
         result.raise_for_status()
-        if not isinstance(result.json().get("data"), list):
+        models = result.json()
+        if not isinstance(models, dict) or "error" in models:
+            raise ValueError("The models response is invalid.")
+        listed = models.get("data")
+        if (not isinstance(listed, list) or not listed
+                or any(not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"] for item in listed)):
             raise ValueError("The models response is invalid.")
         body = {"model": model, "messages": [{"role": "user", "content": "Hello"}], "max_tokens": 1}
         reply = client.post("/v1/chat/completions", json=body)
