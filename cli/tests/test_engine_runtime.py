@@ -130,6 +130,31 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers():
         assert "authorization" not in models.calls[1].request.headers
 
 
+@pytest.mark.parametrize("response", [
+    None,
+    [],
+    {"choices": []},
+    {"choices": "x"},
+    {"choices": {"message": {"content": "x"}}},
+    {"choices": [None]},
+    {"choices": [{"delta": {"content": "x"}}]},
+    {"choices": [{"message": "x"}]},
+    {"error": {"message": "invented failure"}, "choices": [{"message": {"content": "x"}}]},
+    {"choices": [{"message": {"content": "x"}}, None]},
+])
+def test_health_rejects_invalid_chat_completion_responses(response):
+    base = "http://127.0.0.1:18001"
+    with respx.mock as router:
+        router.get(base + "/v1/models").mock(side_effect=[
+            httpx.Response(200, json={"data": [{"id": "invented-model"}]}),
+            httpx.Response(401), httpx.Response(403)])
+        router.post(base + "/v1/chat/completions").mock(side_effect=[
+            httpx.Response(200, text=json.dumps(response)),
+            httpx.Response(200, text='data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n')])
+        with pytest.raises(ValueError, match="completion response"):
+            engines.health(base, "invented-endpoint-key", "invented-model")
+
+
 @pytest.mark.parametrize("stream", [
     "data: [DONE]\n\n",
     ": heartbeat\n\ndata: [DONE]\n\n",

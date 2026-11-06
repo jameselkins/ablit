@@ -145,8 +145,13 @@ def health(base: str, key: str, model: str) -> None:
         body = {"model": model, "messages": [{"role": "user", "content": "Hello"}], "max_tokens": 1}
         reply = client.post("/v1/chat/completions", json=body)
         reply.raise_for_status()
-        if not reply.json().get("choices"):
-            raise ValueError("The completion response has no choices.")
+        completion = reply.json()
+        if not isinstance(completion, dict) or "error" in completion:
+            raise ValueError("The completion response is invalid.")
+        choices = completion.get("choices")
+        if (not isinstance(choices, list) or not choices
+                or any(not isinstance(choice, dict) or not isinstance(choice.get("message"), dict) for choice in choices)):
+            raise ValueError("The completion response is invalid.")
         with client.stream("POST", "/v1/chat/completions", json={**body, "stream": True}) as stream:
             stream.raise_for_status()
             lines = list(stream.iter_lines())

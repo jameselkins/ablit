@@ -152,7 +152,7 @@ The bootstrap runs nine stages. Each writes a marker under `/ablit/stages/`, so 
 8. Health check. `GET /v1/models`, one chat completion with `max_tokens: 1`, one streamed completion, and a check that requests with no key or a wrong key are refused.
 9. Write `/ablit/ready.json`.
 
-The CLI repeats the health checks through the SSH tunnel before printing the endpoint. Its streaming check requires a valid JSON completion chunk and the `[DONE]` marker. Each completion choice must contain a `delta` object.
+The CLI repeats the health checks through the SSH tunnel before printing the endpoint. Its chat check requires a nonempty list of choices with message objects. Its streaming check requires a valid JSON completion chunk and the `[DONE]` marker. Each streamed completion choice must contain a `delta` object.
 
 Progress goes to `/ablit/progress/download.json`, `join.json` and `extract.json`. Each holds `bytes_done`, `bytes_total`, `mbps`, `files_done`, `files_total` and a time. `ablit status` shows them in the run record, and `ablit up` prints a line each time a step passes another ten percent. The CLI keeps only the known steps and numeric fields, and drops a malformed file.
 
