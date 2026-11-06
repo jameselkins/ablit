@@ -28,6 +28,8 @@ report that from the saved run without a marketplace key.
 When another command holds the run lock, `ablit status` shows the saved record
 and labels it as saved state. It can show that record without a marketplace key.
 
+After a failed remote check, status includes `ssh_check: "unavailable"`. The next successful remote check removes the warning.
+
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.
 
 ## Flags for plan and up

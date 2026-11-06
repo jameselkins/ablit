@@ -790,6 +790,34 @@ class _RunningDriver:
         return Observation(checked_at=1.0, state="running")
 
 
+@pytest.mark.parametrize("unavailable", [RunError("SSH did not answer"), {"stages": ["unexpected.done"]}, {"failed": "text"}])
+def test_a_successful_probe_clears_a_previous_ssh_warning(monkeypatch, unavailable):
+    from ablit.backends import Creds
+    from ablit.runs.lifecycle import refresh
+    store = RunStore()
+    record = saved_run(store)
+    healthy = {"heartbeat": {"at": 1.0, "spend": 0.25, "action": "continue"}, "stages": ["04-speed.done"]}
+    replies = iter([unavailable, healthy, unavailable])
+
+    def probe(self):
+        reply = next(replies)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    monkeypatch.setattr(SSH, "probe", probe)
+    creds = Creds("invented-account-key")
+    refresh(store, record, _RunningDriver(), creds)
+    assert store.load(record["run_id"])["ssh_check"] == "unavailable"
+    refresh(store, record, _RunningDriver(), creds)
+    recovered = store.load(record["run_id"])
+    assert "ssh_check" not in recovered
+    assert recovered["heartbeat"] == healthy["heartbeat"]
+    assert recovered["stages"] == ["04-speed.done"]
+    refresh(store, record, _RunningDriver(), creds)
+    assert store.load(record["run_id"])["ssh_check"] == "unavailable"
+
+
 @pytest.mark.parametrize("reply", [[], "text", {"heartbeat": "text"}, {"heartbeat": [1]}, {"failed": "text"}])
 def test_a_probe_reply_with_the_wrong_shape_keeps_the_run_loop_going(monkeypatch, reply):
     from ablit.backends import Creds

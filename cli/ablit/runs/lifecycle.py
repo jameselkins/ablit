@@ -130,6 +130,8 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
                 record["ready"] = True
         except (RunError, OSError, ValueError, httpx.HTTPError, subprocess.SubprocessError):
             record["ssh_check"] = "unavailable"
+        else:
+            record.pop("ssh_check", None)
     rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
     elapsed = max(time.time() - record["started_at"], 0) / 3600
     # The API documents the rate but no cumulative transfer charge. Count the
