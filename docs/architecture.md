@@ -156,6 +156,8 @@ The CLI repeats the health checks through the SSH tunnel before printing the end
 
 Incoming stream chunks are checked against a two-minute deadline, so heartbeats and unfinished lines cannot keep the health check reading indefinitely. The CLI closes the response when the check fails.
 
+The streaming probe requests one token and allows at most 1 MiB of decoded UTF-8 text, including compressed replies.
+
 Progress goes to `/ablit/progress/download.json`, `join.json` and `extract.json`. Each holds `bytes_done`, `bytes_total`, `mbps`, `files_done`, `files_total` and a time. `ablit status` shows them in the run record, and `ablit up` prints a line each time a step passes another ten percent. The CLI keeps only the known steps and numeric fields, and drops a malformed file.
 
 The SSH probe reads each status file independently. An incomplete JSON write in one file does not hide the other status data, and later probes read the file again.

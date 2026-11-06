@@ -144,6 +144,43 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers(mod
 
 
 @pytest.mark.parametrize("compressed", [False, True])
+@pytest.mark.parametrize("extra_bytes", [0, 1])
+def test_health_stream_limits_decoded_utf8_bytes(compressed, extra_bytes):
+    base = "http://127.0.0.1:18001"
+    tail = b'data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n'
+    size = 1_048_576 + extra_bytes
+    padding_size = size - len(tail) - 4
+    padding = ("é" * (padding_size // 2)).encode() + b"x" * (padding_size % 2)
+    body = b": " + padding + b"\n\n" + tail
+    assert len(body) == size
+    wire_body = gzip.compress(body) if compressed else body
+    closed = []
+
+    class SizedStream(httpx.SyncByteStream):
+        def __iter__(self):
+            middle = len(wire_body) // 2
+            yield wire_body[:middle]
+            yield wire_body[middle:]
+
+        def close(self):
+            closed.append(True)
+
+    with respx.mock as router:
+        router.get(base + "/v1/models").mock(side_effect=[
+            httpx.Response(200, json={"data": [{"id": "invented-model"}]}),
+            httpx.Response(401), httpx.Response(403)])
+        router.post(base + "/v1/chat/completions").mock(side_effect=[
+            httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
+            httpx.Response(200, stream=SizedStream(), headers={"Content-Encoding": "gzip"} if compressed else {})])
+        if extra_bytes:
+            with pytest.raises(ValueError, match="response size limit"):
+                engines.health(base, "invented-endpoint-key", "invented-model")
+        else:
+            engines.health(base, "invented-endpoint-key", "invented-model")
+    assert closed
+
+
+@pytest.mark.parametrize("compressed", [False, True])
 @pytest.mark.parametrize("prefix,tail", [
     ([b": heartbeat\n\n", b": heartbeat\n\n"],
      b'data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n'),

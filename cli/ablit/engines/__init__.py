@@ -138,6 +138,7 @@ def bundle(entry, record: dict) -> bytes:
 
 
 STREAM_HEALTH_TIMEOUT_SECONDS = 120
+MAX_HEALTH_STREAM_BYTES = 1024 * 1024
 
 
 class _HealthDeadlineStream(httpx.SyncByteStream):
@@ -184,7 +185,14 @@ def health(base: str, key: str, model: str) -> None:
             raw_stream = stream.stream
             assert isinstance(raw_stream, httpx.SyncByteStream)
             stream.stream = _HealthDeadlineStream(raw_stream, deadline)
-            lines = list(stream.iter_lines())
+            parts: list[str] = []
+            text_bytes = 0
+            for part in stream.iter_text():
+                text_bytes += len(part.encode("utf-8"))
+                if text_bytes > MAX_HEALTH_STREAM_BYTES:
+                    raise ValueError("The stream exceeded the health check response size limit.")
+                parts.append(part)
+            lines = "".join(parts).splitlines()
             if time.monotonic() >= deadline:
                 raise ValueError(f"The stream did not finish within {STREAM_HEALTH_TIMEOUT_SECONDS} seconds.")
             has_chunk = False
