@@ -20,6 +20,8 @@ The request body is a JSON object of filters. It follows these conventions.
 
 The driver sends the user's key in an `Authorization: Bearer` header only when one is set in `VAST_API_KEY`. Anonymous searches work.
 
+Search and price rechecks retry network failures, HTTP 429 and server errors up to five attempts per query. They use the same waits as other Vast reads, including rate-limit headers. Other HTTP rejections are reported without retrying.
+
 ## Reading offers
 
 | Field | Used for |

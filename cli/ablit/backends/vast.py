@@ -380,7 +380,11 @@ class VastBackend(RentalBackend):
         if creds is not None:
             headers["Authorization"] = f"Bearer {creds.api_key}"
         # https://docs.vast.ai/api-reference/search/search-offers
-        response = self._http().post(self._url, json=body, headers=headers)
+        # Search and requote only read offers, even though the API uses POST.
+        response = send_with_retry(
+            lambda: self._http().post(self._url, json=body, headers=headers),
+            attempts=5, sleep=self._sleep, delay=retry_delay,
+        )
         status = response.status_code
         if status in (401, 403):
             raise CredentialsRejected(self.name, status, "the API key was refused")

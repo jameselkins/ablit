@@ -302,6 +302,55 @@ def test_credentials_rejected_is_its_own_error():
         VastBackend(httpx.Client()).search(REQ, Creds(api_key="invented-test-key"), OPTS)
 
 
+@pytest.mark.parametrize("operation", ["search", "requote"])
+@pytest.mark.parametrize(("first", "wait"), [
+    pytest.param(httpx.Response(429, headers={"Retry-After": "3"}), 3.0, id="rate_limit"),
+    pytest.param(httpx.Response(503), 2.0, id="server_error"),
+    pytest.param(httpx.ConnectError("simulated outage"), 2.0, id="connection_error"),
+])
+def test_offer_reads_retry_a_transient_failure(operation, first, wait):
+    backend = VastBackend(httpx.Client())
+    waits = []
+    backend._sleep = waits.append
+    row = vast_row(9001, allocated=ALLOCATED)
+    with respx.mock as router:
+        route = router.post(VAST_URL).mock(side_effect=[first, httpx.Response(200, json={"offers": [row]})])
+        if operation == "search":
+            found = backend.search(REQ, None, OPTS)
+            assert found.complete and len(found.offers) == 1
+        else:
+            assert backend.requote(offer_from_row(row, ALLOCATED), Creds("invented-test-key")) is not None
+        assert route.call_count == 2
+        assert route.calls[0].request.content == route.calls[1].request.content
+    assert waits == [wait]
+
+
+@pytest.mark.parametrize("failure", [httpx.Response(503), httpx.ConnectError("simulated outage")])
+def test_offer_reads_stop_after_five_failed_attempts(failure):
+    backend = VastBackend(httpx.Client())
+    waits = []
+    backend._sleep = waits.append
+    with respx.mock as router:
+        route = router.post(VAST_URL).mock(side_effect=[failure] * 5)
+        with pytest.raises((RequestRejected, httpx.ConnectError)):
+            backend.search(REQ, None, OPTS)
+        assert route.call_count == 5
+    assert waits == [2.0, 4.0, 8.0, 16.0]
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 422])
+def test_offer_reads_do_not_retry_a_permanent_rejection(status):
+    backend = VastBackend(httpx.Client())
+    waits = []
+    backend._sleep = waits.append
+    with respx.mock as router:
+        route = router.post(VAST_URL).respond(status)
+        with pytest.raises(RequestRejected):
+            backend.search(REQ, Creds("invented-test-key"), OPTS)
+        assert route.call_count == 1
+    assert waits == []
+
+
 # --- unknown types and units ---------------------------------------------
 
 
