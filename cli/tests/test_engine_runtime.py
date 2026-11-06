@@ -1,5 +1,6 @@
 """Exercise the reviewed shell functions with local synthetic files."""
 
+import gzip
 import hashlib
 import io
 import json
@@ -111,23 +112,76 @@ ablit_download_one https://example.invalid/model weight "$2" "$3"
     assert not (tmp_path / "weight.part").exists()
 
 
-def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers():
+@pytest.mark.parametrize("mode", ["buffered", "streamed", "gzip"])
+def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers(mode):
     base = "http://127.0.0.1:18001"
+    body = (
+        'data: {"choices": [{"delta": {"content": "x"}}]}\n\n'
+        'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
+        'data: {"choices": [], "usage": {"completion_tokens": 1}}\n\n'
+        'data: [DONE]\n\n'
+    ).encode()
+    wire_body = gzip.compress(body) if mode == "gzip" else body
+
+    class CompleteStream(httpx.SyncByteStream):
+        def __iter__(self):
+            yield wire_body[:5]
+            yield wire_body[5:]
+
+    streamed = (httpx.Response(200, content=body) if mode == "buffered" else
+                httpx.Response(200, stream=CompleteStream(), headers={"Content-Encoding": "gzip"} if mode == "gzip" else {}))
     with respx.mock as router:
         models = router.get(base + "/v1/models").mock(side_effect=[
             httpx.Response(200, json={"data": [{"id": "invented-model"}]}),
             httpx.Response(401), httpx.Response(403)])
         chat = router.post(base + "/v1/chat/completions").mock(side_effect=[
             httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
-            httpx.Response(200, text=(
-                'data: {"choices": [{"delta": {"content": "x"}}]}\n\n'
-                'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
-                'data: {"choices": [], "usage": {"completion_tokens": 1}}\n\n'
-                'data: [DONE]\n\n'))])
+            streamed])
         engines.health(base, "invented-endpoint-key", "invented-model")
         assert models.call_count == 3 and chat.call_count == 2
         assert models.calls[0].request.headers["authorization"] == "Bearer invented-endpoint-key"
         assert "authorization" not in models.calls[1].request.headers
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+@pytest.mark.parametrize("prefix,tail", [
+    ([b": heartbeat\n\n", b": heartbeat\n\n"],
+     b'data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n'),
+    ([b"data: ", b" "],
+     b'{"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n'),
+])
+def test_health_stream_deadline_includes_heartbeats_and_partial_lines(monkeypatch, prefix, tail, compressed):
+    import time
+    base = "http://127.0.0.1:18001"
+    clock, received, closed = [0.0], [], []
+    if compressed:
+        body = gzip.compress(b"".join(prefix) + tail)
+        prefix, tail = [body[:5], body[5:10]], body[10:]
+
+    class SlowStream(httpx.SyncByteStream):
+        def __iter__(self):
+            for part in prefix:
+                clock[0] += 60
+                received.append(part)
+                yield part
+            received.append(tail)
+            yield tail
+
+        def close(self):
+            closed.append(True)
+
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    with respx.mock as router:
+        router.get(base + "/v1/models").mock(side_effect=[
+            httpx.Response(200, json={"data": [{"id": "invented-model"}]}),
+            httpx.Response(401), httpx.Response(403)])
+        router.post(base + "/v1/chat/completions").mock(side_effect=[
+            httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
+            httpx.Response(200, stream=SlowStream(), headers={"Content-Encoding": "gzip"} if compressed else {})])
+        with pytest.raises(ValueError, match="within 120 seconds"):
+            engines.health(base, "invented-endpoint-key", "invented-model")
+    assert len(received) == 2
+    assert closed
 
 
 @pytest.mark.parametrize("response", [

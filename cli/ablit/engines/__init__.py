@@ -6,6 +6,8 @@ import io
 import json
 import shlex
 import tarfile
+import time
+from collections.abc import Iterator
 from importlib import resources
 from pathlib import PurePosixPath
 from urllib.parse import quote
@@ -135,6 +137,25 @@ def bundle(entry, record: dict) -> bytes:
     return output.getvalue()
 
 
+STREAM_HEALTH_TIMEOUT_SECONDS = 120
+
+
+class _HealthDeadlineStream(httpx.SyncByteStream):
+    """Check incoming chunks before HTTPX buffers lines or decodes compressed data."""
+
+    def __init__(self, stream: httpx.SyncByteStream, deadline: float) -> None:
+        self.stream, self.deadline = stream, deadline
+
+    def __iter__(self) -> Iterator[bytes]:
+        for chunk in self.stream:
+            if time.monotonic() >= self.deadline:
+                raise ValueError(f"The stream did not finish within {STREAM_HEALTH_TIMEOUT_SECONDS} seconds.")
+            yield chunk
+
+    def close(self) -> None:
+        self.stream.close()
+
+
 def health(base: str, key: str, model: str) -> None:
     """Exercise authentication, chat and streaming through the SSH tunnel."""
     with httpx.Client(base_url=base, timeout=60, headers={"Authorization": f"Bearer {key}"}, trust_env=False) as client:
@@ -157,9 +178,15 @@ def health(base: str, key: str, model: str) -> None:
         if (not isinstance(choices, list) or not choices
                 or any(not isinstance(choice, dict) or not isinstance(choice.get("message"), dict) for choice in choices)):
             raise ValueError("The completion response is invalid.")
+        deadline = time.monotonic() + STREAM_HEALTH_TIMEOUT_SECONDS
         with client.stream("POST", "/v1/chat/completions", json={**body, "stream": True}) as stream:
             stream.raise_for_status()
+            raw_stream = stream.stream
+            assert isinstance(raw_stream, httpx.SyncByteStream)
+            stream.stream = _HealthDeadlineStream(raw_stream, deadline)
             lines = list(stream.iter_lines())
+            if time.monotonic() >= deadline:
+                raise ValueError(f"The stream did not finish within {STREAM_HEALTH_TIMEOUT_SECONDS} seconds.")
             has_chunk = False
             for line in lines:
                 if not line.startswith("data: ") or line == "data: [DONE]":
