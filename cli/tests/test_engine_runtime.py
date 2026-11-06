@@ -119,11 +119,30 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers():
             httpx.Response(401), httpx.Response(403)])
         chat = router.post(base + "/v1/chat/completions").mock(side_effect=[
             httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
-            httpx.Response(200, text='data: {"choices": []}\n\ndata: [DONE]\n\n')])
+            httpx.Response(200, text='data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n')])
         engines.health(base, "invented-endpoint-key", "invented-model")
         assert models.call_count == 3 and chat.call_count == 2
         assert models.calls[0].request.headers["authorization"] == "Bearer invented-endpoint-key"
         assert "authorization" not in models.calls[1].request.headers
+
+
+@pytest.mark.parametrize("stream", [
+    "data: [DONE]\n\n",
+    ": heartbeat\n\ndata: [DONE]\n\n",
+    "data: [DONE]\n\ndata: [DONE]\n\n",
+    'data: {"choices": [{"delta": {"content": "x"}}]}\n\n',
+])
+def test_health_requires_a_stream_chunk_and_the_end_marker(stream):
+    base = "http://127.0.0.1:18001"
+    with respx.mock as router:
+        router.get(base + "/v1/models").mock(side_effect=[
+            httpx.Response(200, json={"data": [{"id": "invented-model"}]}),
+            httpx.Response(401), httpx.Response(403)])
+        router.post(base + "/v1/chat/completions").mock(side_effect=[
+            httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
+            httpx.Response(200, text=stream)])
+        with pytest.raises(ValueError, match="stream"):
+            engines.health(base, "invented-endpoint-key", "invented-model")
 
 
 def test_uploaded_bootstrap_finds_common_beside_the_script(repo_root, tmp_path):

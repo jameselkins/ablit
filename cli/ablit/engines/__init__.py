@@ -149,7 +149,10 @@ def health(base: str, key: str, model: str) -> None:
         with client.stream("POST", "/v1/chat/completions", json={**body, "stream": True}) as stream:
             stream.raise_for_status()
             lines = list(stream.iter_lines())
-            if not any(line.startswith("data: ") for line in lines) or "data: [DONE]" not in lines:
+            has_chunk = any(line.startswith("data: ") and line != "data: [DONE]" for line in lines)
+            if not has_chunk:
+                raise ValueError("The stream returned no data chunks.")
+            if "data: [DONE]" not in lines:
                 raise ValueError("The stream did not finish.")
         for token in (None, "invented-wrong-health-token"):
             headers = {"Authorization": f"Bearer {token}"} if token else {}
