@@ -151,7 +151,8 @@ def local_stop_needed(record: dict, now: float) -> bool:
     """Enforce the cap locally even when a live watchdog cannot destroy the machine."""
     if record.get("marketplace_state") == "absent":
         return False
-    cfg = Config(record["started_at"], record["offer"]["hourly_all_in"],
+    rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
+    cfg = Config(record["started_at"], rate,
                  record["offer"]["bandwidth_cost_per_gb"], record["cap_usd"],
                  record["offer"]["download_mbps"] or record.get("min_download_mbps", 0))
     return record["spend_estimate_usd"] + reserve(cfg) >= record["cap_usd"]

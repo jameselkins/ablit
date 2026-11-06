@@ -178,6 +178,16 @@ def test_local_check_enforces_the_cap_with_a_fresh_or_stale_heartbeat(tmp_path):
     assert not local_stop_needed(r, 1681)
 
 
+@pytest.mark.parametrize(("observed_rate", "cap", "stop"), [(None, 2.0, False), (4.0, 2.0, True), (0.25, 1.92, True)])
+def test_local_shutdown_reserve_uses_the_higher_known_hourly_rate(tmp_path, observed_rate, cap, stop):
+    store = RunStore(tmp_path)
+    r = record(store, marketplace_state="running", spend_estimate_usd=1.9, cap_usd=cap)
+    r["offer"].update(hourly_all_in=1.0, bandwidth_cost_per_gb=0.0)
+    if observed_rate is not None:
+        r["observed_hourly_rate"] = observed_rate
+    assert local_stop_needed(r, 1680) is stop
+
+
 def test_no_key_revocation_when_billing_check_times_out(tmp_path):
     store = RunStore(tmp_path)
     r = record(store)
