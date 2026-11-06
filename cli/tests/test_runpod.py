@@ -207,9 +207,38 @@ def test_graphql_errors_and_bad_shapes_are_typed_errors():
     with router, pytest.raises(ResponseNotRecognized):
         RunPodBackend(httpx.Client()).search(REQ, None, OPTS)
     router = respx.mock()
-    router.post(RUNPOD_URL).mock(return_value=httpx.Response(401, json={"error": "no"}))
-    with router, pytest.raises(CredentialsRejected):
-        RunPodBackend(httpx.Client()).search(REQ, Creds(api_key="invented-test-key"), OPTS)
+    route = router.post(RUNPOD_URL).mock(return_value=httpx.Response(401, json={"error": "no"}))
+    with router:
+        with pytest.raises(CredentialsRejected):
+            RunPodBackend(httpx.Client()).search(REQ, Creds(api_key="invented-test-key"), OPTS)
+        assert route.call_count == 1
+
+
+@pytest.mark.parametrize(("first", "wait"), [
+    pytest.param(httpx.Response(429, headers={"Retry-After": "3"}), 3.0, id="rate_limit"),
+    pytest.param(httpx.Response(503), 2.0, id="server_error"),
+    pytest.param(httpx.ConnectError("simulated outage"), 2.0, id="connection_error"),
+])
+def test_graphql_search_retries_a_transient_failure(first, wait):
+    backend = RunPodBackend(httpx.Client())
+    waits = []
+    backend._sleep = waits.append
+    with respx.mock as router:
+        route = router.post(RUNPOD_URL).mock(side_effect=[first, runpod_response([]), runpod_response([])])
+        found = backend.search(REQ, None, OPTS)
+    assert found.complete and found.offers == []
+    assert route.call_count == 3 and waits == [wait]
+
+
+def test_graphql_search_stops_after_five_failed_attempts():
+    backend = RunPodBackend(httpx.Client())
+    waits = []
+    backend._sleep = waits.append
+    with respx.mock as router:
+        route = router.post(RUNPOD_URL).respond(503)
+        with pytest.raises(RequestRejected):
+            backend.search(REQ, None, OPTS)
+    assert route.call_count == 5 and waits == [2.0, 4.0, 8.0, 16.0]
 
 
 def test_a_runpod_search_is_complete():

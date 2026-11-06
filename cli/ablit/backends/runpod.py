@@ -239,10 +239,14 @@ class RunPodBackend(RentalBackend):
         return Capabilities(search=True, rent=True)
 
     def _run(self, query: str, creds: Creds | None) -> Any:
+        """Send a read-only catalog query, retrying transient failures."""
         headers = {"Content-Type": "application/json", "User-Agent": f"ablit/{__version__}"}
         if creds is not None:
             headers["Authorization"] = f"Bearer {creds.api_key}"
-        response = self._http().post(self._url, json={"query": query}, headers=headers)
+        client = self._http()
+        response = send_with_retry(
+            lambda: client.post(self._url, json={"query": query}, headers=headers),
+            attempts=5, sleep=self._sleep, delay=_retry_delay)
         status = response.status_code
         if status in (401, 403):
             raise CredentialsRejected(self.name, status, "the API key was refused")
