@@ -59,6 +59,18 @@ def test_failed_replace_leaves_old_record_and_removes_temp(tmp_path, monkeypatch
     assert not list(tmp_path.glob(".pending-*"))
 
 
+@pytest.mark.parametrize("data", [None, [], ["running"], "running", 1, False])
+def test_non_object_run_records_raise_a_run_error_without_changing_the_file(tmp_path, data):
+    store = RunStore(tmp_path)
+    path = store.path(RUN)
+    path.parent.mkdir(parents=True)
+    text = json.dumps(data)
+    path.write_text(text)
+    with pytest.raises(RunError, match=f"Run {RUN} has an unknown record shape"):
+        store.load(RUN)
+    assert path.read_text() == text
+
+
 def test_per_run_lock_refuses_a_second_holder_and_releases_after_error(tmp_path):
     store = RunStore(tmp_path)
     with pytest.raises(ValueError):

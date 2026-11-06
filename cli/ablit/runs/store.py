@@ -75,7 +75,8 @@ class RunStore:
             data = json.loads(self.path(run_id).read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
             raise RunError(f"Cannot read run {run_id}.") from error
-        if data.get("run_id") != run_id or data.get("state") not in RUN_STATES:
+        if (not isinstance(data, dict) or data.get("run_id") != run_id
+                or data.get("state") not in RUN_STATES):
             raise RunError(f"Run {run_id} has an unknown record shape.")
         return data
 
