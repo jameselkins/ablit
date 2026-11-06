@@ -56,6 +56,7 @@ from ablit.backends.errors import (
 from ablit.backends.lium_gpus import compute_capability_for
 from ablit.backends.rental import RentalBackend
 from ablit.backends.transport import backoff, refuse_redirect, send_with_retry
+from ablit.redact import MIN_SECRET_LENGTH, Redactor
 from ablit.select.types import HardwareRequest, Offer, PlanOptions
 
 API_ROOT = "https://lium.io/api"
@@ -121,8 +122,10 @@ class SkipNode(Exception):
 class LiumRejected(RequestRejected):
     """An error answer. Lium's body names a stable code, which the driver keeps."""
 
-    def __init__(self, status: int | None, code: str | None, message: str) -> None:
-        super().__init__("lium", status, f"{code}: {message}" if code else message)
+    def __init__(self, status: int | None, code: str | None, message: str,
+                 *, redactor: Redactor | None = None) -> None:
+        detail = f"{code}: {message}" if code else message
+        super().__init__("lium", status, redactor.remote_text(detail) if redactor is not None else detail)
         self.code = code
 
 
@@ -280,7 +283,7 @@ class LiumBackend(RentalBackend):
         if status == 404 and missing_ok:
             return None
         if not response.is_success:
-            raise self._rejection(response)
+            raise self._rejection(response, creds)
         if status == 204 or not response.content:
             return None
         try:
@@ -288,7 +291,7 @@ class LiumBackend(RentalBackend):
         except ValueError as error:
             raise ResponseNotRecognized("lium: expected JSON") from error
 
-    def _rejection(self, response: httpx.Response) -> RequestRejected:
+    def _rejection(self, response: httpx.Response, creds: Creds | None = None) -> RequestRejected:
         """Read the error envelope: error.code, error.message, and the older flat message."""
         status = response.status_code
         code, message = None, "the request failed"
@@ -302,12 +305,15 @@ class LiumBackend(RentalBackend):
                 if isinstance(error.get("code"), str) and _CODE.fullmatch(error["code"]):
                     code = error["code"]
                 if isinstance(error.get("message"), str) and error["message"]:
-                    message = error["message"][:200]
+                    message = error["message"]
             elif isinstance(data.get("message"), str) and data["message"]:
-                message = data["message"][:200]
+                message = data["message"]
         if status == 401 or (status == 403 and code == "forbidden"):
             return CredentialsRejected(self.name, status, "the API key or its scopes were refused")
-        return LiumRejected(status, code, message)
+        redactor = Redactor()
+        if creds is not None and len(creds.api_key) >= MIN_SECRET_LENGTH:
+            redactor.add(creds.api_key)
+        return LiumRejected(status, code, redactor.remote_text(message)[:200], redactor=redactor)
 
     def test_credentials(self, creds: Creds) -> None:
         """One read-only call. https://docs.lium.io/developers/authentication (verify a key)"""

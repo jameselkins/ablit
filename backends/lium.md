@@ -42,6 +42,9 @@ Base URL `https://lium.io/api`. The key goes in a header named `X-API-Key`, with
 
 Errors use one envelope, `{"success": false, "error": {"code", "message", "hint", "request_id"}}`, and the driver keeps `error.code`. 401 is a rejected key. https://docs.lium.io/developers/error-codes
 
+The driver redacts supplied API keys before shortening error diagnostics. It
+preserves the error code used for cleanup decisions.
+
 ### How the driver reads a node
 
 `price_per_gpu_hour` times the GPU count is the price. Where `price_per_node_hour` is present, it must agree with the per GPU price within one cent, or the driver refuses the node. `reliability_score` is 0 to 100 and the driver converts it to 0 to 1, and refuses a value above 100. `tier` must be `secure` or `spot`. Only `id` and `rent_url` are always set in the feed, so a node that lacks a field ablit needs is left out and counted in the search note as "nodes missing a field ablit needs". A field with the wrong type or unit still stops the search. The node `id` is the offer's host ID for the local deny list.

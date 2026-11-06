@@ -19,7 +19,7 @@ from ablit.backends.errors import (
     ResponseNotRecognized,
     UnknownFieldType,
 )
-from ablit.backends.lium import API_ROOT, LIUM_ENTRYPOINT, LIUM_START, LiumBackend, offer_id_for
+from ablit.backends.lium import API_ROOT, LIUM_ENTRYPOINT, LIUM_START, LiumBackend, LiumRejected, offer_id_for
 from ablit.runs import RunStore
 from helpers import make_offer
 
@@ -367,6 +367,31 @@ def test_destroy_deletes_each_pod_by_its_id(driver):
     assert all(call.request.method == "DELETE" for call in route.calls)
     assert route.calls[0].request.headers["X-API-Key"] == "invented-lium-key"
     assert result.requested and result.resource_ids_terminated == [POD, "pod2"]
+
+
+@pytest.mark.parametrize("key", ["invented_lium_key", "invented_long_lium_key_" * 20], ids=["normal_key", "long_key"])
+@pytest.mark.parametrize("structured", [True, False], ids=["structured", "flat"])
+def test_error_messages_redact_the_key_before_truncation(driver, key, structured):
+    message = f"request failed with key {key}"
+    body = {"error": {"code": "bad_request", "message": message}} if structured else {"message": message}
+    with respx.mock as router:
+        router.get(API_ROOT + "/users/me").respond(400, json=body)
+        with pytest.raises(LiumRejected) as error:
+            driver.test_credentials(Creds(key))
+    assert error.value.code == ("bad_request" if structured else None)
+    assert "[redacted]" in str(error.value)
+    assert key[:16] not in str(error.value)
+
+
+def test_error_code_is_preserved_for_cleanup_but_redacted_in_the_diagnostic(driver):
+    key = "invented_lium_key"
+    with respx.mock as router:
+        router.get(API_ROOT + "/users/me").respond(400, json={"error": {"code": key, "message": "request failed"}})
+        with pytest.raises(LiumRejected) as error:
+            driver.test_credentials(Creds(key))
+    assert error.value.code == key
+    assert "[redacted]" in str(error.value)
+    assert key not in str(error.value)
 
 
 def test_destroy_treats_a_missing_pod_as_done_and_refuses_a_bad_key_or_id(driver):
