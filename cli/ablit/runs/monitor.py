@@ -15,6 +15,7 @@ from ablit.runs.lifecycle import down, local_stop_needed, reason, refresh, save_
 from ablit.runs.ssh import SSH
 
 POLL_SECONDS = 10
+MARKETPLACE_GRACE_SECONDS = 5 * 60
 # How long the monitor waits for the run lock before it skips one pass. A `status` or `down` in
 # another terminal holds the lock for a short time, and that must not stop a paid run.
 MONITOR_LOCK_WAIT_SECONDS = 10
@@ -79,7 +80,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     tunnel = None
     uploaded = False
     stage = None
-    failures = 0
+    failure_started: float | None = None
     first = True
     running_since = None
     shown: dict = {}
@@ -106,16 +107,20 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         print(f"{run_id}: the run was stopped before the engine was ready.", flush=True)
                         return 6
                     return 0
+                check_started = time.monotonic()
+                if failure_started is not None and check_started - failure_started >= MARKETPLACE_GRACE_SECONDS:
+                    raise RunError("The marketplace has not answered for five minutes.")
                 try:
                     refresh(store, record, driver, creds)
-                    failures = 0
+                    failure_started = None
                 except (BackendError, httpx.HTTPError) as error:
                     # A short network or marketplace outage should not end a paid
                     # run. The watchdog on the box keeps counting meanwhile. After
                     # five minutes without an answer, stop the run.
-                    failures += 1
+                    if failure_started is None:
+                        failure_started = check_started
                     print(f"{run_id}: marketplace check failed ({reason(error)}). Retrying.", flush=True)
-                    if failures * POLL_SECONDS < 300:
+                    if time.monotonic() - failure_started < MARKETPLACE_GRACE_SECONDS:
                         continue
                     raise
                 if record.get("stop_reason") == "watchdog_cap" and record["marketplace_state"] == "absent":

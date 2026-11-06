@@ -810,6 +810,67 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(("request_seconds", "poll_seconds", "expected_checks"), [(300, 10, 1), (160, 10, 2), (1, 300, 1)])
+def test_marketplace_outage_limit_counts_time_spent_waiting_for_requests(
+    monkeypatch, request_seconds, poll_seconds, expected_checks,
+):
+    from ablit.backends import Creds
+    store = RunStore()
+    record = saved_run(store)
+    clock = [0.0]
+    checks, cleanups = [], []
+
+    def refreshed(*args):
+        checks.append(1)
+        clock[0] += request_seconds
+        raise httpx.ReadTimeout("invented outage")
+
+    def sleep(seconds):
+        clock[0] += poll_seconds
+
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(monitor_mod.time, "sleep", sleep)
+    monkeypatch.setattr(monitor_mod, "save_remote_logs", lambda *args: None)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: cleanups.append(1) or 0)
+    assert monitor_mod.monitor(store, record, None, Creds("invented-account-key"), want_ready=True) == 6
+    assert len(checks) == expected_checks
+    assert cleanups == [1]
+
+
+def test_a_successful_marketplace_check_resets_the_outage_timer(monkeypatch):
+    from ablit.backends import Creds
+    store = RunStore()
+    record = saved_run(store)
+    clock = [0.0]
+    checks = []
+
+    def refreshed(store, record, driver, creds):
+        checks.append(1)
+        if len(checks) in (1, 3):
+            clock[0] += 200
+            raise httpx.ConnectError("invented outage")
+        if len(checks) == 4:
+            raise KeyboardInterrupt
+        record.update(marketplace_state="running", spend_estimate_usd=0.0)
+        store.save(record)
+
+    class NotReady:
+        def __init__(self, *args): pass
+        def run(self, command): raise RunError("SSH is not up yet")
+
+    def sleep(seconds):
+        clock[0] += seconds
+
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod, "SSH", NotReady)
+    monkeypatch.setattr(monitor_mod.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(monitor_mod.time, "sleep", sleep)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: pytest.fail("separate short outages must not end the run"))
+    assert monitor_mod.monitor(store, record, None, Creds("invented-account-key"), want_ready=True) == 7
+    assert len(checks) == 4
+
+
 class _RunningDriver:
     def observe(self, alloc, creds):
         from ablit.backends.base import Observation
