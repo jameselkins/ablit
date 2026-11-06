@@ -38,6 +38,9 @@ The driver makes at most five attempts for each read-only GraphQL query after a
 network error, HTTP 429 or an HTTP 5xx response. It honors a `Retry-After` delay
 up to 60 seconds and otherwise uses the shared backoff.
 
+The driver redacts the supplied API key from these queries' error details before
+shortening the diagnostic for display.
+
 ```
 gpuTypes {
   id displayName memoryInGb

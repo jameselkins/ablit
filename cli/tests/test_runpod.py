@@ -214,6 +214,22 @@ def test_graphql_errors_and_bad_shapes_are_typed_errors():
         assert route.call_count == 1
 
 
+@pytest.mark.parametrize("key", ["invented-runpod-key", "invented-long-runpod-key-" * 20], ids=["normal_key", "long_key"])
+@pytest.mark.parametrize("make_response", [
+    pytest.param(lambda message: httpx.Response(200, json={"errors": [{"message": message}]}), id="graphql"),
+    pytest.param(lambda message: httpx.Response(400, text=message), id="text_error"),
+    pytest.param(lambda message: httpx.Response(400, json={"detail": message}), id="json_error"),
+])
+def test_graphql_error_details_redact_the_key_before_truncation(key, make_response):
+    with respx.mock as router:
+        router.post(RUNPOD_URL).mock(return_value=make_response(f"request failed with key {key}"))
+        with pytest.raises(RequestRejected) as error:
+            RunPodBackend(httpx.Client()).search(REQ, Creds(key), OPTS)
+    message = str(error.value)
+    assert "[redacted]" in message
+    assert key[:16] not in message
+
+
 @pytest.mark.parametrize(("first", "wait"), [
     pytest.param(httpx.Response(429, headers={"Retry-After": "3"}), 3.0, id="rate_limit"),
     pytest.param(httpx.Response(503), 2.0, id="server_error"),

@@ -49,6 +49,7 @@ from ablit.backends.errors import (
 from ablit.backends.rental import RentalBackend
 from ablit.backends.runpod_gpus import compute_capability_for
 from ablit.backends.transport import backoff, refuse_redirect, send_with_retry
+from ablit.redact import MIN_SECRET_LENGTH, Redactor
 from ablit.select.types import HardwareRequest, Offer, PlanOptions
 
 GRAPHQL_URL = "https://api.runpod.io/graphql"
@@ -252,18 +253,21 @@ class RunPodBackend(RentalBackend):
             raise CredentialsRejected(self.name, status, "the API key was refused")
         if status == 429:
             raise RequestRejected(self.name, status, "rate limited, try again later")
+        redactor = Redactor()
+        if creds is not None and len(creds.api_key) >= MIN_SECRET_LENGTH:
+            redactor.add(creds.api_key)
         try:
             body = response.json()
         except ValueError as error:
             if status < 200 or status >= 300:
-                raise RequestRejected(self.name, status, response.text[:200]) from error
+                raise RequestRejected(self.name, status, redactor.remote_text(response.text)[:200]) from error
             raise ResponseNotRecognized("runpod: the response is not JSON") from error
         if isinstance(body, dict) and body.get("errors"):
             first = body["errors"][0] if isinstance(body["errors"], list) and body["errors"] else body["errors"]
             message = first.get("message") if isinstance(first, dict) else str(first)
-            raise RequestRejected(self.name, status, f"GraphQL error: {str(message)[:200]}")
+            raise RequestRejected(self.name, status, f"GraphQL error: {redactor.remote_text(str(message))[:200]}")
         if status < 200 or status >= 300:
-            raise RequestRejected(self.name, status, response.text[:200])
+            raise RequestRejected(self.name, status, redactor.remote_text(response.text)[:200])
         if not isinstance(body, dict) or "data" not in body:
             raise ResponseNotRecognized("runpod: the response has no 'data' object")
         return body["data"]
