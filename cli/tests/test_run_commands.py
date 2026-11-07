@@ -244,6 +244,27 @@ def test_price_change_cancels_confirmation(monkeypatch):
     assert not RunStore().all()
 
 
+@pytest.mark.parametrize("version", [12.4, None, "missing"])
+def test_changed_vast_cuda_support_cancels_before_any_account_mutation(monkeypatch, capsys, version):
+    launch_environment(monkeypatch)
+    monkeypatch.setattr("builtins.input", lambda prompt: "rent")
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
+    changed = vast_row(7101, host_id=7301, cuda_max_good=version)
+    if version == "missing":
+        del changed["cuda_max_good"]
+    with respx.mock(assert_all_called=False) as router:
+        create, scoped = launch_routes(router)
+        router.post(VAST_URL).mock(side_effect=[
+            httpx.Response(200, json={"offers": [vast_row(7101, host_id=7301, cuda_max_good=12.8)]}),
+            httpx.Response(200, json={"offers": [changed]}),
+        ])
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "vast"], environ={})
+        assert code == 5 and create.call_count == 0 and scoped.call_count == 0
+        assert all(call.request.url.path == "/api/v0/bundles/" for call in router.calls)
+    assert RunStore().all() == []
+    assert "offer or price changed" in capsys.readouterr().out
+
+
 def test_missing_or_rejected_credentials_exit_4(monkeypatch):
     tty(monkeypatch)
     with respx.mock:

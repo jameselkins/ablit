@@ -85,6 +85,23 @@ def test_missing_compute_capability_is_kept_as_unknown():
     assert offer.compute_capability is None
 
 
+@pytest.mark.parametrize("version", [12.8, 13.0, None])
+def test_reported_cuda_support_is_kept_on_the_offer(version):
+    assert offer_from_row(vast_row(cuda_max_good=version), ALLOCATED).cuda_version_max == version
+
+
+def test_missing_cuda_support_stays_unknown():
+    row = vast_row()
+    row.pop("cuda_max_good", None)
+    assert offer_from_row(row, ALLOCATED).cuda_version_max is None
+
+
+@pytest.mark.parametrize("version", ["12.8", True, -1.0, float("nan"), float("inf")])
+def test_invalid_cuda_support_is_refused(version):
+    with pytest.raises(UnknownFieldType):
+        offer_from_row(vast_row(cuda_max_good=version), ALLOCATED)
+
+
 def test_shared_gpu_rows_are_read_and_filtered_out():
     offer = offer_from_row(vast_row(gpu_frac=0.5), ALLOCATED)
     assert offer.gpu_fraction == 0.5

@@ -117,6 +117,9 @@ def offer_from_row(row: Any, allocated_gb: float) -> Offer:
     transfer_per_gb = fields.number(row, "inet_down_cost", backend=name, where=where, minimum=0)
     download = fields.number(row, "inet_down", backend=name, where=where, nullable=True, minimum=0)
     cap = fields.number(row, "compute_cap", backend=name, where=where, nullable=True, minimum=0)
+    cuda = None
+    if row.get("cuda_max_good") is not None:
+        cuda = fields.number(row, "cuda_max_good", backend=name, where=where, minimum=0)
     if cap == 0:
         cap = None  # a host with no CUDA capability, such as an AMD host, reports 0
     duration = fields.number(row, "duration", backend=name, where=where, nullable=True, minimum=0)
@@ -181,6 +184,7 @@ def offer_from_row(row: Any, allocated_gb: float) -> Offer:
         disk_gb=disk_gb,
         gpu_vendor=arch,
         compute_capability=None if cap is None else cap / 100.0,
+        cuda_version_max=cuda,
         sticker_hourly=base,
         bandwidth_cost_per_gb=transfer_per_gb,
         download_mbps=download,
