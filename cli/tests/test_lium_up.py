@@ -62,6 +62,7 @@ def test_up_with_backends_lium_rents_a_pod_and_saves_only_nonsecret_records(monk
     assert body["user_public_key"] == "ssh-ed25519 invented-public-content" and body["termination_hours"] == 12
     record = RunStore().all()[0]
     assert record["backend"] == "lium" and record["resource_ids"] == [POD] and record["offer"]["host_id"] == NODE
+    assert record["offer"]["cuda_version_max"] == 12.8
     assert record["local_cap_primary"] is True and not record.get("watchdog_key_id") and "ssh_key_id" not in record
     key = keys.secret_get(record["run_id"])
     raw = RunStore().path(record["run_id"]).read_text()
@@ -122,6 +123,24 @@ def test_a_price_change_between_quote_and_rent_cancels_a_lium_run(monkeypatch, c
         code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "lium"], environ=ENV)
     assert code == 5 and template.call_count == 0
     assert "price changed" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("version", ["12.4", None, "missing"])
+def test_changed_cuda_support_cancels_before_any_template_or_pod_is_created(monkeypatch, capsys, version):
+    launch_environment(monkeypatch)
+    changed = node(cuda_driver=version)
+    if version == "missing":
+        del changed["cuda_driver"]
+    with respx.mock(assert_all_called=False) as router:
+        router.get(FEED).mock(side_effect=[feed(node(cuda_driver="12.8")), feed(changed)])
+        template = router.post(TEMPLATES).mock(return_value=made())
+        rent = router.post(RENT).mock(return_value=rented())
+        router.get(PODS).mock(side_effect=run_pod)
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "lium"], environ=ENV)
+        assert code == 5
+        assert template.call_count == 0 and rent.call_count == 0
+    assert RunStore().all() == []
+    assert "offer or price changed" in capsys.readouterr().out
 
 
 def test_a_node_taken_between_quote_and_rent_cancels_a_lium_run(monkeypatch, capsys):

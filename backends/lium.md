@@ -64,7 +64,7 @@ The rent call takes the image only through a template, so a run makes two calls.
 
 A lost answer is recovered by listing the pods and matching the name. A definite refusal (HTTP 400, 401, 402, 403, 404 or 422, or HTTP 409 with `node_paused_by_provider`, `provider_banned`, `node_below_bandwidth_floor`, `node_rent_in_progress`, `conflict` or `no_executor_matches_spec`) marks the create as rejected. HTTP 409 with `idempotency_in_progress` or `idempotency_outcome_unknown`, HTTP 429 and server errors do not, because they do not prove that nothing was rented.
 
-The rent answer carries no price or hardware, so the driver cannot compare the created pod with the quote. The price is checked by the requote just before the rent, and the pod's own price is read by `observe`.
+The rent answer carries no price or hardware, so the driver cannot compare the created pod with the quote. The price is checked by the requote just before the rent, and the pod's own price is read by `observe`. The offer also keeps the host driver's reported CUDA support. If that value changes or disappears between the quote and the rental check, ablit cancels before creating a template or pod and asks for a new quote.
 
 ## The spend cap on Lium, and where it is weak
 

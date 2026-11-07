@@ -237,6 +237,7 @@ def offer_from_node(row: Any, gpu_count: int, *, cuda_min: float | None = None) 
         host_ram_gb=ram * share,
         disk_gb=disk * share,
         compute_capability=compute_capability_for(model),
+        cuda_version_max=cuda,
         sticker_hourly=price,
         bandwidth_cost_per_gb=0.0,
         fixed_fees=0.0,

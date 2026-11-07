@@ -84,6 +84,7 @@ def test_offer_carries_the_hardware_fields_and_the_host_id():
     assert offer.host_ram_gb == 128 and offer.disk_gb == 1000 and offer.allocated_disk_gb == 1000
     assert offer.download_mbps == 900.5 and offer.reliability == pytest.approx(0.975) and offer.region == "SE"
     assert offer.compute_capability == 8.9 and offer.rentable and offer.verified and not offer.interruptible
+    assert offer.cuda_version_max == 12.8
     assert offer.gpu_fraction == 1.0 and offer.ssh_reachable
 
 

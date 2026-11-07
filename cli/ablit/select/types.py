@@ -47,6 +47,9 @@ class Offer:
     host_id: str | None = None
     # False when the marketplace may place the rental on a machine that cannot be reached over SSH.
     ssh_reachable: bool = True
+    # Highest CUDA version the host driver supports, when the marketplace reports it.
+    # Keeping it on the offer lets the rental recheck detect changes to driver support.
+    cuda_version_max: float | None = None
 
 
 @dataclass(frozen=True)
