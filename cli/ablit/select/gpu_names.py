@@ -15,7 +15,7 @@ from Clore, which strips the "NVIDIA GeForce " and "NVIDIA " prefixes.
    ("l", "40", "s"). Vendor and product line words, such as "NVIDIA", "GeForce"
    and "RTX", are dropped.
 2. The form words name an edition or a form of the same card, such as
-   "Workstation", "Server", "Max-Q", "PCIe", "SXM" or a memory size like "80GB".
+   "Workstation", "Server", "Max-Q", "PCIe", "SXM", "AC" or a memory size like "80GB".
    Short forms such as "WS", "S", "SE" and Clore's cut "Works" become "workstation" and "server".
 
 A name the user gives matches an offer when the model words are the same, and
@@ -42,6 +42,9 @@ _FORMS = {
     "workstation": "workstation", "ws": "workstation", "works": "workstation",
     "server": "server", "s": "server", "se": "server",
     "maxq": "maxq", "pcie": "pcie", "sxm": "sxm", "sff": "sff",
+    # RunPod's GPU type reference names "NVIDIA B300 SXM6 AC" as B300.
+    # https://docs.runpod.io/references/gpu-types
+    "ac": "ac",
 }
 
 _WORD = re.compile(r"[a-z0-9]+")

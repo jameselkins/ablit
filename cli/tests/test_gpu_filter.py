@@ -103,6 +103,10 @@ def test_a_short_name_never_matches_a_different_model():
     ("H100", "H100 80GB HBM3"),                 # RunPod and Lium
     ("H100", "H100 SXM"),                       # Vast
     ("H100 PCIe", "NVIDIA H100 PCIe"),
+    ("B300", "B300 SXM6 AC"),                    # Lium
+    ("B300", "NVIDIA B300 SXM6 AC"),             # RunPod catalog ID
+    ("B300 SXM", "B300 SXM6 AC"),
+    ("B300 AC", "B300 SXM6 AC"),
     ("RTX 4000 Ada", "RTX 4000 SFF Ada Generation"),
     ("RTX A6000", "A6000"),
     ("L40", "L40"),
@@ -117,6 +121,7 @@ def test_edition_and_form_words_are_optional(name, model):
     ("A100 PCIe", "A100SXM440GB"),
     ("V100 32GB", "Tesla V100SXM216GB"),
     ("RTX PRO 6000 Server", "RTX PRO 6000 WS"),
+    ("B300 AC", "B300"),
 ])
 def test_a_form_word_the_user_gives_must_be_in_the_offer(name, model):
     assert not gpu_matches(model, [name])
@@ -158,6 +163,14 @@ def test_exclude_gpu_removes_only_the_named_model():
 
 def test_no_gpu_flags_remove_nothing():
     assert len(apply_filter_chain(_offers(), REQ, PlanOptions()).kept) == 3
+
+
+@pytest.mark.parametrize("exclude", [False, True])
+def test_b300_filter_handles_the_sxm6_ac_suffix_in_both_flags(exclude):
+    offers = [make_offer("b300", gpu_model="B300 SXM6 AC"), make_offer("b200", gpu_model="B200")]
+    opts = PlanOptions(exclude_gpu=("B300",)) if exclude else PlanOptions(gpu=("B300",))
+    kept = apply_filter_chain(offers, REQ, opts).kept
+    assert [offer.offer_id for offer in kept] == (["b200"] if exclude else ["b300"])
 
 
 # --- plan end to end -------------------------------------------------------
