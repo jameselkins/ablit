@@ -100,6 +100,7 @@ def render(report: PlanReport) -> str:
     lines: list[str] = []
     lines.append(f"Plan for {entry.id} (status: {entry.status})")
     lines.append(f"  {entry.display_name}")
+    lines.append(f"  Checked at: {report.checked_at}")
     lines.append(f"  Model:  {entry.source.repo} at revision {entry.source.revision}")
     digest = report.image_digest or "not pinned yet"
     lines.append(f"  Engine: {entry.profile.engine} (lock {entry.profile.engine_lock}), image digest {digest}")

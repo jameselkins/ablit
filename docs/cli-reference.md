@@ -34,6 +34,8 @@ Remote stage markers must be known names. Malformed stage lists mark SSH data as
 
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.
 
+The "Checked at" timestamp in plan text and rental quotes shows the UTC time the comparison finished. JSON plans report the same value in `checked_at`.
+
 ## Flags for plan and up
 
 | Flag | Default | Meaning |
