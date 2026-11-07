@@ -49,7 +49,9 @@ preserves the error code used for cleanup decisions.
 
 `price_per_gpu_hour` times the GPU count is the price. Where `price_per_node_hour` is present, it must agree with the per GPU price within one cent, or the driver refuses the node. `reliability_score` is 0 to 100 and the driver converts it to 0 to 1, and refuses a value above 100. `tier` must be `secure` or `spot`. Only `id` and `rent_url` are always set in the feed, so a node that lacks a field ablit needs is left out and counted in the search note as "nodes missing a field ablit needs". A field with the wrong type or unit still stops the search. The node `id` is the offer's host ID for the local deny list.
 
-Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU names seen in the feed on 2026-10-23 to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it. The Blackwell data center models B200 and B300 are left out until their values are read from NVIDIA's page.
+When an engine lock sets a minimum CUDA version, search leaves out nodes whose `cuda_driver` is older, missing or null, and counts them in its note. Lium documents the field as the highest CUDA version supported by the host driver. The field must be text in major.minor form, as in `12.8`. The field's meaning was checked against the public feed documentation on 2026-11-07.
+
+Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU names seen in the feed on 2026-10-23 to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it. The table also includes B200, B300 and other feed names checked against NVIDIA's page on 2026-11-07. The source dates are in the module.
 
 ## Creating a pod, and finding it again
 

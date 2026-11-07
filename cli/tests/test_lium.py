@@ -121,6 +121,33 @@ def test_a_gpu_name_the_table_lacks_has_no_compute_capability():
     assert offer_from_node(node(gpu_model="Invented Accelerator"), 1).compute_capability is None
 
 
+@pytest.mark.parametrize("version", ["12.4", None])
+def test_cuda_floor_skips_nodes_with_an_old_or_unknown_driver(version):
+    with pytest.raises(SkipNode, match="below CUDA 12.8 or with no CUDA version"):
+        offer_from_node(node(cuda_driver=version), 1, cuda_min=12.8)
+
+
+def test_missing_cuda_version_is_allowed_only_when_no_floor_is_required():
+    row = node()
+    del row["cuda_driver"]
+    assert offer_from_node(row, 1).rentable
+    with pytest.raises(SkipNode):
+        offer_from_node(row, 1, cuda_min=12.8)
+
+
+@pytest.mark.parametrize("version", ["12.8", "13.0", "13.5"])
+def test_cuda_floor_accepts_equal_and_newer_driver_versions(version):
+    assert offer_from_node(node(cuda_driver=version), 1, cuda_min=12.8).rentable
+
+
+@pytest.mark.parametrize("version,error", [(12.8, UnknownFieldType), ("13", UnknownUnit),
+                                         ("12.10", UnknownUnit), ("12.8beta", UnknownUnit),
+                                         ("9" * 1000 + ".0", UnknownUnit)])
+def test_cuda_driver_with_an_unknown_type_or_format_stops_the_search(version, error):
+    with pytest.raises(error):
+        offer_from_node(node(cuda_driver=version), 1, cuda_min=12.8)
+
+
 @pytest.mark.parametrize("name,capability", [
     ("B200", 10.0),
     ("B300 SXM6 AC", 10.3),
@@ -176,6 +203,16 @@ def test_search_needs_no_key_and_never_sends_one(driver):
     assert [o.host_id for o in found.offers] == [NODE] and found.complete and found.backend == "lium"
     assert "x-api-key" not in route.calls[0].request.headers
     assert route.calls[0].request.headers["user-agent"].startswith("ablit/")
+
+
+def test_search_applies_the_requested_cuda_floor_and_counts_the_nodes_it_skips(driver):
+    with respx.mock as router:
+        router.get(FEED).mock(return_value=feed(
+            node(cuda_driver="12.4"), node(cuda_driver=None),
+            node("22222222-2222-4222-8222-222222222222", cuda_driver="12.8")))
+        found = driver.search(replace(REQ, cuda_version_min=12.8), None, OPTS)
+    assert [offer.host_id for offer in found.offers] == ["22222222-2222-4222-8222-222222222222"]
+    assert "2 nodes below CUDA 12.8 or with no CUDA version" in found.note
 
 
 def test_search_keeps_every_usable_node_and_counts_what_it_leaves_out(driver):

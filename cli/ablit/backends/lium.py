@@ -155,7 +155,7 @@ def split_image(image: str) -> tuple[str, str]:
     return repository, digest
 
 
-def offer_from_node(row: Any, gpu_count: int) -> Offer:
+def offer_from_node(row: Any, gpu_count: int, *, cuda_min: float | None = None) -> Offer:
     """Turn one node of the public feed into an Offer for `gpu_count` GPUs.
 
     Raises SkipNode for a node that cannot be rented as that many GPUs, and a typed error for a
@@ -191,6 +191,21 @@ def offer_from_node(row: Any, gpu_count: int) -> Offer:
     # Whole GPUs only. A node that lists a smallest order of all its GPUs rents whole, and others rent by the GPU.
     if not smallest <= gpu_count <= total:
         raise SkipNode(f"nodes that do not rent as {gpu_count} GPUs")
+
+    # The feed reports the highest CUDA version supported by the host's driver.
+    # https://docs.lium.io/developers/public-nodes-feed
+    cuda = None
+    version = row.get("cuda_driver")
+    if version is not None:
+        if not isinstance(version, str):
+            raise UnknownFieldType(f"lium: field 'cuda_driver' in {where} is not text")
+        if re.fullmatch(r"[0-9]+\.[0-9]", version) is None:
+            raise UnknownUnit(f"lium: field 'cuda_driver' in {where} is not a major.minor version")
+        cuda = float(version)
+        if not math.isfinite(cuda):
+            raise UnknownUnit(f"lium: field 'cuda_driver' in {where} is outside the supported numeric range")
+    if cuda_min is not None and (cuda is None or cuda < cuda_min):
+        raise SkipNode(f"nodes below CUDA {cuda_min:g} or with no CUDA version")
 
     download = None
     if row.get("network_download_mbps") is not None:
@@ -338,7 +353,7 @@ class LiumBackend(RentalBackend):
         skipped: Counter[str] = Counter()
         for row in self._nodes():
             try:
-                offer = offer_from_node(row, req.gpu_count)
+                offer = offer_from_node(row, req.gpu_count, cuda_min=req.cuda_version_min)
             except SkipNode as skip:
                 skipped[skip.reason] += 1
                 continue
