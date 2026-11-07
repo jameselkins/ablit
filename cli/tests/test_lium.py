@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -118,6 +119,26 @@ def test_missing_speed_score_and_country_are_allowed():
 
 def test_a_gpu_name_the_table_lacks_has_no_compute_capability():
     assert offer_from_node(node(gpu_model="Invented Accelerator"), 1).compute_capability is None
+
+
+@pytest.mark.parametrize("name,capability", [
+    ("B200", 10.0),
+    ("B300 SXM6 AC", 10.3),
+    ("H200 NVL", 9.0),
+    ("RTX 5080", 12.0),
+    ("RTX A4000", 8.6),
+    ("RTX PRO 6000 Blackwell Max-Q Workstation Edition", 12.0),
+    ("RTX PRO 6000 Blackwell Workstation Edition", 12.0),
+])
+def test_additional_feed_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
+    from ablit.select.filters import engine_floor
+
+    offer = offer_from_node(node(gpu_model=name), 1)
+    assert offer.gpu_model == name and offer.compute_capability == capability
+    req = replace(REQ, compute_capability_min=capability)
+    assert engine_floor(req)(offer) is None
+    assert engine_floor(replace(req, compute_capability_min=capability + 0.1))(offer) == "compute capability too low"
+    assert engine_floor(replace(req, cuda_architectures=(75,)))(offer) == "GPU generation is not in the engine image"
 
 
 @pytest.mark.parametrize("change,error", [
