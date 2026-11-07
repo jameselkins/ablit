@@ -290,6 +290,7 @@ def offer_from_row(
         disk_gb=disk_gb,
         gpu_vendor=vendor,
         compute_capability=compute_capability_for(gpu_name) if vendor == "nvidia" else None,
+        cuda_version_max=cuda,
         sticker_hourly=usd_per_day / HOURS_PER_DAY,
         bandwidth_cost_per_gb=0.0,
         fixed_fees=creation_fee_usd,

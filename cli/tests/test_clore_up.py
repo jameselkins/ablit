@@ -69,6 +69,7 @@ def test_up_with_backends_clore_rents_whole_server_and_saves_only_nonsecret_reco
     assert body["command"] == up_mod.CLORE_START
     record = RunStore().all()[0]
     assert record["backend"] == "clore" and record["resource_ids"] == ["9001"]
+    assert record["offer"]["cuda_version_max"] == 13.0
     assert record["local_cap_primary"] is True and not record.get("watchdog_key_id") and "ssh_key_id" not in record
     raw = RunStore().path(record["run_id"]).read_text()
     assert keys.secret_get(record["run_id"]) not in raw and "invented-clore-key" not in raw
@@ -136,6 +137,27 @@ def test_a_price_change_between_quote_and_rent_cancels_a_clore_run(monkeypatch, 
         code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "clore"], environ=CLORE_ENV)
     assert code == 5 and create.call_count == 0
     assert "price changed" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("version", ["12.4", None, "missing"])
+def test_changed_cuda_support_cancels_before_a_clore_order_is_created(monkeypatch, capsys, version):
+    launch_environment(monkeypatch)
+    changed = server(7101, cuda_version=version)
+    if version == "missing":
+        del changed["cuda_version"]
+    with respx.mock(assert_all_called=False) as router:
+        router.get(MARKET).mock(side_effect=[
+            httpx.Response(200, json={"code": 0, "servers": [server(7101, cuda_version="12.8")]}),
+            httpx.Response(200, json={"code": 0, "servers": [changed]}),
+        ])
+        router.get(API_ROOT + "/renter_fees").respond(200, json={"code": 0, "renter_fees": {"on_demand": {
+            "base": {"USD-Blockchain": 5}}}, "creation_fees": {"on_demand": {"USD-Blockchain": 0.1}}})
+        create = router.post(CREATE).mock(return_value=OK)
+        router.get(ORDERS).mock(side_effect=lambda request: run_order())
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "clore"], environ=CLORE_ENV)
+        assert code == 5 and create.call_count == 0
+    assert RunStore().all() == []
+    assert "offer or price changed" in capsys.readouterr().out
 
 
 def test_a_lost_create_answer_exits_7_and_never_sends_a_second_create(monkeypatch, capsys):
