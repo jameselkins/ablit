@@ -81,7 +81,7 @@ def test_offer_carries_the_hardware_fields_and_the_host_id():
     offer = offer_from_node(node(), 1)
     assert offer.backend == "lium" and offer.offer_id == offer_id_for(NODE, 1) and offer.host_id == NODE
     assert (offer.gpu_model, offer.gpu_count, offer.gpu_vram_gb_each) == ("RTX 4090", 1, 24)
-    assert offer.host_ram_gb == 128 and offer.disk_gb == 1000 and offer.allocated_disk_gb == 1000
+    assert offer.host_ram_gb == 128 and offer.disk_gb == 900 and offer.allocated_disk_gb == 1000
     assert offer.download_mbps == 900.5 and offer.reliability == pytest.approx(0.975) and offer.region == "SE"
     assert offer.compute_capability == 8.9 and offer.rentable and offer.verified and not offer.interruptible
     assert offer.cuda_version_max == 12.8
@@ -90,8 +90,35 @@ def test_offer_carries_the_hardware_fields_and_the_host_id():
 
 def test_a_partial_rental_gets_its_share_of_memory_and_disk():
     offer = offer_from_node(node(gpu_count=4, available_gpu_count=4, price_per_gpu_hour=0.2,
-                                 price_per_node_hour=0.8, ram_gb=400, disk_gb=2000), 1)
-    assert offer.host_ram_gb == 100 and offer.disk_gb == 500 and offer.allocated_disk_gb == 500
+                                 price_per_node_hour=0.8, ram_gb=400, disk_gb=2000, disk_free_gb=1600), 1)
+    assert offer.host_ram_gb == 100 and offer.disk_gb == 400 and offer.allocated_disk_gb == 500
+
+
+@pytest.mark.parametrize("free,expected", [(0, 0), (500, 500), (1200, 1000), (None, 1000)])
+def test_free_disk_is_bounded_by_the_allocation_and_falls_back_when_unknown(free, expected):
+    offer = offer_from_node(node(disk_free_gb=free), 1)
+    assert offer.disk_gb == expected and offer.allocated_disk_gb == 1000
+
+
+def test_a_node_without_free_disk_uses_its_reported_disk_allocation():
+    row = node()
+    del row["disk_free_gb"]
+    assert offer_from_node(row, 1).disk_gb == 1000
+
+
+def test_the_disk_filter_uses_free_space_instead_of_total_space():
+    from ablit.select import apply_filter_chain
+
+    offer = offer_from_node(node(disk_gb=1000, disk_free_gb=500), 1)
+    result = apply_filter_chain([offer], REQ, OPTS)
+    assert not result.kept
+    assert result.steps[1].reasons == {"not enough disk": 1}
+
+
+@pytest.mark.parametrize("value", [-1, "500", True])
+def test_invalid_free_disk_is_refused(value):
+    with pytest.raises(UnknownFieldType):
+        offer_from_node(node(disk_free_gb=value), 1)
 
 
 def test_a_spot_node_is_interruptible_and_not_verified():

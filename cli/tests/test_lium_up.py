@@ -143,6 +143,24 @@ def test_changed_cuda_support_cancels_before_any_template_or_pod_is_created(monk
     assert "offer or price changed" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("free_disk,expected", [(800, 0), (1, 5)])
+def test_requote_uses_current_free_disk_and_keeps_the_priced_allocation(monkeypatch, capsys, free_disk, expected):
+    launch_environment(monkeypatch)
+    with respx.mock(assert_all_called=False) as router:
+        router.get(FEED).mock(side_effect=[feed(node(disk_free_gb=900)), feed(node(disk_free_gb=free_disk))])
+        template = router.post(TEMPLATES).mock(return_value=made())
+        rent = router.post(RENT).mock(return_value=rented())
+        router.get(PODS).mock(side_effect=run_pod)
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "lium"], environ=ENV)
+        assert code == expected
+        assert template.call_count == rent.call_count == (1 if expected == 0 else 0)
+    if expected == 0:
+        assert RunStore().all()[0]["offer"]["allocated_disk_gb"] == 1000
+    else:
+        assert RunStore().all() == []
+        assert "no longer meets the search filters" in capsys.readouterr().out
+
+
 def test_a_node_taken_between_quote_and_rent_cancels_a_lium_run(monkeypatch, capsys):
     launch_environment(monkeypatch)
     answers = iter([nodes(), feed()])

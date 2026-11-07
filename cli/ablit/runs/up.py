@@ -299,10 +299,10 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
                 print("Rental cancelled.")
                 return 2
             again = use_driver.requote(offer, use_creds)
-            # Remaining duration, reliability and measured speed drift between checks.
-            # Every price, the hardware and the disk must match the approved quote.
+            # Remaining duration, reliability, measured speed and free disk drift between checks.
+            # Every price, the hardware and the allocated disk must match the approved quote.
             drift = {"remaining_hours": offer.remaining_hours, "reliability": offer.reliability,
-                     "download_mbps": offer.download_mbps}
+                     "download_mbps": offer.download_mbps, "disk_gb": offer.disk_gb}
             if again is None or replace(again, **drift) != offer:
                 print("The offer or price changed. Confirmation cancelled. Run up again for a new quote.")
                 return 5

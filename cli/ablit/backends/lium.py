@@ -178,6 +178,11 @@ def offer_from_node(row: Any, gpu_count: int, *, cuda_min: float | None = None) 
     disk = fields.number(row, "disk_gb", backend=name, where=where, minimum=0)
     tier = fields.text(row, "tier", backend=name, where=where)
     assert model is not None and per_gpu is not None and vram is not None and ram is not None and disk is not None
+    free_disk = disk
+    if row.get("disk_free_gb") is not None:
+        reported_free = fields.number(row, "disk_free_gb", backend=name, where=where, minimum=0)
+        assert reported_free is not None
+        free_disk = min(disk, reported_free)
     if tier not in ("secure", "spot"):
         raise UnknownFieldType(f"lium: field 'tier' in {where} is {tier!r}, not secure or spot")
     if smallest > total:
@@ -235,7 +240,7 @@ def offer_from_node(row: Any, gpu_count: int, *, cuda_min: float | None = None) 
         # The listed price is the whole price. Lium documents no separate fee, so the price is also the sticker price.
         hourly_all_in=price,
         host_ram_gb=ram * share,
-        disk_gb=disk * share,
+        disk_gb=free_disk * share,
         compute_capability=compute_capability_for(model),
         cuda_version_max=cuda,
         sticker_hourly=price,
