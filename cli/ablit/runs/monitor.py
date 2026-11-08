@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import time
+import uuid
 
 import httpx
 
@@ -78,6 +79,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     """Poll while up, status --watch or tunnel remains attached."""
     run_id = record["run_id"]
     tunnel = None
+    tunnel_id = uuid.uuid4().hex
     uploaded = False
     stage = None
     failure_started: float | None = None
@@ -231,7 +233,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     if not key:
                         raise CredentialError("The endpoint key is missing from the OS keyring.")
                     engines.health(f"http://127.0.0.1:{port}", key, record["model_id"])
-                    record.update(state="running", local_port=port)
+                    record.update(state="running", local_port=port, local_tunnel_id=tunnel_id)
                     store.save(record)
                     endpoint(record)
                     if record.get("report_requested"):
@@ -243,6 +245,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                 if not want_ready and tunnel is None:
                     tunnel, port = SSH(store, record).open_tunnel(record["entry"]["profile"]["port"])
                     record["local_port"] = port
+                    record["local_tunnel_id"] = tunnel_id
                     store.save(record)
                     endpoint(record)
                 tunnel_exit = tunnel.poll() if tunnel is not None else None
@@ -265,6 +268,15 @@ def monitor(store, record, driver, creds, *, want_ready=False):
         if tunnel is not None:
             tunnel.terminate()
             tunnel.wait()
+            try:
+                with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
+                    latest = store.load(run_id)
+                    if latest.get("local_tunnel_id") == tunnel_id:
+                        latest.pop("local_port", None)
+                        latest.pop("local_tunnel_id", None)
+                        store.save(latest)
+            except (RunBusy, RunError, OSError):
+                print(f"{run_id}: could not clear the saved local endpoint after closing its tunnel.", flush=True)
 
 
 

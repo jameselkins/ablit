@@ -643,6 +643,49 @@ def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billin
     out = capsys.readouterr().out
     assert "Endpoint: http://127.0.0.1:18001/v1" in out and "Billing continues" in out
     assert store.load(r["run_id"])["state"] == "running"
+    assert "local_port" not in store.load(r["run_id"])
+
+
+@pytest.mark.parametrize("replacement", [False, True])
+def test_tunnel_exit_clears_only_its_own_saved_endpoint(monkeypatch, replacement):
+    from ablit.backends import Creds
+
+    store = RunStore()
+    record = saved_run(store)
+    record["state"] = "running"
+    store.save(record)
+
+    class Tunnel:
+        def poll(self): return None
+        def terminate(self): pass
+        def wait(self):
+            if replacement:
+                # A newer monitor may reuse the same port after this tunnel closes.
+                latest = store.load(record["run_id"])
+                latest.update(local_port=18001, local_tunnel_id="newer-monitor")
+                store.save(latest)
+            return 0
+
+    class Remote:
+        def __init__(self, *args): pass
+        def open_tunnel(self, port): return Tunnel(), 18001
+
+    def refreshed(store, record, driver, creds):
+        record.update(marketplace_state="running", spend_estimate_usd=0.01)
+        store.save(record)
+
+    def interrupt(seconds): raise KeyboardInterrupt
+
+    monkeypatch.setattr(monitor_mod, "SSH", Remote)
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    assert monitor_mod.monitor(store, record, None, Creds("invented-account-key")) == 0
+    latest = store.load(record["run_id"])
+    assert latest["state"] == "running"
+    if replacement:
+        assert latest["local_port"] == 18001 and latest["local_tunnel_id"] == "newer-monitor"
+    else:
+        assert "local_port" not in latest and "local_tunnel_id" not in latest
 
 
 def test_up_observes_watchdog_decision_and_absence_before_exit_8(monkeypatch):

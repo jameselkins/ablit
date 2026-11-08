@@ -18,7 +18,7 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 
 When you omit a run ID, `status`, `logs`, `tunnel` and `down` use the only active run. If all runs have stopped, they use the run with the latest start time. When several runs are active, ablit asks you to name a run ID.
 
-`ablit up` stays running after it prints the endpoint, because it keeps the SSH tunnel open and checks spending. Scripts should keep the process running and poll `ablit status --json` for `state: "running"` and `local_port`. Interrupting `up` closes the tunnel and stops the local check, and billing continues until the machine is destroyed.
+`ablit up` stays running after it prints the endpoint, because it keeps the SSH tunnel open and checks spending. Scripts should keep the process running and poll `ablit status --json` for `state: "running"` and `local_port`. Interrupting `up` closes the tunnel and stops the local check, and billing continues until the machine is destroyed. The monitor removes its saved `local_port` after closing the tunnel. If another monitor has opened a newer tunnel, its endpoint stays in the record.
 
 When `ablit status --all --watch` starts with an active run, it keeps showing
 old watchdog stops and continues checking the active run.

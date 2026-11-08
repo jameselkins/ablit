@@ -68,7 +68,7 @@ def status(args, records, drivers, environ, store):
                 if (not historical_stop and record.get("stop_reason") == "watchdog_cap"
                         and record["state"] == "billing_stopped_confirmed"):
                     code = max(code, 8)
-                view = {k: v for k, v in record.items() if k not in ("entry", "quote", "offer")}
+                view = {k: v for k, v in record.items() if k not in ("entry", "quote", "offer", "local_tunnel_id")}
                 view["hourly_rate_usd"] = record["offer"]["hourly_all_in"]
                 try:
                     view["saved_log_available"] = store.saved_log_path(record["run_id"]).is_file()
