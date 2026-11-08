@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import subprocess
 import sys
 import time
@@ -109,7 +108,8 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
                 at: Any = heartbeat.get("at")
                 spent: Any = heartbeat.get("spend")
                 if (type(at) not in (int, float) or type(spent) not in (int, float)
-                        or not math.isfinite(at) or not math.isfinite(spent) or spent < 0
+                        or not -sys.float_info.max <= at <= sys.float_info.max
+                        or not 0 <= spent <= sys.float_info.max
                         or heartbeat.get("action") not in ("continue", "destroy_cap", "destroy_stall")):
                     raise RunError("The remote heartbeat has an unknown shape.")
                 if heartbeat.get("rx_bytes") is not None and type(heartbeat["rx_bytes"]) is not int:

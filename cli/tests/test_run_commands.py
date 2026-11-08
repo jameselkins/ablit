@@ -1185,6 +1185,34 @@ def test_invalid_stage_entries_do_not_interrupt_spending_checks(monkeypatch, sta
     assert store.load(record["run_id"])["spend_estimate_usd"] == refreshed["spend_estimate_usd"]
 
 
+@pytest.mark.parametrize("field", ["at", "spend"])
+@pytest.mark.parametrize("sign", [-1, 1])
+def test_oversized_heartbeat_numbers_preserve_evidence_and_spending_checks(monkeypatch, field, sign):
+    from ablit.backends import Creds
+    from ablit.runs.lifecycle import local_stop_needed, refresh
+
+    store = RunStore()
+    record = saved_run(store)
+    previous = {"at": 1000, "spend": 0.5, "action": "continue"}
+    record.update(cap_usd=0.01, started_at=1.0, heartbeat=previous)
+    invalid = {**previous, field: sign * 10 ** 1000, "action": "destroy_cap"}
+    healthy = {"at": 1001, "spend": 0.75, "action": "continue"}
+    replies = iter([invalid, healthy])
+    monkeypatch.setattr(SSH, "probe", lambda self: {"heartbeat": next(replies)})
+    creds = Creds("invented-account-key")
+
+    refreshed = refresh(store, record, _RunningDriver(), creds)
+    saved = store.load(record["run_id"])
+    assert saved["ssh_check"] == "unavailable" and saved["heartbeat"] == previous
+    assert saved.get("stop_reason") != "watchdog_cap"
+    assert saved["spend_estimate_usd"] == refreshed["spend_estimate_usd"] >= previous["spend"]
+    assert local_stop_needed(refreshed, 3601.0)
+
+    refresh(store, record, _RunningDriver(), creds)
+    recovered = store.load(record["run_id"])
+    assert "ssh_check" not in recovered and recovered["heartbeat"] == healthy
+
+
 def test_a_remote_failure_detail_loses_its_terminal_control_characters(monkeypatch):
     from ablit.backends import Creds
     from ablit.runs.lifecycle import refresh

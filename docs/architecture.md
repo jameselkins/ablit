@@ -168,4 +168,6 @@ Progress fields must be nonnegative and fit the display's floating point range. 
 
 The SSH probe reads each status file independently. An incomplete JSON write in one file does not hide the other status data, and later probes read the file again.
 
+Heartbeat timestamps and spending must fit the CLI's floating point range, and spending must be nonnegative. An invalid heartbeat marks the SSH check unavailable and preserves the last valid heartbeat. Local spending checks continue, and a later valid reply clears the warning.
+
 A redaction filter removes the endpoint key and marketplace keys from logs, run files and output. Tests use fake secrets to check it.
