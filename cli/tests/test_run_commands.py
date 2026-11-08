@@ -564,6 +564,51 @@ def test_clean_progress_drops_everything_it_does_not_know():
         "join": {"bytes_done": 1, "bytes_total": 5}}
 
 
+@pytest.mark.parametrize("field", ["bytes_done", "bytes_total", "mbps", "files_done", "files_total", "at"])
+def test_progress_discards_numbers_that_cannot_be_displayed(field):
+    from ablit.runs.lifecycle import clean_progress
+
+    item = {"bytes_done": 5, "bytes_total": 10, field: 10 ** 1000}
+    cleaned = clean_progress({"download": item, "join": {"bytes_done": 1, "bytes_total": 2}})
+    assert cleaned["join"] == {"bytes_done": 1, "bytes_total": 2}
+    if field in ("bytes_done", "bytes_total"):
+        assert "download" not in cleaned
+    else:
+        assert cleaned["download"] == {"bytes_done": 5, "bytes_total": 10}
+
+
+@pytest.mark.parametrize("large", [10 ** 1000, 1e308], ids=["integer-overflow", "percentage-overflow"])
+def test_large_remote_progress_does_not_stop_a_monitored_run(monkeypatch, capsys, large):
+    from ablit.backends import Creds
+
+    store = RunStore()
+    record = saved_run(store)
+    progress = {"download": {"bytes_done": large, "bytes_total": large},
+                "join": {"bytes_done": 1, "bytes_total": 2}}
+    class Tunnel:
+        def poll(self): return None
+        def terminate(self): pass
+        def wait(self, timeout=None): return 0
+
+    monkeypatch.setattr(SSH, "probe", lambda self: {"progress": progress})
+    monkeypatch.setattr(SSH, "open_tunnel", lambda *args: (Tunnel(), 39001))
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: pytest.fail("progress must not stop a rental"))
+    monkeypatch.setattr(monitor_mod, "save_remote_logs", lambda *args: None)
+
+    def interrupt(seconds): raise KeyboardInterrupt
+
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    assert monitor_mod.monitor(store, record, _RunningDriver(), Creds("invented-account-key")) == 0
+    saved = store.load(record["run_id"])
+    assert saved["spend_estimate_usd"] >= 0 and saved["state"] == "running"
+    output = capsys.readouterr().out
+    assert "join 50 percent" in output
+    if isinstance(large, float):
+        assert "download 100 percent" in output
+    else:
+        assert "download" not in saved["progress"]
+
+
 def test_the_remote_probe_reads_every_progress_file_and_skips_a_broken_one(tmp_path):
     import subprocess
     from ablit.runs.ssh import PROBE

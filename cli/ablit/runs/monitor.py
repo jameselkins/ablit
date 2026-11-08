@@ -286,7 +286,7 @@ def progress_lines(record: dict, shown: dict) -> list[str]:
         total = item.get("bytes_total") or 0
         if total <= 0:
             continue
-        step = int(min(item["bytes_done"], total) * 10 / total)
+        step = int((min(item["bytes_done"], total) / total) * 10)
         if step == shown.get(name):
             continue
         shown[name] = step

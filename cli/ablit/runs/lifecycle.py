@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import subprocess
+import sys
 import time
 from typing import Any
 
@@ -74,8 +75,10 @@ def clean_progress(value) -> dict:
         item = value.get(name)
         if not isinstance(item, dict):
             continue
+        # Compare before converting to float, because JSON integers can exceed
+        # the range used by the progress display.
         row = {k: item[k] for k in PROGRESS_FIELDS
-               if type(item.get(k)) in (int, float) and math.isfinite(item[k]) and item[k] >= 0}
+               if type(item.get(k)) in (int, float) and 0 <= item[k] <= sys.float_info.max}
         if "bytes_done" in row and "bytes_total" in row:
             clean[name] = row
     return clean
