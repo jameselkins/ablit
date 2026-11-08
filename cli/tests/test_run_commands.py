@@ -647,6 +647,59 @@ def test_status_all_keeps_an_earlier_pending_cleanup_exit_code(capsys):
     assert runs[1]["state"] == "billing_stopped_confirmed"
 
 
+@pytest.mark.parametrize("retry", [False, True])
+@pytest.mark.parametrize("prefix", [0, 150])
+def test_monitor_redacts_keys_before_shortening_error_messages(monkeypatch, capsys, retry, prefix):
+    from ablit.backends import Creds
+    from ablit.backends.errors import BackendError
+
+    store = RunStore()
+    record = saved_run(store)
+    keys.secret_set(record["run_id"], "private-endpoint-key")
+    keys.secret_set("watchdog/" + record["run_id"], "private-watchdog-key")
+    message = "x" * prefix + "private-runtime-key private-\x1bruntime-key private-endpoint-key private-watchdog-key"
+    cleaned = []
+
+    def failed_refresh(*args):
+        raise (BackendError if retry else RunError)(message)
+
+    def interrupt(seconds): raise KeyboardInterrupt
+
+    monkeypatch.setattr(monitor_mod, "refresh", failed_refresh)
+    monkeypatch.setattr(monitor_mod, "save_remote_logs", lambda *args: None)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: cleaned.append(True) or 0)
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    code = monitor_mod.monitor(store, record, None, Creds("private-runtime-key"), want_ready=True)
+    assert code == (7 if retry else 6) and len(cleaned) == (0 if retry else 1)
+    out = capsys.readouterr().out
+    assert "private-" not in out and "\x1b" not in out
+    assert "[redacted]" in out
+
+
+@pytest.mark.parametrize("prefix", [0, 150])
+def test_cleanup_errors_redact_keys_before_printing_and_saving(monkeypatch, capsys, prefix):
+    from ablit.backends import Creds
+    from ablit.backends.errors import BackendError
+    from ablit.runs.lifecycle import down
+
+    store = RunStore()
+    record = saved_run(store)
+    keys.secret_set(record["run_id"], "private-endpoint-key")
+    keys.secret_set("watchdog/" + record["run_id"], "private-watchdog-key")
+    message = "x" * prefix + "private-runtime-key private-\x1bruntime-key private-endpoint-key private-watchdog-key"
+
+    class Driver:
+        def reconcile(self, *args): raise BackendError(message)
+        def destroy(self, *args): raise BackendError(message)
+        def verify_billing_stopped(self, *args): raise BackendError(message)
+
+    assert down(store, record, Driver(), Creds("private-runtime-key")) == 7
+    saved = json.dumps(store.load(record["run_id"])["pending_cleanup"])
+    out = capsys.readouterr().out
+    assert "private-" not in out + saved and "\x1b" not in out
+    assert "[redacted]" in out
+
+
 @pytest.mark.parametrize("stubborn", [False, True])
 def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billing_on_interrupt(monkeypatch, capsys, stubborn):
     store = RunStore()

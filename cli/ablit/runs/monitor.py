@@ -12,7 +12,7 @@ from ablit import engines
 from ablit.backends.errors import BackendError
 from ablit.credentials import CredentialError, secret_get
 from ablit.runs import RunBusy, RunError
-from ablit.runs.lifecycle import down, estimate_spend, local_stop_needed, reason, refresh, save_remote_logs
+from ablit.runs.lifecycle import down, estimate_spend, local_stop_needed, reason, refresh, run_redactor, save_remote_logs
 from ablit.runs.ssh import SSH, stop_ssh
 
 POLL_SECONDS = 10
@@ -129,7 +129,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     # five minutes without an answer, stop the run.
                     if failure_started is None:
                         failure_started = check_started
-                    print(f"{run_id}: marketplace check failed ({reason(error)}). Retrying.", flush=True)
+                    print(f"{run_id}: marketplace check failed ({reason(error, run_redactor(record, creds))}). Retrying.", flush=True)
                     if time.monotonic() - failure_started < MARKETPLACE_GRACE_SECONDS:
                         continue
                     raise
@@ -259,7 +259,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     # destroys the run. That covers keyring errors and bugs, such as an AttributeError on a reply
     # with a shape nobody expected.
     except Exception as error:
-        print(f"{run_id}: stopping the run because of {reason(error)}", flush=True)
+        print(f"{run_id}: stopping the run because of {reason(error, run_redactor(record, creds))}", flush=True)
         save_remote_logs(store, store.load(run_id), creds)
         with store.lock(run_id):
             code = down(store, store.load(run_id), driver, creds)
