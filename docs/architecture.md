@@ -51,6 +51,8 @@ During an outage, `up` and `tunnel` count API calls, retry waits and polling del
 
 While marketplace checks fail, the monitor still updates estimated spending from known prices and elapsed time. If the local cap check requires a stop, it attempts cleanup immediately instead of waiting for the outage limit.
 
+Startup errors also trigger cleanup for runs this invocation created, or resumed runs whose resources were recovered. Unexpected exceptions are reported by type without echoing their messages. For those errors, confirmed cleanup exits 6 and pending cleanup exits 7.
+
 The host deny list stores IDs under their marketplace, so a failed host on one marketplace cannot exclude a host on another. Older files are read using the marketplace in matching saved run records. Without a matching run, a UUID is treated as a Lium host and other IDs as Vast hosts. The next write saves the new format. If an old ID matches runs on several marketplaces, its denial is kept on each one because the original file does not identify which failed.
 
 ## Planner

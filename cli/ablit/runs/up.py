@@ -360,13 +360,17 @@ def up(args, entry, opts, driver, environ, store, drivers=None):
 def _guarded_up(args, entry, opts, driver, environ, store, drivers, claimed, owned, before):
     try:
         return _up(args, entry, opts, driver, environ, store, drivers, claimed, owned)
-    except (CredentialError, CredentialsRejected, BackendError, httpx.HTTPError,
-            RunError, ValueError, subprocess.SubprocessError) as error:
+    except Exception as error:
         targets = [r for r in store.active_model(entry.id) if r["run_id"] in claimed
                    and (r["run_id"] not in before or (before[r["run_id"]] == "creating" and r.get("resource_ids")))]
         if not targets:
             raise
-        print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
+        if isinstance(error, (CredentialError, CredentialsRejected, BackendError, httpx.HTTPError,
+                              RunError, ValueError, subprocess.SubprocessError)):
+            print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
+        else:
+            # Unexpected exception text may contain unredacted marketplace data.
+            print(f"ablit: startup failed with {type(error).__name__}.", file=sys.stderr)
         pending = False
         for record in targets:
             backend = record.get("backend", "vast")

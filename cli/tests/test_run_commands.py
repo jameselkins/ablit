@@ -184,6 +184,40 @@ def test_typed_rent_creates_and_saves_only_nonsecret_records(monkeypatch):
     assert record["create_sent"] and record["watchdog_key_id"] == "7401"
 
 
+@pytest.mark.parametrize("error_type", [TypeError, OSError])
+@pytest.mark.parametrize("cleanup_code", [0, 7])
+def test_unexpected_startup_errors_clean_only_the_claimed_run(monkeypatch, capsys, error_type, cleanup_code):
+    launch_environment(monkeypatch)
+    store = RunStore()
+    existing = saved_run(store)
+    existing.update(state="running", resource_ids=["7199"])
+    store.save(existing)
+    monkeypatch.setattr("builtins.input", lambda prompt: "rent")
+    cleaned = []
+
+    def failed_prepare(store, record, entry, driver, creds):
+        assert record["resource_ids"] == ["7201"]
+        raise error_type("unexpected reply containing invented-account-key")
+
+    def cleanup(store, record, driver, creds):
+        cleaned.append(record["run_id"])
+        record["state"] = "termination_requested" if cleanup_code else "billing_stopped_confirmed"
+        store.save(record)
+        return cleanup_code
+
+    monkeypatch.setattr(up_mod, "prepare", failed_prepare)
+    monkeypatch.setattr(up_mod, "down", cleanup)
+    with respx.mock(assert_all_called=False) as router:
+        create, _ = launch_routes(router)
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--another", "--backends", "vast"], environ={})
+        assert code == (cleanup_code or 6) and create.call_count == 1
+    new_run = next(record for record in store.all() if record["run_id"] != existing["run_id"])
+    assert cleaned == [new_run["run_id"]]
+    assert store.load(existing["run_id"]) == existing
+    captured = capsys.readouterr()
+    assert "invented-account-key" not in captured.out + captured.err
+
+
 def test_yes_rents_without_a_terminal_or_a_prompt(monkeypatch, capsys):
     launch_environment(monkeypatch)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False, raising=False)
