@@ -36,6 +36,8 @@ Remote stage markers must be known names. Malformed stage lists mark SSH data as
 
 The "Checked at" timestamp in plan text and rental quotes shows the UTC time the comparison finished. JSON plans report the same value in `checked_at`.
 
+Each offer shows the host driver's advertised CUDA support when the marketplace reports it. JSON offers expose it as `cuda_version_max`, with `null` for an unknown value. The engine's required version is `request.cuda_version_min`.
+
 ## Flags for plan and up
 
 | Flag | Default | Meaning |

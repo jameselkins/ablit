@@ -37,6 +37,9 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
     lines.append(f"  Offer:       {o.backend} {o.offer_id}")
     lines.append(f"  GPU:         {o.gpu_model} x{o.gpu_count}, {o.gpu_vram_gb_each:,.1f} GB VRAM each")
     lines.append(f"  Host RAM:    {o.host_ram_gb:,.1f} GB")
+    cuda = ("unknown (not advertised)" if o.cuda_version_max is None
+            else f"driver supports up to CUDA {o.cuda_version_max:g} (advertised)")
+    lines.append(f"  Host CUDA:   {cuda}")
     allocated = "unknown" if o.allocated_disk_gb is None else f"{o.allocated_disk_gb:,.0f} GB"
     lines.append(f"  Disk:        {allocated} allocated and priced in, host has {o.disk_gb:,.1f} GB free")
     if o.download_mbps is None:
