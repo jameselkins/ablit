@@ -38,6 +38,8 @@ The "Checked at" timestamp in plan text and rental quotes shows the UTC time the
 
 Each offer shows the host driver's advertised CUDA support when the marketplace reports it. JSON offers expose it as `cuda_version_max`, with `null` for an unknown value. The engine's required version is `request.cuda_version_min`.
 
+In JSON plans, `request.cuda_architectures` lists the GPU generations supported by the engine image. Values are compute capability times ten, e.g. `86` for 8.6. A `null` value means the image sets no generation list. Each offer's `compute_capability` uses the usual decimal value, such as `8.6`, or `null` when unknown.
+
 ## Flags for plan and up
 
 | Flag | Default | Meaning |
