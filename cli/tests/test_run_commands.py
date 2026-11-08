@@ -184,9 +184,9 @@ def test_typed_rent_creates_and_saves_only_nonsecret_records(monkeypatch):
     assert record["create_sent"] and record["watchdog_key_id"] == "7401"
 
 
-@pytest.mark.parametrize("error_type", [TypeError, OSError])
+@pytest.mark.parametrize("error_type", [TypeError, OSError, RunError, ValueError, httpx.HTTPError])
 @pytest.mark.parametrize("cleanup_code", [0, 7])
-def test_unexpected_startup_errors_clean_only_the_claimed_run(monkeypatch, capsys, error_type, cleanup_code):
+def test_startup_error_cleanup_preserves_other_runs_and_redacts_diagnostics(monkeypatch, capsys, error_type, cleanup_code):
     launch_environment(monkeypatch)
     store = RunStore()
     existing = saved_run(store)
@@ -197,7 +197,10 @@ def test_unexpected_startup_errors_clean_only_the_claimed_run(monkeypatch, capsy
 
     def failed_prepare(store, record, entry, driver, creds):
         assert record["resource_ids"] == ["7201"]
-        raise error_type("unexpected reply containing invented-account-key")
+        keys.secret_set(record["run_id"], "invented-startup-endpoint-key")
+        keys.secret_set("watchdog/" + record["run_id"], "invented-startup-watchdog-key")
+        raise error_type("startup reply containing invented-account-key, invented-\x1baccount-key, "
+                         "invented-startup-endpoint-key and invented-startup-watchdog-key")
 
     def cleanup(store, record, driver, creds):
         cleaned.append(record["run_id"])
@@ -215,7 +218,11 @@ def test_unexpected_startup_errors_clean_only_the_claimed_run(monkeypatch, capsy
     assert cleaned == [new_run["run_id"]]
     assert store.load(existing["run_id"]) == existing
     captured = capsys.readouterr()
-    assert "invented-account-key" not in captured.out + captured.err
+    for secret in ("invented-account-key", "invented-startup-endpoint-key", "invented-startup-watchdog-key"):
+        assert secret not in captured.out + captured.err
+    assert "\x1b" not in captured.err
+    if error_type in (RunError, ValueError, httpx.HTTPError):
+        assert "startup reply containing" in captured.err and "[redacted]" in captured.err
 
 
 def test_yes_rents_without_a_terminal_or_a_prompt(monkeypatch, capsys):

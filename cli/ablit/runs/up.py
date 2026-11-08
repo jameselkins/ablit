@@ -24,7 +24,7 @@ from ablit.credentials import CredentialError, credentials, secret_set
 from ablit.plan import gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
 from ablit.runs import RunBusy, RunError
-from ablit.runs.lifecycle import allocation, down
+from ablit.runs.lifecycle import allocation, down, run_redactor
 from ablit.runs.monitor import monitor
 from ablit.runs.ssh import SSH
 from ablit.select import apply_filter_chain
@@ -365,16 +365,17 @@ def _guarded_up(args, entry, opts, driver, environ, store, drivers, claimed, own
                    and (r["run_id"] not in before or (before[r["run_id"]] == "creating" and r.get("resource_ids")))]
         if not targets:
             raise
-        if isinstance(error, (CredentialError, CredentialsRejected, BackendError, httpx.HTTPError,
-                              RunError, ValueError, subprocess.SubprocessError)):
-            print(f"ablit: {type(error).__name__}: {error}", file=sys.stderr)
-        else:
-            # Unexpected exception text may contain unredacted marketplace data.
-            print(f"ablit: startup failed with {type(error).__name__}.", file=sys.stderr)
         pending = False
         for record in targets:
             backend = record.get("backend", "vast")
             creds = credentials(backend, environ)
+            if isinstance(error, (CredentialError, CredentialsRejected, BackendError, httpx.HTTPError,
+                                  RunError, ValueError, subprocess.SubprocessError)):
+                message = run_redactor(record, creds).remote_text(f"ablit: {type(error).__name__}: {error}")
+                print(message, file=sys.stderr)
+            else:
+                # Unexpected exception text may contain unredacted marketplace data.
+                print(f"ablit: startup failed with {type(error).__name__}.", file=sys.stderr)
             with store.lock(record["run_id"]):
                 pending = down(store, store.load(record["run_id"]), (drivers or {}).get(backend, driver), creds) == 7 or pending
         if pending:
