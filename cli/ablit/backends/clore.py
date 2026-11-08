@@ -157,7 +157,10 @@ def _cuda(value: Any, where: str) -> float | None:
     match = _CUDA_PATTERN.match(value)
     if match is None:
         raise UnknownUnit(f"clore: field 'cuda_version' in {where} is {value!r}, not a major.minor version")
-    return int(match.group(1)) + int(match.group(2)) / 10.0
+    numeric = float(value)
+    if not math.isfinite(numeric):
+        raise UnknownUnit(f"clore: field 'cuda_version' in {where} is outside the supported numeric range")
+    return numeric
 
 
 def offer_from_row(

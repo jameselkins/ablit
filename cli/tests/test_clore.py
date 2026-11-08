@@ -163,6 +163,12 @@ def test_cuda_floor_is_applied_in_the_driver_and_a_missing_version_fails_it():
     assert offer_from_row(row).rentable is True  # no floor, no problem
 
 
+@pytest.mark.parametrize("digits", [1000, 5000])
+def test_a_cuda_version_outside_the_supported_range_is_a_response_error(digits):
+    with pytest.raises(UnknownUnit, match="outside the supported numeric range"):
+        offer_from_row(server(cuda_version="9" * digits + ".0"))
+
+
 def test_rented_and_partly_rented_servers_are_not_rentable_as_a_whole():
     assert offer_from_row(server(rented=True)).rentable is False
     shared = {"total_gpus": 4, "available_gpus": 3, "free_indices": [0, 1, 2]}
@@ -373,6 +379,25 @@ def test_requote_refuses_an_unknown_fee_shape(driver, fees):
 
 
 # --- the plan command ---------------------------------------------------------
+
+@pytest.mark.parametrize("digits", [1000, 5000])
+def test_a_huge_clore_cuda_version_does_not_stop_other_marketplace_results(capsys, digits):
+    from ablit.backends.vast import VastBackend
+    from market_fixtures import VAST_URL, FakeVast, vast_row
+
+    version = "9" * digits + ".0"
+    with respx.mock as router:
+        router.get(MARKET).mock(return_value=answer(server(cuda_version=version)))
+        router.post(VAST_URL).mock(side_effect=FakeVast([vast_row(7101)]))
+        code = main(["plan", "llama31-8b-abliterated-q4km", "--backends", "clore,vast", "--json"],
+                    backends={"clore": CloreBackend(httpx.Client()), "vast": VastBackend(httpx.Client())}, environ={})
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert code == 0 and data["complete"] is False and data["chosen"]["backend"] == "vast"
+    clore = next(report for report in data["backends"] if report["name"] == "clore")
+    assert clore["status"] == "failed" and "outside the supported numeric range" in clore["reason"]
+    assert version not in out
+
 
 def test_plan_with_clore_only_prices_the_offer_with_fee_and_creation_fee(capsys):
     row = server(31, usd=24.0)
