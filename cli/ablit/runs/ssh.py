@@ -15,6 +15,8 @@ import time
 from ablit.redact import Redactor
 from ablit.runs import RunError
 
+SSH_STOP_TIMEOUT_SECONDS = 5
+
 # The endpoint secret arrives on stdin and exists only in the child's environment.
 START = '''import fcntl,json,os,subprocess,sys
 payload=json.load(sys.stdin)
@@ -61,6 +63,19 @@ def _kill_group(proc) -> None:
                 pipe.close()
     with contextlib.suppress(subprocess.SubprocessError):
         proc.wait(timeout=5)
+
+
+def stop_ssh(proc) -> None:
+    """Stop a local SSH process without waiting indefinitely for it to exit."""
+    proc.terminate()
+    try:
+        proc.wait(timeout=SSH_STOP_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        try:
+            proc.wait(timeout=SSH_STOP_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired as error:
+            raise RunError("The local SSH process did not stop after it was killed.") from error
 
 
 class SSH:
@@ -144,8 +159,7 @@ class SSH:
                     time.sleep(0.2)
             raise RunError("The SSH tunnel did not open.")
         except BaseException:
-            proc.terminate()
-            proc.wait()
+            stop_ssh(proc)
             raise
 
     def logs(self, stage: str | None, follow: bool, redactor: Redactor) -> None:
@@ -175,5 +189,4 @@ class SSH:
                 raise RunError("Remote logs are unavailable.")
         finally:
             if proc.poll() is None:
-                proc.terminate()
-                proc.wait()
+                stop_ssh(proc)

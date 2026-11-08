@@ -13,7 +13,7 @@ from ablit.backends.errors import BackendError
 from ablit.credentials import CredentialError, secret_get
 from ablit.runs import RunBusy, RunError
 from ablit.runs.lifecycle import down, estimate_spend, local_stop_needed, reason, refresh, save_remote_logs
-from ablit.runs.ssh import SSH
+from ablit.runs.ssh import SSH, stop_ssh
 
 POLL_SECONDS = 10
 MARKETPLACE_GRACE_SECONDS = 5 * 60
@@ -266,8 +266,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
         return code or 6
     finally:
         if tunnel is not None:
-            tunnel.terminate()
-            tunnel.wait()
+            stop_ssh(tunnel)
             try:
                 with store.lock(run_id, wait=MONITOR_LOCK_WAIT_SECONDS):
                     latest = store.load(run_id)

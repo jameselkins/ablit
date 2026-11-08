@@ -1,6 +1,8 @@
 """A machine that bills but never answers SSH must produce output and be destroyed on a clock."""
 
 import json
+import select
+import signal
 import subprocess
 import sys
 import time
@@ -12,10 +14,43 @@ from ablit.backends import Creds
 from ablit.runs import RunError, RunStore
 from ablit.runs import monitor as monitor_mod
 from ablit.runs import lifecycle
+from ablit.runs import ssh as ssh_mod
 from ablit.runs.ssh import SSH
 from test_run_commands import saved_run
 
 CREDS = Creds("invented-account-key")
+
+
+def test_ssh_shutdown_kills_and_reaps_a_child_that_ignores_termination(monkeypatch):
+    monkeypatch.setattr(ssh_mod, "SSH_STOP_TIMEOUT_SECONDS", 0.05)
+    script = "import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); print('ready',flush=True); time.sleep(30)"
+    proc = subprocess.Popen([sys.executable, "-c", script], stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    try:
+        assert select.select([proc.stdout], [], [], 5)[0]
+        assert proc.stdout.readline().strip() == "ready"
+        ssh_mod.stop_ssh(proc)
+        assert proc.returncode == -signal.SIGKILL
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+        proc.wait(timeout=5)
+        proc.stdout.close()
+
+
+def test_ssh_shutdown_reports_a_process_that_still_will_not_exit():
+    waits = []
+
+    class Process:
+        def terminate(self): pass
+        def kill(self): pass
+        def wait(self, timeout=None):
+            waits.append(timeout)
+            raise subprocess.TimeoutExpired("ssh", timeout)
+
+    with pytest.raises(RunError, match="did not stop after it was killed"):
+        ssh_mod.stop_ssh(Process())
+    assert waits == [ssh_mod.SSH_STOP_TIMEOUT_SECONDS] * 2
 
 
 def running_run(store, **changes):

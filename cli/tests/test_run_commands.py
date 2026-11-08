@@ -606,16 +606,26 @@ def test_status_all_keeps_an_earlier_pending_cleanup_exit_code(capsys):
     assert runs[1]["state"] == "billing_stopped_confirmed"
 
 
-def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billing_on_interrupt(monkeypatch, capsys):
+@pytest.mark.parametrize("stubborn", [False, True])
+def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billing_on_interrupt(monkeypatch, capsys, stubborn):
     store = RunStore()
     r = saved_run(store)
     keys.secret_set(r["run_id"], "invented-endpoint-key")
     keys.secret_set("watchdog/" + r["run_id"], "invented-scoped-token")
     from ablit.backends import Creds
     class Tunnel:
+        killed = False
         def poll(self): return None
         def terminate(self): events.append("tunnel-closed")
-        def wait(self): return 0
+        def wait(self, timeout=None):
+            assert timeout is not None
+            if stubborn and not self.killed:
+                import subprocess
+                raise subprocess.TimeoutExpired("ssh", timeout)
+            return 0
+        def kill(self):
+            self.killed = True
+            events.append("tunnel-killed")
     events = []
     class Remote:
         def __init__(self, *args): pass
@@ -639,7 +649,7 @@ def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billin
     def interrupt(seconds): raise KeyboardInterrupt
     monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
     assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
-    assert events == ["tools", "upload", "start", "tunnel", "health", "tunnel-closed"]
+    assert events == ["tools", "upload", "start", "tunnel", "health", "tunnel-closed"] + (["tunnel-killed"] if stubborn else [])
     out = capsys.readouterr().out
     assert "Endpoint: http://127.0.0.1:18001/v1" in out and "Billing continues" in out
     assert store.load(r["run_id"])["state"] == "running"
@@ -658,7 +668,7 @@ def test_tunnel_exit_clears_only_its_own_saved_endpoint(monkeypatch, replacement
     class Tunnel:
         def poll(self): return None
         def terminate(self): pass
-        def wait(self):
+        def wait(self, timeout=None):
             if replacement:
                 # A newer monitor may reuse the same port after this tunnel closes.
                 latest = store.load(record["run_id"])
