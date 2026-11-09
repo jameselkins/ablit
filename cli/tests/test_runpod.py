@@ -301,6 +301,33 @@ def test_a_known_type_gets_its_compute_capability():
     assert {o.compute_capability for o in offers} == {8.9}
 
 
+@pytest.mark.parametrize(("gpu_id", "display", "vram", "capability"), [
+    ("NVIDIA GeForce RTX 4080 SUPER", "RTX 4080 SUPER", 16, 8.9),
+    ("NVIDIA RTX A4500", "RTX A4500", 20, 8.6),
+])
+def test_additional_full_gpu_types_pass_only_the_matching_engine_generation(gpu_id, display, vram, capability):
+    req = dataclasses.replace(REQ, gpu_count=1, vram_gb_each=8, vram_gb_total=8,
+                              compute_capability_min=8.0, cuda_architectures=(86, 89))
+    backend, router = backend_for(FakeRunPod([runpod_type(gpu_id, display, vram, price=0.9)]))
+    with router:
+        offers = backend.search(req, None, OPTS).offers
+    assert offers and {offer.compute_capability for offer in offers} == {capability}
+    assert apply_filter_chain(offers, req, OPTS).kept == offers
+    other_generation = dataclasses.replace(req, cuda_architectures=(90,))
+    assert not apply_filter_chain(offers, other_generation, OPTS).kept
+
+
+@pytest.mark.parametrize("gpu_id", [
+    "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 1g.24gb",
+    "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb",
+    "NVIDIA RTX A4500 Ada",
+])
+def test_new_mappings_do_not_infer_support_for_slices_or_different_products(gpu_id):
+    from ablit.backends.runpod_gpus import compute_capability_for
+
+    assert compute_capability_for(gpu_id) is None
+
+
 def test_an_unknown_type_keeps_no_compute_capability_and_the_filter_says_why():
     from ablit.backends.runpod_gpus import compute_capability_for
 

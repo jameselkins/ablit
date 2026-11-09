@@ -9,15 +9,22 @@ from NVIDIA's own lists, which were read on 2026-10-20:
 Each key is a RunPod `gpuTypes.id` seen in live searches. A type is in the
 table only when NVIDIA's list names that product, or names the product family
 that the id belongs to (for example every H100 variant is listed as "NVIDIA
-H100"). A type that is not in the table keeps `compute_capability = None`, and
+H100"), or NVIDIA's product page identifies an architecture whose capability
+NVIDIA documents. The RTX 4080 SUPER and RTX A4500 ids were checked on
+2026-11-09. Their values follow Ada (8.9) and RTX Ampere (8.6), respectively:
+
+- https://www.nvidia.com/en-eu/geforce/graphics-cards/40-series/rtx-4080-family/
+- https://docs.nvidia.com/cuda/ada-compatibility-guide/
+- https://www.nvidia.com/en-us/products/workstations/rtx-a4500/
+- https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-cuda-gpu-computing
+
+A type that is not in the table keeps `compute_capability = None`, and
 the filter chain then removes it with the reason "compute capability unknown"
 when a profile sets a minimum.
 
 Types left out on purpose, because NVIDIA's lists do not name them:
 
 - the MIG slices of the B300 and the RTX PRO 6000 Blackwell Server Edition
-- GeForce RTX 4080 SUPER (the lists name the RTX 4080 but no SUPER variants)
-- RTX A4500
 - RTX PRO 4500 Blackwell (the lists name its Server and Workstation editions only)
 - the AMD Instinct types, which have no CUDA compute capability
 """
@@ -52,6 +59,7 @@ COMPUTE_CAPABILITY_BY_RUNPOD_ID: dict[str, float] = {
     # 8.9, Ada Lovelace
     "NVIDIA GeForce RTX 4070 Ti": 8.9,
     "NVIDIA GeForce RTX 4080": 8.9,
+    "NVIDIA GeForce RTX 4080 SUPER": 8.9,
     "NVIDIA GeForce RTX 4090": 8.9,
     "NVIDIA L4": 8.9,
     "NVIDIA L40": 8.9,
@@ -70,6 +78,7 @@ COMPUTE_CAPABILITY_BY_RUNPOD_ID: dict[str, float] = {
     "NVIDIA GeForce RTX 3090 Ti": 8.6,
     "NVIDIA RTX A2000": 8.6,
     "NVIDIA RTX A4000": 8.6,
+    "NVIDIA RTX A4500": 8.6,
     "NVIDIA RTX A5000": 8.6,
     "NVIDIA RTX A6000": 8.6,
     # 8.0, Ampere data center
