@@ -161,6 +161,8 @@ def load_catalog(directory: str | Path | None = None) -> CatalogLoadResult:
         except CatalogError as error:
             result.problems[file.name] = [str(error)]
             continue
+        if not problems and file.stem != data["id"]:
+            problems.append(f"the file name must match the entry id {data['id']!r}")
         if problems:
             result.problems[file.name] = problems
             continue

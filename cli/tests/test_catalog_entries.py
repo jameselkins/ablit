@@ -71,6 +71,21 @@ def test_the_seed_entries_exist(entry_files):
     assert {p.stem for p in entry_files} == SEED_IDS
 
 
+@pytest.mark.parametrize("copy_name", ["000-copy.yaml", "zzz-copy.yaml"])
+def test_loading_a_catalog_skips_a_copy_whose_filename_does_not_match_its_id(repo_root, tmp_path, copy_name):
+    seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
+    data = load_entry_file(seed)
+    (tmp_path / seed.name).write_text(seed.read_text(encoding="utf-8"), encoding="utf-8")
+    data["display_name"] = "An unintended copy"
+    (tmp_path / copy_name).write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    loaded = load_catalog(tmp_path)
+    assert len(loaded.entries) == 1
+    assert resolve(loaded.entries, data["id"]).display_name != "An unintended copy"
+    assert list(loaded.problems) == [copy_name]
+    assert "file name must match" in loaded.problems[copy_name][0]
+
+
 @pytest.mark.parametrize("path", _entry_params(), ids=lambda p: p.stem)
 def test_seed_entry_facts(path: Path):
     data = load_entry_file(path)

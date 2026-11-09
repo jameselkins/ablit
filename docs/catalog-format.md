@@ -6,6 +6,8 @@ The catalog is the list of model builds that ablit can run. This page describes 
 
 Each build is one YAML file at `catalog/models/<id>.yaml`, and `catalog/schema/v1.json` checks it. The file name must match the `id` field. `tools/build_catalog.py` compiles all entries into `catalog/dist/catalog.json` and prints its SHA-256, and each run record stores a digest of the catalog files it used. Catalog releases use the version form `YYYY.MM.DD.N`, which is kept in `catalog/VERSION`. The integer `schema` field changes only when the format changes, and a CLI release refuses schema versions it does not know.
 
+When loading a catalog directory, the CLI skips files whose names do not match their entry IDs. Other valid entries still load, and `catalog list` reports each skipped file and exits 1. A copied file cannot create a second selectable entry with the same ID.
+
 Catalog data is CC0-1.0. Each entry records its model's own license, which the catalog license does not change. Entries hold data only, and all commands live in the reviewed engine templates under `engines/`.
 
 ## Entry layout

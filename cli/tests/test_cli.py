@@ -43,6 +43,17 @@ def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):
     assert "CONTRIBUTING.md" in err
 
 
+def test_catalog_list_reports_a_filename_mismatch_and_keeps_valid_entries(capsys, tmp_path, repo_root):
+    seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
+    text = seed.read_text(encoding="utf-8")
+    (tmp_path / seed.name).write_text(text, encoding="utf-8")
+    (tmp_path / "copied.yaml").write_text(text, encoding="utf-8")
+    code, out, err = run(capsys, "catalog", "list", "--catalog", str(tmp_path))
+    assert code == exitcodes.INVALID_FILE
+    assert out.count("llama31-8b-abliterated-q4km") == 1
+    assert "copied.yaml was skipped" in err and "file name must match" in err
+
+
 def test_catalog_show_ambiguous_repo_asks_for_a_variant(capsys, tmp_path: Path, repo_root: Path):
     # The curated catalog has one build per repo, so a local catalog adds a second build.
     source = repo_root / "catalog" / "models" / "ds41-1017-xq-v3-uncensored.yaml"
