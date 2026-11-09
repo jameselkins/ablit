@@ -23,7 +23,7 @@ import urllib.request
 import urllib.error
 import sys
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 INTERVAL_SECONDS = 30
 EVIDENCE_DELAY_SECONDS = 30
@@ -58,6 +58,7 @@ class State:
 
     last_rx_bytes: int
     last_progress_at: float
+    highest_rx_bytes: int
 
 
 @dataclass(frozen=True)
@@ -86,20 +87,21 @@ def reserve(cfg: Config) -> float:
 
 
 def initial_state(now: float, rx_bytes: int) -> State:
-    return State(last_rx_bytes=rx_bytes, last_progress_at=now)
+    return State(last_rx_bytes=rx_bytes, last_progress_at=now, highest_rx_bytes=rx_bytes)
 
 
 def decide(
     cfg: Config, state: State, now: float, rx_bytes: int, downloading: bool
 ) -> Decision:
     """Decide what to do at this check. The cap check comes before the stall check."""
-    if rx_bytes > state.last_rx_bytes:
-        state = State(last_rx_bytes=rx_bytes, last_progress_at=now)
-    else:
-        state = replace(state, last_rx_bytes=max(state.last_rx_bytes, rx_bytes))
+    state = State(
+        last_rx_bytes=rx_bytes,
+        last_progress_at=now if rx_bytes > state.last_rx_bytes else state.last_progress_at,
+        highest_rx_bytes=max(state.highest_rx_bytes, rx_bytes),
+    )
 
     # A lower counter must not erase transfer charges that an earlier check counted.
-    spent = spend(cfg, now, state.last_rx_bytes)
+    spent = spend(cfg, now, state.highest_rx_bytes)
     held = reserve(cfg)
 
     if spent + held >= cfg.cap_usd:

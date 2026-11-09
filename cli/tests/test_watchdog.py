@@ -107,6 +107,27 @@ def test_progress_resets_the_stall_clock():
     assert d3.action == wd.DESTROY_STALL
 
 
+def test_download_progress_after_counter_resets_does_not_cause_a_false_stall():
+    cfg = wd.Config(1000.0, 0.0, 0.02, 100.0, 800.0)
+    state = wd.initial_state(1000.0, 1_000_000_000)
+    for now, counter in [(1500.0, 0), (1601.0, 10), (2100.0, 0), (2202.0, 5), (2700.0, 0), (2803.0, 3)]:
+        decision = wd.decide(cfg, state, now, counter, downloading=True)
+        assert decision.action == wd.CONTINUE
+        assert decision.spend == pytest.approx(0.02)
+        state = decision.state
+    stalled = wd.decide(cfg, state, 3403.0, 3, downloading=True)
+    assert stalled.action == wd.DESTROY_STALL
+
+
+@pytest.mark.parametrize("counter", [0, 100])
+def test_a_counter_drop_alone_does_not_restart_the_stall_deadline(counter):
+    state = wd.initial_state(1000.0, 1_000_000_000)
+    reset = wd.decide(CFG, state, 1599.0, counter, downloading=True)
+    assert reset.action == wd.CONTINUE
+    stalled = wd.decide(CFG, reset.state, 1600.0, counter, downloading=True)
+    assert stalled.action == wd.DESTROY_STALL
+
+
 def test_seconds_until_cap():
     seconds = wd.seconds_until_cap(CFG, 1000.0, 0)
     assert seconds == pytest.approx((CFG.cap_usd - wd.reserve(CFG)) / CFG.hourly_rate * 3600)
