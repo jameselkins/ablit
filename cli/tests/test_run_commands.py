@@ -10,6 +10,8 @@ import httpx
 import pytest
 import respx
 
+from ablit.backends.errors import BackendError, CredentialsRejected, WorkloadRejected
+
 from ablit import credentials as keys
 from ablit.backends.vast import VastBackend
 from ablit.catalog import load_catalog, resolve
@@ -690,6 +692,151 @@ def test_status_all_keeps_an_earlier_pending_cleanup_exit_code(capsys):
     assert runs[0]["run_id"] == pending["run_id"]
     assert runs[0]["pending_cleanup"] == ["Watchdog key deletion is unconfirmed."]
     assert runs[1]["state"] == "billing_stopped_confirmed"
+
+
+@pytest.mark.parametrize("source", ["observe", "reconcile"])
+@pytest.mark.parametrize("error_type", [BackendError, httpx.ReadTimeout])
+def test_status_watch_retries_marketplace_errors_and_clears_the_warning(monkeypatch, capsys, source, error_type):
+    from ablit.backends.base import Inventory, Observation
+    from ablit.runs import status as status_mod
+
+    store = RunStore()
+    record = saved_run(store)
+    if source == "reconcile":
+        record["resource_ids"] = []
+        store.save(record)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    checks, frames, warnings = [], [], []
+
+    def check():
+        checks.append(True)
+        if len(checks) == 1:
+            raise error_type("x" * 150 + "invented-account-key invented-\x1baccount-key")
+
+    class Driver:
+        def reconcile(self, run_id, creds):
+            if source == "reconcile": check()
+            return Inventory(run_id, "vast", ["7201"])
+        def observe(self, alloc, creds):
+            if source == "observe": check()
+            return Observation(checked_at=1234.0, state="running")
+
+    def next_pass(seconds):
+        captured = capsys.readouterr()
+        frames.append(json.loads(captured.out)["runs"][0])
+        warnings.append(captured.err)
+        if len(frames) == 2: raise KeyboardInterrupt
+
+    monkeypatch.setattr(SSH, "probe", lambda self: {})
+    monkeypatch.setattr(status_mod.time, "sleep", next_pass)
+    monkeypatch.setattr(status_mod, "down", lambda *args: pytest.fail("a temporary outage below the cap must retry"))
+    assert main(["status", record["run_id"], "--watch", "--json"], backends={"vast": Driver()}, environ={}) == 2
+    assert len(checks) == 2 and len(frames) == 2
+    assert frames[0]["marketplace_check"] == "unavailable"
+    assert "marketplace_check" not in frames[1]
+    assert frames[1]["last_marketplace_check"] == 1234.0
+    assert "[redacted]" in warnings[0] and "invented-" not in warnings[0] and "\x1b" not in warnings[0]
+    assert "marketplace check failed" not in warnings[1]
+    assert "marketplace_check" not in store.load(record["run_id"])
+
+
+@pytest.mark.parametrize("cleanup_code", [0, 7])
+@pytest.mark.parametrize("error_type", [BackendError, httpx.ReadTimeout])
+@pytest.mark.parametrize("marketplace_state", ["running", "absent"])
+def test_status_watch_enforces_the_cap_when_the_marketplace_fails(monkeypatch, capsys, cleanup_code,
+                                                                error_type, marketplace_state):
+    from ablit.runs import status as status_mod
+
+    store = RunStore()
+    record = saved_run(store)
+    record.update(started_at=1.0, cap_usd=0.01, observed_hourly_rate=2.0, marketplace_state=marketplace_state)
+    store.save(record)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    stopped = []
+
+    class Driver:
+        def observe(self, *args): raise error_type("temporary marketplace failure")
+
+    def down(store_, run, *args):
+        stopped.append(run["run_id"])
+        assert run["stop_reason"] == "local_cap" and run["spend_estimate_usd"] > run["cap_usd"]
+        run["state"] = "termination_requested" if cleanup_code else "billing_stopped_confirmed"
+        store_.save(run)
+        print("cleanup diagnostic")
+        return cleanup_code
+
+    monkeypatch.setattr(status_mod, "down", down)
+    assert main(["status", record["run_id"], "--watch", "--json"], backends={"vast": Driver()}, environ={}) == (cleanup_code or 6)
+    captured = capsys.readouterr()
+    view = json.loads(captured.out)["runs"][0]
+    assert stopped == [record["run_id"]] and view["stop_reason"] == "local_cap"
+    assert view["marketplace_check"] == "unavailable" and "cleanup diagnostic" in captured.err
+
+
+@pytest.mark.parametrize("error_type", [BackendError, httpx.ReadTimeout])
+def test_status_without_watch_still_reports_a_failed_check_without_cleanup(monkeypatch, capsys, error_type):
+    from ablit.runs import status as status_mod
+
+    record = saved_run(RunStore())
+    keys.secret_set("accounts/vast", "invented-account-key")
+    checks = []
+
+    class Driver:
+        def observe(self, *args):
+            checks.append(True)
+            raise error_type("temporary marketplace failure")
+
+    monkeypatch.setattr(status_mod, "down", lambda *args: pytest.fail("status without --watch must not enforce a cap"))
+    assert main(["status", record["run_id"], "--json"], backends={"vast": Driver()}, environ={}) == 7
+    captured = capsys.readouterr()
+    assert checks == [True] and not captured.out and "temporary marketplace failure" in captured.err
+
+
+@pytest.mark.parametrize(("error", "code"), [(CredentialsRejected("vast", 403, "key rejected"), 4),
+                                           (WorkloadRejected("vast", 400, "workload rejected"), 9)])
+def test_status_watch_keeps_specific_rejection_exit_codes(monkeypatch, capsys, error, code):
+    from ablit.runs import status as status_mod
+
+    record = saved_run(RunStore())
+    keys.secret_set("accounts/vast", "invented-account-key")
+    class Driver:
+        def observe(self, *args): raise error
+
+    monkeypatch.setattr(status_mod.time, "sleep", lambda _: pytest.fail("an explicit rejection must not be retried"))
+    assert main(["status", record["run_id"], "--watch", "--json"], backends={"vast": Driver()}, environ={}) == code
+    assert not capsys.readouterr().out
+
+
+def test_status_watch_all_checks_later_runs_after_one_marketplace_failure(monkeypatch, capsys):
+    from ablit.backends.base import Observation
+    from ablit.runs import status as status_mod
+
+    store = RunStore()
+    saved_run(store)
+    saved_run(store)
+    unavailable, capped = store.all()
+    capped.update(resource_ids=["7202"], started_at=1.0, cap_usd=0.01)
+    store.save(capped)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    stopped = []
+
+    class Driver:
+        def observe(self, alloc, creds):
+            if alloc.resource_ids == ["7201"]: raise BackendError("temporary marketplace failure")
+            return Observation(checked_at=1234.0, state="running")
+
+    def down(store_, run, *args):
+        stopped.append(run["run_id"])
+        run["state"] = "billing_stopped_confirmed"
+        store_.save(run)
+        return 0
+
+    monkeypatch.setattr(SSH, "probe", lambda self: {})
+    monkeypatch.setattr(status_mod, "down", down)
+    assert main(["status", "--all", "--watch", "--json"], backends={"vast": Driver()}, environ={}) == 6
+    views = json.loads(capsys.readouterr().out)["runs"]
+    assert views[0]["run_id"] == unavailable["run_id"] and views[0]["marketplace_check"] == "unavailable"
+    assert stopped == [capped["run_id"]] and views[1]["state"] == "billing_stopped_confirmed"
 
 
 @pytest.mark.parametrize("retry", [False, True])

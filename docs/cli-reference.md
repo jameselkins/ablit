@@ -32,6 +32,8 @@ and labels it as saved state. It can show that record without a marketplace key.
 
 After a failed remote check, status includes `ssh_check: "unavailable"`. The next successful remote check removes the warning.
 
+If a marketplace check fails during `status --watch`, the command retries and includes `marketplace_check: "unavailable"` in the saved status. It estimates spending from known rates and elapsed time, and attempts cleanup when the cap requires it. A successful marketplace check clears the warning. Retry diagnostics go to standard error, so `--json` continues to print JSON on standard output. Explicit credential or workload rejections still exit with code 4 or 9.
+
 Remote stage markers must be known names. Malformed stage lists mark SSH data as unavailable, and local spending checks continue.
 
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.

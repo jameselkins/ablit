@@ -7,10 +7,13 @@ import json
 import sys
 import time
 
+import httpx
+
+from ablit.backends.errors import BackendError, CredentialsRejected, WorkloadRejected
 from ablit.credentials import CredentialError, secret_get
 from ablit.runs import RunBusy
 from ablit.runs.common import pair
-from ablit.runs.lifecycle import down, local_stop_needed, refresh, run_redactor
+from ablit.runs.lifecycle import down, estimate_spend, local_stop_needed, reason, refresh, run_redactor
 from ablit.runs.monitor import POLL_SECONDS
 
 
@@ -52,15 +55,34 @@ def status(args, records, drivers, environ, store):
                     with contextlib.redirect_stdout(sys.stderr):
                         return down(store, record, driver, creds)  # noqa: B023 (called only within this iteration)
                 if locked and not billing_stopped:
-                    if record.get("create_sent") and not record.get("resource_ids"):
-                        found = driver.reconcile(record["run_id"], creds)
-                        record["resource_ids"] = found.resource_ids
-                    refresh(store, record, driver, creds)
-                    if args.watch and local_stop_needed(record, time.time()):
+                    marketplace_unavailable = False
+                    try:
+                        if record.get("create_sent") and not record.get("resource_ids"):
+                            found = driver.reconcile(record["run_id"], creds)
+                            record["resource_ids"] = found.resource_ids
+                        refresh(store, record, driver, creds)
+                    except (BackendError, httpx.HTTPError) as error:
+                        if not args.watch or isinstance(error, (CredentialsRejected, WorkloadRejected)):
+                            raise
+                        marketplace_unavailable = True
+                        record["marketplace_check"] = "unavailable"
+                        record["spend_estimate_usd"] = max(
+                            record.get("spend_estimate_usd", 0), estimate_spend(record, time.time()),
+                        )
+                        store.save(record)
+                        print(f"{record['run_id']}: marketplace check failed ({reason(error, redactor)}). Retrying.",
+                              file=sys.stderr, flush=True)
+                    else:
+                        if record.pop("marketplace_check", None) is not None:
+                            store.save(record)
+                    # An earlier absence is not a fresh billing confirmation during an outage.
+                    cap_record = {**record, "marketplace_state": "unknown"} if marketplace_unavailable else record
+                    if args.watch and local_stop_needed(cap_record, time.time()):
                         record["stop_reason"] = record.get("stop_reason") or "local_cap"
                         store.save(record)
                         code = max(code, status_down() or 6)
-                    elif record["marketplace_state"] == "absent" and record.get("resource_ids"):
+                    elif (not marketplace_unavailable and record["marketplace_state"] == "absent"
+                          and record.get("resource_ids")):
                         code = max(code, status_down())
                 if record["state"] in ("termination_requested", "resources_terminated"):
                     code = max(code, 7)

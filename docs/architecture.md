@@ -51,6 +51,8 @@ During an outage, `up` and `tunnel` count API calls, retry waits and polling del
 
 While marketplace checks fail, the monitor still updates estimated spending from known prices and elapsed time. If the local cap check requires a stop, it attempts cleanup immediately instead of waiting for the outage limit.
 
+`status --watch` also retries failed marketplace checks while updating estimated spending. It marks the saved status with `marketplace_check: "unavailable"` until a successful check, and attempts cleanup when the local cap check requires a stop. An older observation that the machine was absent does not suppress the cap check during an outage.
+
 Monitor and cleanup failure messages redact available marketplace, endpoint and watchdog keys before shortening the diagnostic. Saved pending-cleanup messages use the same redacted text.
 
 Startup errors also trigger cleanup for runs this invocation created, or resumed runs whose resources were recovered. Known startup error messages redact the run's available marketplace, endpoint and watchdog keys before printing. Unexpected exceptions are reported by type without echoing their messages. For those errors, confirmed cleanup exits 6 and pending cleanup exits 7.
