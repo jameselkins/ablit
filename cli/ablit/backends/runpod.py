@@ -121,6 +121,17 @@ def _whole_gb(value: float) -> int:
     return int(math.ceil(value - 1e-9))
 
 
+def _stock_available(stock: str | None) -> bool:
+    # https://docs.runpod.io/sdks/graphql/manage-pods lists High, Medium, Low and None.
+    # RunPod's CLI also handles these no-stock spellings and ignores case and surrounding spaces:
+    # https://github.com/runpod/runpod-plugins-official/blob/main/plugins/runpod/skills/runpodctl/reference/output-and-errors.md
+    if stock is None or stock.strip().casefold() in {"none", "unavailable", "out of stock", "no stock"}:
+        return False
+    if stock.strip().casefold() in {"high", "medium", "low"}:
+        return True
+    raise ResponseNotRecognized("runpod: stockStatus is not a stock level the driver knows")
+
+
 def build_query(
     gpu_count: int, min_memory_gb: int, *, secure: bool, gpu_type_id: str | None = None
 ) -> str:
@@ -206,7 +217,7 @@ def offers_from_data(
                 sticker_hourly=price,
                 bandwidth_cost_per_gb=0.0,
                 download_mbps=None,
-                rentable=stock is not None,
+                rentable=_stock_available(stock),
                 verified=tier == TIER_SECURE,
                 # The v2 create request cannot ask for a machine with a public IP. See backends/runpod.md.
                 ssh_reachable=tier == TIER_SECURE,

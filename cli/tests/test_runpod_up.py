@@ -175,6 +175,26 @@ def test_a_price_change_between_quote_and_rent_cancels_a_runpod_run(monkeypatch,
     assert "price changed" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("stock", ["None", "none", " UNAVAILABLE "])
+def test_losing_stock_between_quote_and_rent_cancels_a_runpod_run(monkeypatch, capsys, stock):
+    launch_environment(monkeypatch)
+    fake = FakeRunPod(runpod_types())
+
+    def losing_stock(request):
+        if len(fake.queries) >= 2:  # the search queries precede the rental recheck
+            fake.any_cloud = fake.secure = [runpod_type(GPU, "RTX 4090", 24, price=0.20, stock=stock, pod_ram=100)]
+        return fake(request)
+
+    with respx.mock(assert_all_called=False) as router:
+        router.post(RUNPOD_URL).mock(side_effect=losing_stock)
+        create = router.post(PODS).mock(return_value=httpx.Response(201, json=pod()))
+        code = main(["up", MODEL, "--untested", "--max-spend", "5", "--backends", "runpod"],
+                    environ={"RUNPOD_API_KEY": "invented"})
+    assert code == 5 and create.call_count == 0
+    assert "offer or price changed" in capsys.readouterr().out
+    assert RunStore().all() == []
+
+
 def test_a_pod_that_differs_from_the_quote_is_destroyed_by_up(monkeypatch):
     launch_environment(monkeypatch)
     listed = {"pods": []}

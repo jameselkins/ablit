@@ -102,14 +102,32 @@ def test_types_without_a_price_are_not_offers():
     assert found.note and "1 in any cloud" in found.note and "1 in Secure Cloud" in found.note
 
 
-def test_a_priced_type_with_no_stock_is_not_rentable():
-    fake = FakeRunPod([runpod_type("NVIDIA L40S", "L40S", 48, price=0.9, stock=None, pod_ram=100)])
+@pytest.mark.parametrize("stock", [None, "None", "none", " NONE ", "unavailable", "Out of Stock", "no stock"])
+def test_a_priced_type_with_no_stock_is_not_rentable(stock):
+    fake = FakeRunPod([runpod_type("NVIDIA L40S", "L40S", 48, price=0.9, stock=stock, pod_ram=100)])
     backend, router = backend_for(fake)
     with router:
         found = backend.search(REQ, None, OPTS)
     assert found.offers and not found.offers[0].rentable
     result = apply_filter_chain(found.offers, REQ, OPTS)
     assert "not rentable" in result.steps[3].reasons
+
+
+@pytest.mark.parametrize("stock", ["High", "Medium", "Low", " high ", "MEDIUM", "low"])
+def test_known_stock_levels_remain_rentable(stock):
+    fake = FakeRunPod([runpod_type("NVIDIA L40S", "L40S", 48, price=0.9, stock=stock, pod_ram=100)])
+    backend, router = backend_for(fake)
+    with router:
+        found = backend.search(REQ, None, OPTS)
+    assert found.offers and all(offer.rentable for offer in found.offers)
+    assert apply_filter_chain(found.offers, REQ, OPTS).kept
+
+
+@pytest.mark.parametrize("stock", ["unknown", "sold out", " "])
+def test_an_unknown_stock_level_is_not_assumed_available(stock):
+    backend, router = backend_for(FakeRunPod([runpod_type(stock=stock)]))
+    with router, pytest.raises(ResponseNotRecognized, match="stockStatus"):
+        backend.search(REQ, None, OPTS)
 
 
 def test_vram_is_per_gpu_and_the_filter_chain_applies_it():
