@@ -55,6 +55,8 @@ While marketplace checks fail, the monitor still updates estimated spending from
 
 Monitor and cleanup failure messages redact available marketplace, endpoint and watchdog keys before shortening the diagnostic. Saved pending-cleanup messages use the same redacted text.
 
+Status check failures also redact the run's available keys before the CLI reports the error. Redaction preserves the exception type and HTTP metadata, so rejected credentials and other failures keep their existing exit codes.
+
 Startup errors also trigger cleanup for runs this invocation created, or resumed runs whose resources were recovered. Known startup error messages redact the run's available marketplace, endpoint and watchdog keys before printing. Unexpected exceptions are reported by type without echoing their messages. For those errors, confirmed cleanup exits 6 and pending cleanup exits 7.
 
 The host deny list stores IDs under their marketplace, so a failed host on one marketplace cannot exclude a host on another. Older files are read using the marketplace in matching saved run records. Without a matching run, a UUID is treated as a Lium host and other IDs as Vast hosts. The next write saves the new format. If an old ID matches runs on several marketplaces, its denial is kept on each one because the original file does not identify which failed.

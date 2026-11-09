@@ -773,38 +773,63 @@ def test_status_watch_enforces_the_cap_when_the_marketplace_fails(monkeypatch, c
     assert view["marketplace_check"] == "unavailable" and "cleanup diagnostic" in captured.err
 
 
-@pytest.mark.parametrize("error_type", [BackendError, httpx.ReadTimeout])
-def test_status_without_watch_still_reports_a_failed_check_without_cleanup(monkeypatch, capsys, error_type):
+@pytest.mark.parametrize("source", ["observe", "reconcile"])
+@pytest.mark.parametrize("error_type", [BackendError, httpx.ReadTimeout, httpx.HTTPStatusError])
+def test_status_without_watch_redacts_failed_checks_without_cleanup(monkeypatch, capsys, error_type, source):
     from ablit.runs import status as status_mod
 
-    record = saved_run(RunStore())
+    store = RunStore()
+    record = saved_run(store)
+    if source == "reconcile":
+        record["resource_ids"] = []
+        store.save(record)
     keys.secret_set("accounts/vast", "invented-account-key")
+    keys.secret_set(record["run_id"], "invented-endpoint-key")
+    keys.secret_set("watchdog/" + record["run_id"], "invented-watchdog-key")
+    message = "temporary marketplace failure: invented-account-key invented-\x1baccount-key " \
+              "invented-endpoint-key invented-watchdog-key"
+    if error_type is httpx.HTTPStatusError:
+        request = httpx.Request("GET", "https://example.invalid/status")
+        error = error_type(message, request=request, response=httpx.Response(503, request=request))
+    else:
+        error = error_type(message)
     checks = []
 
     class Driver:
+        def reconcile(self, *args):
+            checks.append(True)
+            raise error
         def observe(self, *args):
             checks.append(True)
-            raise error_type("temporary marketplace failure")
+            raise error
 
     monkeypatch.setattr(status_mod, "down", lambda *args: pytest.fail("status without --watch must not enforce a cap"))
     assert main(["status", record["run_id"], "--json"], backends={"vast": Driver()}, environ={}) == 7
     captured = capsys.readouterr()
     assert checks == [True] and not captured.out and "temporary marketplace failure" in captured.err
+    assert captured.err.count("[redacted]") == 4 and "invented-" not in captured.err and "\x1b" not in captured.err
+    if error_type is httpx.HTTPStatusError:
+        assert error.response.status_code == 503 and error.request is request
 
 
-@pytest.mark.parametrize(("error", "code"), [(CredentialsRejected("vast", 403, "key rejected"), 4),
-                                           (WorkloadRejected("vast", 400, "workload rejected"), 9)])
-def test_status_watch_keeps_specific_rejection_exit_codes(monkeypatch, capsys, error, code):
+@pytest.mark.parametrize(("error_type", "code"), [(CredentialsRejected, 4), (WorkloadRejected, 9)])
+@pytest.mark.parametrize("watch", [False, True])
+def test_status_keeps_rejection_exit_codes_and_redacts_keys(monkeypatch, capsys, error_type, code, watch):
     from ablit.runs import status as status_mod
 
     record = saved_run(RunStore())
     keys.secret_set("accounts/vast", "invented-account-key")
+    error = error_type("vast", 403 if code == 4 else 400,
+                       "rejected invented-account-key invented-\x1baccount-key")
     class Driver:
         def observe(self, *args): raise error
 
     monkeypatch.setattr(status_mod.time, "sleep", lambda _: pytest.fail("an explicit rejection must not be retried"))
-    assert main(["status", record["run_id"], "--watch", "--json"], backends={"vast": Driver()}, environ={}) == code
-    assert not capsys.readouterr().out
+    flags = ["status", record["run_id"], "--json"] + (["--watch"] if watch else [])
+    assert main(flags, backends={"vast": Driver()}, environ={}) == code
+    captured = capsys.readouterr()
+    assert not captured.out and "invented-" not in captured.err and "\x1b" not in captured.err
+    assert error.backend == "vast" and error.status == (403 if code == 4 else 400)
 
 
 def test_status_watch_all_checks_later_runs_after_one_marketplace_failure(monkeypatch, capsys):

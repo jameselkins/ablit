@@ -63,6 +63,8 @@ def status(args, records, drivers, environ, store):
                         refresh(store, record, driver, creds)
                     except (BackendError, httpx.HTTPError) as error:
                         if not args.watch or isinstance(error, (CredentialsRejected, WorkloadRejected)):
+                            # Keep the exception type and metadata for the CLI's exit-code handling.
+                            error.args = (redactor.remote_text(str(error)),)
                             raise
                         marketplace_unavailable = True
                         record["marketplace_check"] = "unavailable"
