@@ -98,7 +98,8 @@ def decide(
     else:
         state = replace(state, last_rx_bytes=max(state.last_rx_bytes, rx_bytes))
 
-    spent = spend(cfg, now, rx_bytes)
+    # A lower counter must not erase transfer charges that an earlier check counted.
+    spent = spend(cfg, now, state.last_rx_bytes)
     held = reserve(cfg)
 
     if spent + held >= cfg.cap_usd:

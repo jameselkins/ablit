@@ -64,6 +64,25 @@ def test_download_charges_count_toward_the_cap():
     assert decision.action == wd.DESTROY_CAP
 
 
+def test_a_lower_network_counter_does_not_erase_counted_transfer_charges():
+    cfg = wd.Config(1000.0, 3.6, 0.02, 10.0, 800.0)
+    state = wd.initial_state(1000.0, 0)
+    before = wd.decide(cfg, state, 1100.0, 100_000_000_000, downloading=False)
+    after = wd.decide(cfg, before.state, 1200.0, 1_000_000, downloading=False)
+    assert before.action == after.action == wd.CONTINUE
+    assert after.spend == pytest.approx(before.spend + 0.1)
+
+
+def test_remembered_transfer_charges_can_reach_the_cap_after_a_counter_reset():
+    cfg = wd.Config(1000.0, 3.6, 0.02, 3.0, 0.0)
+    state = wd.initial_state(1000.0, 0)
+    before = wd.decide(cfg, state, 1100.0, 100_000_000_000, downloading=False)
+    after = wd.decide(cfg, before.state, 2000.0, 0, downloading=False)
+    assert before.action == wd.CONTINUE
+    assert after.action == wd.DESTROY_CAP
+    assert after.spend == pytest.approx(3.0)
+
+
 def test_destroy_after_ten_minutes_with_no_bytes_during_the_download():
     state = wd.initial_state(1000.0, 100)
     still = wd.decide(CFG, state, 1000.0 + 599, 100, downloading=True)
