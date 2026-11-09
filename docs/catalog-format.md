@@ -10,6 +10,8 @@ When loading a catalog directory, the CLI skips files whose names do not match t
 
 When a run record is created, `catalog_sha256` hashes the raw YAML files in filename order from the selected catalog directory. `--catalog` takes precedence over `ABLIT_CATALOG`, and the bundled catalog is used when neither is set.
 
+A new paid launch from either catalog override requires `--untested`, even when the local entry says `boot-tested`. Planning from a local catalog rents nothing and needs no such flag.
+
 Catalog data is CC0-1.0. Each entry records its model's own license, which the catalog license does not change. Entries hold data only, and all commands live in the reviewed engine templates under `engines/`.
 
 ## Entry layout

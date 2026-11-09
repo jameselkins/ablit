@@ -64,7 +64,7 @@ In JSON plans, `request.cuda_architectures` lists the GPU generations supported 
 | `--variant ID` | none | Picks a build when a repo has several |
 | `--endpoint tunnel\|public` | `tunnel` | A paid `up` accepts only `tunnel`. See "Endpoint" below. |
 | `--untested` | off | Required to run `up` on an `unverified` entry |
-| `--catalog PATH` | bundled catalog | Local catalog for testing. Paid launch from it also needs `--untested`. |
+| `--catalog PATH` | bundled catalog | Local catalog for testing. A new paid launch from it also needs `--untested`, even for an entry marked `boot-tested`. The same requirement applies to a catalog selected with `ABLIT_CATALOG`. |
 | `--json` | off | Versioned machine-readable output |
 
 `up` also takes `--yes`, which approves the quote without the prompt so that an agent or a script can rent, `--another`, which allows a second active run of the same model, and `--report`, which is accepted and recorded in the run file. `--report` does not write a log yet, so a boot test record is written by hand from the output of `ablit logs`.

@@ -244,6 +244,40 @@ def test_yes_rents_without_a_terminal_or_a_prompt(monkeypatch, capsys):
     assert "Quote approved with --yes." in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("source", ["bundled", "flag", "environment"])
+@pytest.mark.parametrize("untested", [False, True])
+def test_catalog_launch_untested_requirement_follows_the_catalog_source(monkeypatch, capsys, repo_root, tmp_path, source, untested):
+    launch_environment(monkeypatch)
+    seed = repo_root / "catalog/models" / (MODEL + ".yaml")
+    catalog = tmp_path / "local catalog"
+    catalog.mkdir()
+    (catalog / seed.name).write_text(seed.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.delenv("ABLIT_CATALOG", raising=False)
+    flags = ["--catalog", str(catalog)] if source == "flag" else []
+    if source == "environment":
+        monkeypatch.setenv("ABLIT_CATALOG", str(catalog))
+    elif source == "bundled":
+        monkeypatch.setenv("ABLIT_CATALOG", "")
+    if untested:
+        flags.append("--untested")
+    monkeypatch.setattr(up_mod, "monitor", lambda *args, **kwargs: 0)
+
+    with respx.mock(assert_all_called=False) as router:
+        create, scoped = launch_routes(router)
+        router.get(ROOT + "/api/v1/instances/").mock(side_effect=lambda request: page([
+            instance(label="ablit-" + record["run_id"]) for record in RunStore().all()
+        ]))
+        code = main(["up", MODEL, "--backends", "vast", "--max-spend", "5", "--yes", *flags], environ={})
+        allowed = untested or source == "bundled"
+        assert code == (0 if allowed else 2)
+        assert create.call_count == scoped.call_count == (1 if allowed else 0)
+    if allowed:
+        assert len(RunStore().all()) == 1
+    else:
+        assert RunStore().all() == []
+        assert "local catalog launch requires --untested" in capsys.readouterr().err
+
+
 def test_yes_still_refuses_a_cap_too_small_for_setup(monkeypatch):
     launch_environment(monkeypatch)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False, raising=False)

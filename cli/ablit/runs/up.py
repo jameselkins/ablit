@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import math
+import os
 import secrets
 import subprocess
 import sys
@@ -291,7 +292,7 @@ def _up(args, entry, opts, driver, environ, store, drivers, claimed, owned):
             print(f"Smallest cap covering setup, ten minutes and the watchdog reserve: ${smallest:.2f}")
             if args.max_spend < smallest:
                 return 5
-            if args.catalog and not args.untested:
+            if (args.catalog or os.environ.get("ABLIT_CATALOG")) and not args.untested:
                 raise RunError("A local catalog launch requires --untested.")
             engines.check_artifacts(entry)
             if offer.allocated_disk_gb is None:
