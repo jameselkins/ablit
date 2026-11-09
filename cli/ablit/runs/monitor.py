@@ -244,6 +244,10 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                                      "cap_usd": record["cap_usd"], "spend_estimate_usd": record["spend_estimate_usd"]})
                 if not want_ready and tunnel is None:
                     tunnel, port = SSH(store, record).open_tunnel(record["entry"]["profile"]["port"])
+                    key = secret_get(run_id)
+                    if not key:
+                        raise CredentialError("The endpoint key is missing from the OS keyring.")
+                    engines.health(f"http://127.0.0.1:{port}", key, record["model_id"])
                     record["local_port"] = port
                     record["local_tunnel_id"] = tunnel_id
                     store.save(record)

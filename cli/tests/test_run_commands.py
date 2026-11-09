@@ -590,6 +590,8 @@ def test_large_remote_progress_does_not_stop_a_monitored_run(monkeypatch, capsys
 
     store = RunStore()
     record = saved_run(store)
+    keys.secret_set(record["run_id"], "invented-endpoint-key")
+    monkeypatch.setattr(monitor_mod.engines, "health", lambda *args: None)
     progress = {"download": {"bytes_done": large, "bytes_total": large},
                 "join": {"bytes_done": 1, "bytes_total": 2}}
     class Tunnel:
@@ -1020,12 +1022,70 @@ def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billin
     assert "local_port" not in store.load(r["run_id"])
 
 
+@pytest.mark.parametrize(("failure", "cleanup_code", "expected"), [
+    (None, 0, 0), ("health", 0, 6), ("health", 7, 7), ("key", 0, 6),
+])
+def test_reconnected_tunnel_checks_health_before_publishing_the_endpoint(monkeypatch, capsys, failure, cleanup_code, expected):
+    from ablit.backends import Creds
+
+    store = RunStore()
+    record = saved_run(store)
+    record.update(state="running", ready=True)
+    store.save(record)
+    if failure != "key":
+        keys.secret_set(record["run_id"], "invented-endpoint-key")
+    events = []
+
+    class Tunnel:
+        def poll(self): return None
+        def terminate(self): events.append("closed")
+        def wait(self, timeout=None): return 0
+
+    class Remote:
+        def __init__(self, *args): pass
+        def open_tunnel(self, port):
+            assert port == record["entry"]["profile"]["port"]
+            events.append("tunnel")
+            return Tunnel(), 18001
+
+    def refreshed(store, record, driver, creds):
+        record.update(marketplace_state="running", spend_estimate_usd=0.01)
+        store.save(record)
+
+    def health(base, key, model):
+        assert (base, key, model) == ("http://127.0.0.1:18001", "invented-endpoint-key", record["model_id"])
+        assert "local_port" not in store.load(record["run_id"])
+        events.append("health")
+        if failure == "health":
+            raise ValueError("The models response does not list the configured model.")
+
+    def cleanup(*args):
+        assert "local_port" not in store.load(record["run_id"])
+        events.append("cleanup")
+        return cleanup_code
+
+    def interrupt(seconds): raise KeyboardInterrupt
+
+    monkeypatch.setattr(monitor_mod, "SSH", Remote)
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod.engines, "health", health)
+    monkeypatch.setattr(monitor_mod, "down", cleanup)
+    monkeypatch.setattr(monitor_mod, "save_remote_logs", lambda *args: None)
+    monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
+    assert monitor_mod.monitor(store, record, None, Creds("invented-account-key")) == expected
+    assert events == ["tunnel"] + ([] if failure == "key" else ["health"]) + (["cleanup"] if failure else []) + ["closed"]
+    assert ("Endpoint: http://127.0.0.1:18001/v1" in capsys.readouterr().out) == (failure is None)
+    assert "local_port" not in store.load(record["run_id"])
+
+
 @pytest.mark.parametrize("replacement", [False, True])
 def test_tunnel_exit_clears_only_its_own_saved_endpoint(monkeypatch, replacement):
     from ablit.backends import Creds
 
     store = RunStore()
     record = saved_run(store)
+    keys.secret_set(record["run_id"], "invented-endpoint-key")
+    monkeypatch.setattr(monitor_mod.engines, "health", lambda *args: None)
     record["state"] = "running"
     store.save(record)
 
