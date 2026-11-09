@@ -78,9 +78,12 @@ def compute_staging(entry: Entry) -> StagingReport:
             lines.append(f"{where}: downloads {added / 1e9:.1f} GB, disk now {on_disk / 1e9:.1f} GB")
         else:
             step_inputs = _transform_inputs(entry, step, where)
+            missing = [entry.artifacts[i].path for i in step_inputs if i not in present]
+            if missing:
+                raise StagingError(f"{where}: inputs are not present: {', '.join(repr(path) for path in missing)}")
             if step.output_bytes is None:
                 raise StagingError(f"{where}: output_bytes is not known yet")
-            input_bytes = sum(_size(entry.artifacts[i], where) for i in step_inputs if i in present)
+            input_bytes = sum(_size(entry.artifacts[i], where) for i in step_inputs)
             if step.keeps_inputs_until_done:
                 during = on_disk + step.output_bytes
             else:

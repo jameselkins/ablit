@@ -87,6 +87,37 @@ def test_staging_input_must_name_a_path_or_role():
     assert any("matches no artifact" in p for p in problems)
 
 
+@pytest.mark.parametrize("step_name", ["join", "engram-extract"])
+@pytest.mark.parametrize("missing", ["never-downloaded", "partly-downloaded", "already-deleted"])
+def test_transform_inputs_must_be_present_when_the_step_runs(step_name, missing):
+    data = base_entry()
+    transform = {"step": step_name, "inputs": ["weight"], "output_bytes": 200,
+                 "keeps_inputs_until_done": True, "delete_inputs_after": True}
+    if missing == "never-downloaded":
+        data["staging"] = [transform, {"step": "download", "artifacts": "all"}]
+    elif missing == "partly-downloaded":
+        data["staging"] = [{"step": "download", "artifacts": ["part-1"]}, transform]
+    else:
+        data["staging"] = [{"step": "download", "artifacts": "all"}, transform, transform]
+    with pytest.raises(StagingError, match="inputs are not present"):
+        compute_staging(Entry.from_dict(data))
+    assert any("inputs are not present" in problem for problem in check_entry(data))
+
+
+@pytest.mark.parametrize("redownload", [False, True])
+def test_a_later_transform_can_reuse_retained_or_downloaded_again_inputs(redownload):
+    data = base_entry()
+    first_join = data["staging"][1]
+    first_join["delete_inputs_after"] = redownload
+    repeat = copy.deepcopy(first_join)
+    repeated_steps = ([{"step": "download", "artifacts": ["weight"]}] if redownload else []) + [repeat]
+    data["staging"][2:2] = repeated_steps
+    report = compute_staging(Entry.from_dict(data))
+    assert report.download_bytes == (710 if redownload else 510)
+    assert report.final_bytes == (660 if redownload else 860)
+    assert check_entry(data) == []
+
+
 def test_claim_below_the_computed_peak_is_reported():
     data = base_entry()
     data["profile"]["storage"]["disk_gb_claimed"] = 0.0000005
