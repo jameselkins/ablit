@@ -53,7 +53,7 @@ The disk filter uses `disk_free_gb` when reported, capped at `disk_gb`. Both are
 
 When an engine lock sets a minimum CUDA version, search leaves out nodes whose `cuda_driver` is older, missing or null, and counts them in its note. Lium documents the field as the highest CUDA version supported by the host driver. The field must be text in major.minor form, as in `12.8`. The field's meaning was checked against the public feed documentation on 2026-11-07.
 
-Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU names seen in the feed on 2026-10-23 to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it. The table also includes B200, B300 and other feed names checked against NVIDIA's page on 2026-11-07. The source dates are in the module.
+Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU names seen in the feed on 2026-10-23 to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it. Additional feed names were checked against NVIDIA's references on 2026-11-07 and 2026-11-09. The table includes A100, B300, L40/L40S, newer RTX models and the feed's T4 name. The source dates and architecture references are in the module. The engine's compute capability floor and list of compiled GPU generations still apply.
 
 ## Creating a pod, and finding it again
 

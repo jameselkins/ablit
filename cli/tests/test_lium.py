@@ -145,8 +145,9 @@ def test_missing_speed_score_and_country_are_allowed():
     assert offer.download_mbps is None and offer.reliability is None and offer.region is None
 
 
-def test_a_gpu_name_the_table_lacks_has_no_compute_capability():
-    assert offer_from_node(node(gpu_model="Invented Accelerator"), 1).compute_capability is None
+@pytest.mark.parametrize("name", ["Invented Accelerator", "CMP 170HX"])
+def test_a_gpu_name_the_table_lacks_has_no_compute_capability(name):
+    assert offer_from_node(node(gpu_model=name), 1).compute_capability is None
 
 
 @pytest.mark.parametrize("version", ["12.4", None])
@@ -184,6 +185,17 @@ def test_cuda_driver_with_an_unknown_type_or_format_stops_the_search(version, er
     ("RTX A4000", 8.6),
     ("RTX PRO 6000 Blackwell Max-Q Workstation Edition", 12.0),
     ("RTX PRO 6000 Blackwell Workstation Edition", 12.0),
+    ("A100-SXM4-80GB", 8.0),
+    ("B300 SXM6 PC", 10.3),
+    ("GTX 1660 Ti", 7.5),
+    ("L40", 8.9),
+    ("L40S", 8.9),
+    ("RTX 4070 Ti SUPER", 8.9),
+    ("RTX 4080", 8.9),
+    ("RTX 5060 Ti", 12.0),
+    ("RTX PRO 4000 Blackwell", 12.0),
+    ("RTX PRO 5000 Blackwell", 12.0),
+    ("T4 Tensor Core GPU", 7.5),
 ])
 def test_additional_feed_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
     from ablit.select.filters import engine_floor
@@ -193,7 +205,7 @@ def test_additional_feed_names_use_the_documented_capability_and_keep_engine_lim
     req = replace(REQ, compute_capability_min=capability)
     assert engine_floor(req)(offer) is None
     assert engine_floor(replace(req, compute_capability_min=capability + 0.1))(offer) == "compute capability too low"
-    assert engine_floor(replace(req, cuda_architectures=(75,)))(offer) == "GPU generation is not in the engine image"
+    assert engine_floor(replace(req, cuda_architectures=(50,)))(offer) == "GPU generation is not in the engine image"
 
 
 @pytest.mark.parametrize("change,error", [
