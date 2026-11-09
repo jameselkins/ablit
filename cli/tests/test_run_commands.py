@@ -1408,6 +1408,46 @@ def test_reported_marketplace_spending_is_retained_without_adding_it_twice(monke
     assert estimate_spend(record, record["started_at"]) == 4.0 + record["offer"].get("fixed_fees", 0)
 
 
+@pytest.mark.parametrize("change", ["clock", "hourly_rate", "watchdog"])
+def test_refresh_does_not_erase_prior_spending_when_a_later_measurement_falls(monkeypatch, change):
+    from ablit.backends import Creds
+    from ablit.backends.base import Observation
+    from ablit.runs import lifecycle
+
+    store = RunStore()
+    record = saved_run(store)
+    record.update(started_at=0.0, cap_usd=3.02, transfer_estimate_usd=0.0)
+    record["offer"].update(hourly_all_in=1.0, bandwidth_cost_per_gb=0.0, fixed_fees=0.0)
+    clock = [10800.0 if change == "clock" else 3600.0]
+    checks = []
+    class Driver:
+        def observe(self, *args):
+            checks.append(True)
+            rate = 3.0 if change == "hourly_rate" and len(checks) == 1 else 1.0
+            return Observation(checked_at=clock[0], state="running", hourly_rate=rate)
+
+    def probe(self):
+        if change != "watchdog": return {}
+        spent = 3.0 if len(checks) == 1 else 0.5
+        return {"heartbeat": {"at": clock[0], "spend": spent, "action": "continue"}}
+
+    monkeypatch.setattr(lifecycle.time, "time", lambda: clock[0])
+    monkeypatch.setattr(SSH, "probe", probe)
+    creds = Creds("invented-account-key")
+    lifecycle.refresh(store, record, Driver(), creds)
+    assert store.load(record["run_id"])["spend_estimate_usd"] == 3.0
+
+    record = store.load(record["run_id"])
+    clock[0] = 3600.0 if change == "clock" else 3660.0
+    lifecycle.refresh(store, record, Driver(), creds)
+    assert store.load(record["run_id"])["spend_estimate_usd"] == 3.0
+    assert lifecycle.local_stop_needed(record, clock[0])
+
+    clock[0] = 14400.0
+    lifecycle.refresh(store, record, Driver(), creds)
+    assert store.load(record["run_id"])["spend_estimate_usd"] == 4.0
+
+
 @pytest.mark.parametrize("unavailable", [RunError("SSH did not answer"), {"stages": ["unexpected.done"]}, {"failed": "text"}])
 def test_a_successful_probe_clears_a_previous_ssh_warning(monkeypatch, unavailable):
     from ablit.backends import Creds

@@ -152,7 +152,10 @@ def estimate_spend(record: dict, now: float) -> float:
     # Keep the local transfer estimate even when a backend has no spending total.
     # Reported and watchdog totals are alternative evidence, not extra charges.
     estimated = rate * elapsed + record.get("transfer_estimate_usd", 0) + record["offer"].get("fixed_fees", 0)
-    return max(estimated, record.get("heartbeat", {}).get("spend", 0), record.get("reported_spend_usd", 0))
+    return max(
+        estimated, record.get("spend_estimate_usd", 0),
+        record.get("heartbeat", {}).get("spend", 0), record.get("reported_spend_usd", 0),
+    )
 
 
 def local_stop_needed(record: dict, now: float) -> bool:
