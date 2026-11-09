@@ -214,8 +214,8 @@ def test_refresh_treats_a_subprocess_timeout_from_the_probe_as_unavailable(monke
 
     class Driver:
         def observe(self, alloc, creds):
-            from types import SimpleNamespace
-            return SimpleNamespace(checked_at=1.0, state="running", allocation=None, hourly_rate=None)
+            from ablit.backends.base import Observation
+            return Observation(checked_at=1.0, state="running")
 
     def probe(self):
         raise subprocess.TimeoutExpired("ssh", 30)

@@ -1351,6 +1351,63 @@ class _RunningDriver:
         return Observation(checked_at=1.0, state="running")
 
 
+@pytest.mark.parametrize("command", ["monitor", "status"])
+def test_reported_marketplace_spending_can_stop_a_run_before_the_local_estimate(monkeypatch, command):
+    from ablit.backends import Creds
+    from ablit.backends.base import Observation
+    from ablit.runs import status as status_mod
+
+    store = RunStore()
+    record = saved_run(store)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    stopped = []
+    class Driver:
+        def observe(self, *args):
+            return Observation(checked_at=1.0, state="running", spend_usd=record["cap_usd"])
+
+    def down(store_, run, *args):
+        stopped.append(run["run_id"])
+        assert run["stop_reason"] == "local_cap" and run["spend_estimate_usd"] >= run["cap_usd"]
+        run["state"] = "billing_stopped_confirmed"
+        store_.save(run)
+        return 0
+
+    monkeypatch.setattr(SSH, "probe", lambda self: {})
+    monkeypatch.setattr(monitor_mod, "down", down)
+    monkeypatch.setattr(status_mod, "down", down)
+    monkeypatch.setattr(monitor_mod.time, "sleep", lambda _: pytest.fail("reported spending must stop the first poll"))
+    monkeypatch.setattr(SSH, "run", lambda *args, **kwargs: pytest.fail("the cap must stop before SSH bootstrap"))
+    if command == "monitor":
+        code = monitor_mod.monitor(store, record, Driver(), Creds("invented-account-key"), want_ready=True)
+    else:
+        code = main(["status", record["run_id"], "--watch", "--json"], backends={"vast": Driver()}, environ={})
+    assert code == 6 and stopped == [record["run_id"]]
+    assert store.load(record["run_id"])["reported_spend_usd"] == record["cap_usd"]
+
+
+def test_reported_marketplace_spending_is_retained_without_adding_it_twice(monkeypatch):
+    from ablit.backends import Creds
+    from ablit.backends.base import Observation
+    from ablit.runs.lifecycle import estimate_spend, refresh
+
+    store = RunStore()
+    record = saved_run(store)
+    reports = iter([2.0, 1.0, None])
+    class Driver:
+        def observe(self, *args):
+            return Observation(checked_at=1.0, state="running", spend_usd=next(reports))
+
+    monkeypatch.setattr(SSH, "probe", lambda self: {})
+    for _ in range(3):
+        refresh(store, record, Driver(), Creds("invented-account-key"))
+        saved = store.load(record["run_id"])
+        assert saved["reported_spend_usd"] == 2.0 and saved["spend_estimate_usd"] == 2.0
+    record["heartbeat"] = {"spend": 3.0}
+    assert estimate_spend(record, record["started_at"]) == 3.0
+    record["transfer_estimate_usd"] = 4.0
+    assert estimate_spend(record, record["started_at"]) == 4.0 + record["offer"].get("fixed_fees", 0)
+
+
 @pytest.mark.parametrize("unavailable", [RunError("SSH did not answer"), {"stages": ["unexpected.done"]}, {"failed": "text"}])
 def test_a_successful_probe_clears_a_previous_ssh_warning(monkeypatch, unavailable):
     from ablit.backends import Creds

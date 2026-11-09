@@ -285,15 +285,41 @@ def test_unknown_order_list_shapes_are_refused(driver, payload):
             driver.reconcile(RUN, KEY)
 
 
-def test_observe_uses_documented_fields(driver):
+@pytest.mark.parametrize("creation_fee", [0.0, 0.1, 0.2])
+def test_observe_uses_documented_fields(driver, creation_fee):
     with respx.mock as router:
-        route = router.get(ORDERS).mock(return_value=orders(order(spend=1.25), order(9002, server=7555)))
+        route = router.get(ORDERS).mock(return_value=orders(order(spend=1.25, creation_fee=creation_fee),
+                                                         order(9002, server=7555)))
         observation = driver.observe(ALLOC, KEY)
     assert "return_completed" not in route.calls[0].request.url.params
-    assert observation.state == "running" and observation.spend_usd == 1.25
+    assert observation.state == "running" and observation.spend_usd == pytest.approx(1.25 + creation_fee)
     assert observation.hourly_rate == pytest.approx(4.8 * 1.05 / 24)
     found = observation.allocation
     assert (found.ssh_host, found.ssh_port, found.host_id) == ("n1.example.invalid", 10022, "7101")
+
+
+@pytest.mark.parametrize("creation_fee", ["missing", None, True, "0.1", -0.1, float("inf")])
+def test_observe_refuses_an_unknown_creation_fee(driver, creation_fee):
+    row = order(spend=1.25, creation_fee=creation_fee)
+    if creation_fee == "missing":
+        del row["creation_fee"]
+    with respx.mock as router:
+        router.get(ORDERS).respond(200, text=json.dumps({"code": 0, "orders": [row]}))
+        with pytest.raises(ResponseNotRecognized):
+            driver.observe(ALLOC, KEY)
+
+
+def test_observe_keeps_spending_unknown_when_the_marketplace_does_not_report_it(driver):
+    with respx.mock as router:
+        router.get(ORDERS).mock(return_value=orders(order(spend=None, creation_fee=None)))
+        assert driver.observe(ALLOC, KEY).spend_usd is None
+
+
+def test_observe_refuses_a_reported_spending_total_outside_the_numeric_range(driver):
+    with respx.mock as router:
+        router.get(ORDERS).mock(return_value=orders(order(spend=1e308, creation_fee=1e308)))
+        with pytest.raises(ResponseNotRecognized):
+            driver.observe(ALLOC, KEY)
 
 
 def test_an_order_with_no_public_port_yet_is_starting(driver):

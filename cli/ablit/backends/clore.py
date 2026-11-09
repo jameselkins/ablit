@@ -620,6 +620,13 @@ class CloreBackend(RentalBackend):
         if fee is None:
             fee = RENTER_BASE_FEE_PERCENT
         spend = fields.number(row, "spend", backend=self.name, where=where, nullable=True, minimum=0)
+        if spend is not None:
+            # Clore's cumulative spend includes rental fees but excludes creation.
+            creation = fields.number(row, "creation_fee", backend=self.name, where=where, minimum=0)
+            assert creation is not None
+            spend += creation
+            if not math.isfinite(spend):
+                raise UnknownUnit("clore: total order spending is outside the supported numeric range")
         assert price is not None and fee is not None
         # The order price is per day, and the fee is a percentage of it.
         rate = price * (1.0 + fee / 100.0) / HOURS_PER_DAY

@@ -93,6 +93,8 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
         record.update(ssh_host=alloc.ssh_host, ssh_port=alloc.ssh_port, host_id=alloc.host_id)
     if observation.hourly_rate is not None:
         record["observed_hourly_rate"] = observation.hourly_rate
+    if observation.spend_usd is not None:
+        record["reported_spend_usd"] = max(record.get("reported_spend_usd", 0), observation.spend_usd)
     if remote and record.get("ssh_host") and observation.state != "absent":
         try:
             probe = SSH(store, record).probe()
@@ -144,13 +146,13 @@ def refresh(store, record: dict, driver, creds, *, remote=True) -> dict:
 
 
 def estimate_spend(record: dict, now: float) -> float:
-    """Estimate spending from known prices, elapsed time and watchdog evidence."""
+    """Estimate spending from known prices, elapsed time and recorded spending evidence."""
     rate = max(record["offer"]["hourly_all_in"], record.get("observed_hourly_rate", 0))
     elapsed = max(now - record["started_at"], 0) / 3600
-    # The API documents the rate but no cumulative transfer charge. Count the
-    # quoted image and model transfer locally, and take the larger heartbeat total.
+    # Keep the local transfer estimate even when a backend has no spending total.
+    # Reported and watchdog totals are alternative evidence, not extra charges.
     estimated = rate * elapsed + record.get("transfer_estimate_usd", 0) + record["offer"].get("fixed_fees", 0)
-    return max(estimated, record.get("heartbeat", {}).get("spend", 0))
+    return max(estimated, record.get("heartbeat", {}).get("spend", 0), record.get("reported_spend_usd", 0))
 
 
 def local_stop_needed(record: dict, now: float) -> bool:
