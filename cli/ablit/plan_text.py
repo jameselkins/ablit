@@ -71,8 +71,10 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
     cap = cap_info(ranked, report)
     if cap is not None:
         lines.append(f"  Cap:         {_usd(cap['cap_usd'])}")
-        if cap["hours_until_cap"] is None:
+        if cap["cap_usd"] <= cap["one_time_usd"]:
             lines.append("               The cap is no higher than the one-time charges, so it is reached before use.")
+        elif cap["hours_until_cap"] is None:
+            lines.append("               The hourly rate is zero, so the quoted costs do not reach the cap.")
         else:
             lines.append(
                 f"               Spend reaches the cap about {_hours(cap['hours_until_cap'])} after the rental starts."

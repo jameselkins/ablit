@@ -99,6 +99,22 @@ def test_text_report_has_every_part(capsys):
     assert "cheapest of the" not in out  # both searches were complete
 
 
+@pytest.mark.parametrize(("hourly", "transfer", "cap", "expected"), [
+    (0.0, 0.0, 1.0, "The hourly rate is zero, so the quoted costs do not reach the cap."),
+    (0.0, 0.1, 1000.0, "The hourly rate is zero, so the quoted costs do not reach the cap."),
+    (0.0, 1.0, 0.01, "The cap is no higher than the one-time charges, so it is reached before use."),
+    (0.5, 0.0, 1.0, "Spend reaches the cap about 2.0 hours after the rental starts."),
+])
+def test_cap_text_distinguishes_a_zero_hourly_rate_from_exhausted_upfront_charges(capsys, hourly, transfer, cap, expected):
+    offer = vast_row(9100, base=hourly, storage_cost=0.0,
+                     inet_down_cost=transfer, internet_down_cost_per_tb=transfer * 1024)
+    _, out, _ = run_plan(capsys, "--backends", "vast", "--max-spend", str(cap),
+                         vast=FakeVast([offer]), expect_exit=0)
+    assert expected in out
+    if expected.startswith("The hourly rate is zero"):
+        assert "reached before use" not in out
+
+
 def test_text_report_marks_estimates_that_exceed_the_rental_time(capsys):
     offer = vast_row(9100, allocated=ALLOCATED, duration=24 * 3600)
     _, out, _ = run_plan(capsys, "--backends", "vast", vast=FakeVast([offer]), expect_exit=0)

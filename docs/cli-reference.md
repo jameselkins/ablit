@@ -136,6 +136,8 @@ The quote shows these items:
 4. Totals for 1 hour, 24 hours, 7 days and `--hours`, each including download charges and the hours spent downloading and starting.
 5. The cap, the time at which spend would reach it, and the spend cap notice.
 
+When the hourly rate is zero and the quoted transfer and fixed charges are below the cap, the quote says those costs do not reach it. A cap no higher than those one-time charges is still shown as reached before use.
+
 After confirmation, ablit checks the offer again before renting. It cancels if the offer disappears, the price changes or the offer no longer passes the search filters. It also cancels if a change in download speed makes the cap too small to cover setup, ten minutes of use and the watchdog reserve. Run `ablit up` again for a new quote.
 
 The spend cap notice is printed on every quote, in the README and in `ablit up --help`. A test checks that this page and the README hold the exact text.
