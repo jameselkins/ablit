@@ -189,6 +189,34 @@ def test_ssh_run_reports_a_missing_ssh_program_as_run_error(monkeypatch):
         SSH(store, run).run("ignored")
 
 
+@pytest.mark.parametrize("partial_line", [False, True])
+def test_log_snapshots_have_a_deadline_even_without_a_complete_line(monkeypatch, partial_line):
+    from ablit.redact import Redactor
+
+    store = RunStore()
+    ssh = SSH(store, running_run(store))
+    # The alarm also bounds the old implementation, which never times out its reader.
+    script = "import signal,sys,time; signal.alarm(2); "
+    if partial_line:
+        script += "sys.stdout.write('unfinished'); sys.stdout.flush(); "
+    script += "time.sleep(60)"
+    monkeypatch.setattr(SSH, "args", lambda self: [sys.executable, "-c", script])
+    monkeypatch.setattr(ssh_mod, "LOG_READ_TIMEOUT_SECONDS", 0.1)
+    popen, processes = subprocess.Popen, []
+
+    def start(*args, **kwargs):
+        proc = popen(*args, **kwargs)
+        processes.append(proc)
+        return proc
+
+    monkeypatch.setattr(ssh_mod.subprocess, "Popen", start)
+    started = time.monotonic()
+    with pytest.raises(RunError, match=r"did not answer within 0\.1 seconds"):
+        ssh.logs(None, False, Redactor())
+    assert time.monotonic() - started < 5
+    assert processes[0].returncode == -signal.SIGKILL
+
+
 @pytest.mark.parametrize("follow", [False, True])
 def test_reading_remote_logs_leaves_the_callers_piped_input_unread(tmp_path, follow):
     script = '''import sys

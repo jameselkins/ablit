@@ -16,6 +16,7 @@ from ablit.redact import Redactor
 from ablit.runs import RunError
 
 SSH_STOP_TIMEOUT_SECONDS = 5
+LOG_READ_TIMEOUT_SECONDS = 30
 
 # The endpoint secret arrives on stdin and exists only in the child's environment.
 START = '''import fcntl,json,os,subprocess,sys
@@ -105,7 +106,8 @@ class SSH:
                 "-o", "StrictHostKeyChecking=accept-new", "-o", f"UserKnownHostsFile={self.known_hosts}",
                 "-o", "GlobalKnownHostsFile=/dev/null", f"root@{host}"]
 
-    def run(self, command: str, data: bytes | None = None, timeout=30) -> bytes:
+    def run(self, command: str, data: bytes | None = None, timeout=30, *,
+            failure_message="SSH failed. Check the saved host key and the marketplace connection details.") -> bytes:
         """Run one remote command. A timeout or a failure to start ssh is a RunError, like a failed command.
 
         ssh starts in its own process group. On a timeout the whole group is killed, so a
@@ -125,7 +127,7 @@ class SSH:
             _kill_group(proc)
             raise
         if proc.returncode:
-            raise RunError("SSH failed. Check the saved host key and the marketplace connection details.")
+            raise RunError(failure_message)
         return stdout
 
     def upload(self, archive: bytes) -> None:
@@ -176,6 +178,10 @@ class SSH:
                 'if [ -f "$file" ]; then set -- "$@" "$file"; fi; '
                 'done; [ "$#" -gt 0 ] && tail -v -n 200 "$@"'
             )
+        if not follow:
+            text = self.run(command, timeout=LOG_READ_TIMEOUT_SECONDS, failure_message="Remote logs are unavailable.")
+            print(redactor.remote_text(text.decode("utf-8", "replace")), end="", flush=True)
+            return
         try:
             proc = subprocess.Popen([*self.args(), command], stdin=subprocess.DEVNULL,
                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,

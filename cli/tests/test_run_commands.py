@@ -353,7 +353,8 @@ def test_cli_errors_remove_terminal_controls_and_keep_the_exit_code(monkeypatch,
     assert not any(control in captured.err for control in ("\x1b", "\x07", "\x9b"))
 
 
-def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypatch, capsys):
+@pytest.mark.parametrize("follow", [False, True])
+def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypatch, capsys, follow):
     store = RunStore()
     r = saved_run(store)
     keys.secret_set("accounts/vast", "invented-account-key")
@@ -371,11 +372,14 @@ def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypat
         view = json.loads(capsys.readouterr().out)
         assert view["runs"][0]["endpoint_key"] == "invented-endpoint-key"
     class Process:
+        returncode = 0
         stdout = io.StringIO("invented-endpoint-key invented-\x1baccount-key\n")
+        def communicate(self, data=None, timeout=None): return self.stdout.getvalue().encode(), b""
         def wait(self): return 0
         def poll(self): return 0
     monkeypatch.setattr("ablit.runs.ssh.subprocess.Popen", lambda *a, **kw: Process())
-    assert main(["logs", r["run_id"], "--stage", "watchdog"], environ={}) == 0
+    flags = ["logs", r["run_id"], "--stage", "watchdog"] + (["-f"] if follow else [])
+    assert main(flags, environ={}) == 0
     output = capsys.readouterr().out
     assert output.count("[redacted]") == 2
 
@@ -416,6 +420,7 @@ def test_logs_can_read_bootstrap_output_before_other_stages_start(monkeypatch, t
     assert main([*flags, "--stage", "engine"], environ={}) == 2
     log.unlink()
     assert main(flags, environ={}) == 2
+    assert capsys.readouterr().err.count("Remote logs are unavailable.") == 2
 
 
 @pytest.mark.parametrize("with_key", [False, True])

@@ -22,6 +22,8 @@ When you omit a run ID, `status`, `logs`, `tunnel` and `down` use the only activ
 
 When closing a tunnel or log reader, ablit waits up to five seconds after requesting termination. If the process does not exit, ablit kills it and waits up to five more seconds. A process that still does not exit is reported as an error.
 
+Without `-f`, `ablit logs` waits up to 30 seconds for a log snapshot. A timeout stops the local SSH process and reports an error. `ablit logs -f` keeps streaming until interrupted or disconnected.
+
 When `ablit status --all --watch` starts with an active run, it keeps showing
 old watchdog stops and continues checking the active run.
 Once ablit confirms that billing stopped, `ablit status` and `ablit down` can
