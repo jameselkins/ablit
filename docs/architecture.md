@@ -55,6 +55,8 @@ While marketplace checks fail, the monitor still updates estimated spending from
 
 Monitor and cleanup failure messages redact available marketplace, endpoint and watchdog keys before shortening the diagnostic. Saved pending-cleanup messages use the same redacted text.
 
+Cleanup retries use saved confirmations of watchdog and SSH key deletion, so a later failure does not require deleting those keys again. Each retry still reconciles resources and checks billing before completing cleanup.
+
 Status check failures also redact the run's available keys before the CLI reports the error. Redaction preserves the exception type and HTTP metadata, so rejected credentials and other failures keep their existing exit codes.
 
 Startup errors also trigger cleanup for runs this invocation created, or resumed runs whose resources were recovered. Known startup error messages redact the run's available marketplace, endpoint and watchdog keys before printing. Unexpected exceptions are reported by type without echoing their messages. For those errors, confirmed cleanup exits 6 and pending cleanup exits 7.

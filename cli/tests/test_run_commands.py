@@ -673,6 +673,54 @@ def test_down_can_confirm_a_saved_billing_stop_without_a_marketplace_key(capsys)
     assert "Billing stopped." in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("failed_step", ["watchdog_key", "ssh_key", "keyring"])
+def test_down_retries_only_unconfirmed_key_cleanup(monkeypatch, failed_step):
+    from ablit.runs import lifecycle
+
+    store = RunStore()
+    record = saved_run(store)
+    record.update(ssh_key_id="7501", ssh_key_sent=True)
+    store.save(record)
+    keys.secret_set("accounts/vast", "invented-account-key")
+    keys.secret_set(record["run_id"], "invented-endpoint-key")
+    keys.secret_set("watchdog/" + record["run_id"], "invented-watchdog-key")
+    delete_secret = lifecycle.secret_delete
+    failed = []
+
+    def keyring_delete(name):
+        if failed_step == "keyring" and not failed:
+            failed.append(True)
+            raise keys.CredentialError("The OS keyring is unavailable.")
+        delete_secret(name)
+
+    monkeypatch.setattr(lifecycle, "secret_delete", keyring_delete)
+    with respx.mock as router:
+        inventory = router.get(ROOT + "/api/v1/instances/").mock(return_value=page([]))
+        destroy = router.delete(ROOT + "/api/v0/instances/7201/").respond(404)
+        watchdog = router.delete(ROOT + "/api/v0/auth/apikeys/7401/").mock(side_effect=[
+            httpx.Response(403 if failed_step == "watchdog_key" else 200,
+                           json="Successfully Deleted API Key"),
+            httpx.Response(200 if failed_step == "watchdog_key" else 403,
+                           json="Successfully Deleted API Key"),
+        ])
+        ssh_key = router.delete(ROOT + "/api/v0/ssh/7501/").mock(side_effect=[
+            httpx.Response(403 if failed_step == "ssh_key" else 200, json={"success": True}),
+            httpx.Response(200, json={"success": True}),
+        ])
+        assert main(["down", record["run_id"]], environ={}) == 7
+        pending = store.load(record["run_id"])
+        assert bool(pending.get("watchdog_key_deleted")) == (failed_step != "watchdog_key")
+        assert pending["pending_cleanup"]
+        assert main(["down", record["run_id"]], environ={}) == 0
+        assert watchdog.call_count == (2 if failed_step == "watchdog_key" else 1)
+        assert ssh_key.call_count == (2 if failed_step == "ssh_key" else 1)
+        assert destroy.call_count == 2 and inventory.call_count >= 4
+    stopped = store.load(record["run_id"])
+    assert stopped["state"] == "billing_stopped_confirmed" and not stopped["pending_cleanup"]
+    assert stopped["watchdog_key_deleted"] and stopped["ssh_key_deleted"]
+    assert keys.secret_get(record["run_id"]) is None and keys.secret_get("watchdog/" + record["run_id"]) is None
+
+
 def test_status_all_keeps_an_earlier_pending_cleanup_exit_code(capsys):
     store = RunStore()
     saved_run(store)

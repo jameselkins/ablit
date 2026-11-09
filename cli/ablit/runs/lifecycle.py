@@ -211,14 +211,14 @@ def down(store, record: dict, driver, creds) -> int:
         errors.append(f"Billing stop is unconfirmed ({reason(error, run_redactor(record, creds))}).")
     # Keep the watchdog usable until the marketplace confirms all instances absent.
     if billing_clear:
-        if record.get("watchdog_key_id"):
+        if record.get("watchdog_key_id") and not record.get("watchdog_key_deleted"):
             try:
                 driver.delete_watchdog_key(record["watchdog_key_id"], creds)
                 record["watchdog_key_deleted"] = True
                 store.save(record)
             except (BackendError, httpx.HTTPError):
                 errors.append("Watchdog key deletion is unconfirmed.")
-        elif record.get("watchdog_key_sent"):
+        elif record.get("watchdog_key_sent") and not record.get("watchdog_key_id"):
             errors.append(f"The watchdog key response was lost. Review and revoke it at {KEYS}")
         if record.get("ssh_key_id") and not record.get("ssh_key_deleted"):
             try:
