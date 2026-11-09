@@ -8,6 +8,7 @@ string that starts with the path of the value that failed.
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -77,6 +78,8 @@ def _check(value: Any, schema: dict[str, Any], root: dict[str, Any], path: str) 
             errors.append(f"{path}: {value!r} does not match {schema['pattern']}")
 
     if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if isinstance(value, float) and not math.isfinite(value):
+            return errors + [f"{path}: must be a finite number"]
         if "minimum" in schema and value < schema["minimum"]:
             errors.append(f"{path}: {value} is below the minimum {schema['minimum']}")
         if "maximum" in schema and value > schema["maximum"]:

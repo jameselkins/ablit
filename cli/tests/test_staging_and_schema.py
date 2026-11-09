@@ -50,6 +50,21 @@ def test_base_entry_is_valid():
     assert check_entry(base_entry()) == []
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")], ids=["nan", "infinity", "negative-infinity"])
+@pytest.mark.parametrize("field", [
+    "profile.host_ram_gb", "profile.min_download_mbps", "profile.startup_hours_estimate",
+    "profile.gpu.vram_gb_each", "profile.gpu.compute_capability_min", "profile.storage.disk_gb_claimed",
+])
+def test_catalog_numbers_must_be_finite(field, value):
+    data = base_entry()
+    target = data
+    *parents, key = field.split(".")
+    for part in parents:
+        target = target[part]
+    target[key] = value
+    assert any(field in problem and "finite number" in problem for problem in check_entry(data))
+
+
 def test_staging_peak_is_computed_from_the_steps():
     report = compute_staging(Entry.from_dict(base_entry()))
     assert report.download_bytes == 510

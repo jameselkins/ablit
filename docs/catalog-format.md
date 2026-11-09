@@ -55,6 +55,8 @@ notes: []                          # where each figure came from
 3. Peak disk is computed from `staging` and is never written by hand. A `join` step with `keeps_inputs_until_done: false` deletes each input before it reads the next, so the peak is the whole download and not twice the weights. The engine lock adds a margin of one weight part on top of the peak (`disk_margin_gb`), and room for the fallback Engram extraction (`extract_disk_gb`) when the engine has one.
 4. `profile` is one exact combination of engine lock, GPU arrangement, context length and concurrency. A test of one profile does not approve another.
 
+Numeric fields must be finite. Validation rejects YAML `.nan`, `.inf` and `-.inf` values and reports the affected field before the entry can be used for hardware checks or cost estimates.
+
 When computing peak disk, every input selected by a join or extraction must already be downloaded and still present. A step that deletes its inputs makes them unavailable to later transforms until another download restores them. An invalid order is rejected instead of producing a disk estimate.
 
 ## Status and launch rules

@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from ablit import exitcodes
 from ablit.cli import build_parser, main
@@ -67,6 +68,18 @@ def test_catalog_show_ambiguous_repo_asks_for_a_variant(capsys, tmp_path: Path, 
     code, out, err = run(capsys, "catalog", "show", repo, "--catalog", str(tmp_path), "--variant", "ds41-1017-xq-twin")
     assert code == 0, err
     assert "ds41-1017-xq-twin" in out
+
+
+@pytest.mark.parametrize("value", [".nan", ".inf", "-.inf"])
+def test_catalog_validate_rejects_nonfinite_yaml_numbers(capsys, tmp_path, repo_root, value):
+    seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
+    data = yaml.safe_load(seed.read_text(encoding="utf-8"))
+    data["profile"]["host_ram_gb"] = yaml.safe_load(value)
+    path = tmp_path / seed.name
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    code, out, err = run(capsys, "catalog", "validate", str(path))
+    assert code == exitcodes.INVALID_FILE and not out
+    assert "profile.host_ram_gb" in err and "finite number" in err
 
 
 def test_catalog_validate_accepts_a_seed_file_and_rejects_a_bad_one(capsys, tmp_path: Path, repo_root: Path):
