@@ -169,6 +169,8 @@ def health(base: str, key: str, model: str) -> None:
         if (not isinstance(listed, list) or not listed
                 or any(not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"] for item in listed)):
             raise ValueError("The models response is invalid.")
+        if not any(item["id"] == model for item in listed):
+            raise ValueError("The models response does not list the configured model.")
         body = {"model": model, "messages": [{"role": "user", "content": "Hello"}], "max_tokens": 1}
         reply = client.post("/v1/chat/completions", json=body)
         reply.raise_for_status()

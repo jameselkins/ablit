@@ -113,7 +113,8 @@ ablit_download_one https://example.invalid/model weight "$2" "$3"
 
 
 @pytest.mark.parametrize("mode", ["buffered", "streamed", "gzip"])
-def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers(mode):
+@pytest.mark.parametrize("model_ids", [["invented-model"], ["another-model", "invented-model"]])
+def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers(mode, model_ids):
     base = "http://127.0.0.1:18001"
     body = (
         'data: {"choices": [{"delta": {"content": "x"}}]}\n\n'
@@ -132,7 +133,7 @@ def test_health_exercises_models_chat_stream_and_auth_with_synthetic_answers(mod
                 httpx.Response(200, stream=CompleteStream(), headers={"Content-Encoding": "gzip"} if mode == "gzip" else {}))
     with respx.mock as router:
         models = router.get(base + "/v1/models").mock(side_effect=[
-            httpx.Response(200, json={"data": [{"id": "invented-model"}]}),
+            httpx.Response(200, json={"data": [{"id": model_id} for model_id in model_ids]}),
             httpx.Response(401), httpx.Response(403)])
         chat = router.post(base + "/v1/chat/completions").mock(side_effect=[
             httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
@@ -245,6 +246,20 @@ def test_health_rejects_invalid_model_listings(response):
         with pytest.raises(ValueError, match="models response"):
             engines.health(base, "invented-endpoint-key", "invented-model")
         assert chat.call_count == 0
+
+
+@pytest.mark.parametrize("model_id", ["another-model", "invented-model-extra", "INVENTED-MODEL"])
+def test_health_requires_the_configured_model_in_the_listing(model_id):
+    base = "http://127.0.0.1:18001"
+    with respx.mock(assert_all_called=False) as router:
+        models = router.get(base + "/v1/models").mock(side_effect=[
+            httpx.Response(200, json={"data": [{"id": model_id}]}), httpx.Response(401), httpx.Response(403)])
+        chat = router.post(base + "/v1/chat/completions").mock(side_effect=[
+            httpx.Response(200, json={"choices": [{"message": {"content": "x"}}]}),
+            httpx.Response(200, text='data: {"choices": [{"delta": {"content": "x"}}]}\n\ndata: [DONE]\n\n')])
+        with pytest.raises(ValueError, match="configured model"):
+            engines.health(base, "invented-endpoint-key", "invented-model")
+        assert models.call_count == 1 and chat.call_count == 0
 
 
 @pytest.mark.parametrize("response", [
