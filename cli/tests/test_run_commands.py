@@ -1,6 +1,7 @@
 """Command tests never use a marketplace account or a real SSH host."""
 
 import contextlib
+import hashlib
 import io
 import json
 import sys
@@ -318,10 +319,10 @@ def test_missing_or_rejected_credentials_exit_4(monkeypatch):
         assert main(["up", MODEL, "--untested", "--max-spend", "5"], environ={}) == 4
 
 
-def saved_run(store):
+def saved_run(store, *, catalog=None):
     from ablit.select.request import request_from_entry
     from ablit.select.types import PlanOptions
-    entry = resolve(load_catalog().entries, MODEL)
+    entry = resolve(load_catalog(catalog).entries, MODEL)
     offer = __import__("test_vast_lifecycle").OFFER
     lock = up_mod.engines.engine_lock(entry)
     from ablit.plan import PlanReport
@@ -329,11 +330,43 @@ def saved_run(store):
     from ablit.select import rank_offers
     report = PlanReport(entry, req, PlanOptions(), 5, rank_offers([offer], req, PlanOptions()).ranked,
                         [], [], 1, True, "invented-check", lock["digest"])
-    data = up_mod.make_intent(store, entry, offer, report, SimpleNamespace(max_spend=5, min_download=None), lock)
+    data = up_mod.make_intent(store, entry, offer, report, SimpleNamespace(max_spend=5, min_download=None, catalog=catalog), lock)
     data.update(state="running", resource_ids=["7201"], ssh_host="ssh.example.invalid", ssh_port=2201,
                 watchdog_key_id="7401", watchdog_key_sent=True, create_sent=True)
     store.save(data)
     return data
+
+
+@pytest.mark.parametrize("selection", ["bundled", "flag", "environment", "flag-over-environment"])
+def test_run_catalog_digest_uses_the_selected_catalog_directory(monkeypatch, repo_root, tmp_path, selection):
+    bundled = repo_root / "catalog/models"
+    source = bundled / (MODEL + ".yaml")
+    explicit = tmp_path / "explicit catalog"
+    environment = tmp_path / "environment catalog"
+    for directory in (explicit, environment):
+        directory.mkdir()
+        (directory / source.name).write_text(source.read_text(encoding="utf-8") + f"\n# {directory.name}\n", encoding="utf-8")
+    monkeypatch.delenv("ABLIT_CATALOG", raising=False)
+    if selection in ("environment", "flag-over-environment"):
+        monkeypatch.setenv("ABLIT_CATALOG", str(environment))
+    catalog = str(explicit) if selection in ("flag", "flag-over-environment") else None
+    expected_directory = explicit if catalog else environment if selection == "environment" else bundled
+    expected = hashlib.sha256(b"".join(path.read_bytes() for path in sorted(expected_directory.glob("*.yaml")))).hexdigest()
+
+    store = RunStore()
+    record = saved_run(store, catalog=catalog)
+    assert record["catalog_sha256"] == expected
+    assert store.load(record["run_id"])["catalog_sha256"] == expected
+
+
+@pytest.mark.parametrize("missing_path", [False, True])
+def test_an_unavailable_catalog_does_not_create_a_run_intent(monkeypatch, tmp_path, missing_path):
+    directory = tmp_path / "removed-catalog" if missing_path else None
+    monkeypatch.setattr(up_mod, "default_catalog_dir", lambda: directory)
+    store = RunStore()
+    with pytest.raises(RunError, match="catalog directory is unavailable"):
+        saved_run(store)
+    assert store.all() == []
 
 
 @pytest.mark.parametrize(("error_type", "code"), [(keys.CredentialError, 4), (RunError, 2), (RuntimeError, 7)])

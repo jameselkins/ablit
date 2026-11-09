@@ -11,6 +11,7 @@ import sys
 import time
 import uuid
 from dataclasses import asdict, replace
+from pathlib import Path
 
 import httpx
 
@@ -19,7 +20,7 @@ from ablit.backends.base import ENV_KEY_NAMES, BootSpec
 from ablit.backends.lium import LIUM_START
 from ablit.backends.runpod import RUNPOD_START
 from ablit.backends.errors import BackendError, CreateUncertain, CredentialsRejected, RequestRejected, WorkloadRejected
-from ablit.catalog.loader import repo_root
+from ablit.catalog.loader import default_catalog_dir
 from ablit.credentials import CredentialError, credentials, secret_set
 from ablit.plan import gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
@@ -67,8 +68,11 @@ def minimum_cap(offer, req, floor) -> float:
 
 def make_intent(store, entry, offer, report, args, lock) -> dict:
     run_id = uuid.uuid4().hex
-    root = repo_root()
-    catalog_files = sorted((root / "catalog" / "models").glob("*.yaml"))
+    selected_catalog = getattr(args, "catalog", None)
+    directory = Path(selected_catalog) if selected_catalog else default_catalog_dir()
+    if directory is None or not directory.is_dir():
+        raise RunError("The selected catalog directory is unavailable.")
+    catalog_files = sorted(directory.glob("*.yaml"))
     catalog_digest = hashlib.sha256(b"".join(p.read_bytes() for p in catalog_files)).hexdigest()
     record = {
         "schema": 1, "run_id": run_id, "model_id": entry.id, "state": "creating",

@@ -8,6 +8,8 @@ Each build is one YAML file at `catalog/models/<id>.yaml`, and `catalog/schema/v
 
 When loading a catalog directory, the CLI skips files whose names do not match their entry IDs. Other valid entries still load, and `catalog list` reports each skipped file and exits 1. A copied file cannot create a second selectable entry with the same ID.
 
+When a run record is created, `catalog_sha256` hashes the raw YAML files in filename order from the selected catalog directory. `--catalog` takes precedence over `ABLIT_CATALOG`, and the bundled catalog is used when neither is set.
+
 Catalog data is CC0-1.0. Each entry records its model's own license, which the catalog license does not change. Entries hold data only, and all commands live in the reviewed engine templates under `engines/`.
 
 ## Entry layout
