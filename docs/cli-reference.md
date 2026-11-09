@@ -16,6 +16,8 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `ablit down [run]` | Destroys every billable resource the run created and confirms with the marketplace. Never asks for confirmation. Works even for a backend whose new launches are disabled. |
 | `ablit catalog list\|show <id>\|validate <file>` | Lists entries and their test status, explains one entry, or checks a contributor's file. |
 
+Setup tests the key before offering to save it, and failure messages redact the entered key. If the key is too short to redact safely, setup omits response details.
+
 When you omit a run ID, `status`, `logs`, `tunnel` and `down` use the only active run. If all runs have stopped, they use the run with the latest start time. When several runs are active, ablit asks you to name a run ID.
 
 `ablit up` stays running after it prints the endpoint, because it keeps the SSH tunnel open and checks spending. Scripts should keep the process running and poll `ablit status --json` for `state: "running"` and `local_port`. Interrupting `up` closes the tunnel and stops the local check, and billing continues until the machine is destroyed. The monitor removes its saved `local_port` after closing the tunnel. If another monitor has opened a newer tunnel, its endpoint stays in the record.

@@ -10,6 +10,7 @@ from keyring.errors import KeyringError, PasswordDeleteError
 
 from ablit.backends.base import ENV_KEY_NAMES, Creds, creds_from_env
 from ablit.backends.errors import CredentialsRejected
+from ablit.redact import MIN_SECRET_LENGTH, Redactor
 
 
 class CredentialError(Exception):
@@ -92,13 +93,16 @@ def _setup(marketplace: str, driver, store, no_referral: bool, environ=None) -> 
     key = getpass.getpass(f"{words['short']} API key (hidden): ").strip()
     if not key:
         raise CredentialError("No key was entered.")
+    redactor = Redactor([key]) if len(key) >= MIN_SECRET_LENGTH else None
     try:
         driver.test_credentials(Creds(key))
-    except CredentialsRejected:
-        raise
+    except CredentialsRejected as error:
+        detail = redactor.remote_text(error.detail) if redactor else "the API key was refused"
+        raise CredentialsRejected(error.backend, error.status, detail) from None
     except Exception as error:
+        detail = redactor.remote_text(str(error)) if redactor else type(error).__name__
         raise CredentialError(
-            f"The key test failed before {words['short']} accepted or refused the key: {error}") from error
+            f"The key test failed before {words['short']} accepted or refused the key: {detail}") from None
     if input("Save in the OS keyring? [y/N, N keeps it only in this process] ").strip().lower() in ("y", "yes"):
         secret_set(f"accounts/{marketplace}", key)
         print(f"Saved the {words['short']} key in the OS keyring.")
