@@ -15,7 +15,7 @@ from Clore, which strips the "NVIDIA GeForce " and "NVIDIA " prefixes.
    ("l", "40", "s"). Vendor and product line words, such as "NVIDIA", "GeForce"
    and "RTX", are dropped.
 2. The form words name an edition or a form of the same card, such as
-   "Workstation", "Server", "Max-Q", "PCIe", "SXM", "AC" or a memory size like "80GB".
+   "Workstation", "Server", "Max-Q", "PCIe", "SXM", "AC", "PC" or a memory size like "80GB".
    Short forms such as "WS", "S", "SE" and Clore's cut "Works" become "workstation" and "server".
 
 A name the user gives matches an offer when the model words are the same, and
@@ -32,9 +32,12 @@ from collections.abc import Iterable
 
 # Words that name a vendor or a product line, or that pad a name. They are dropped.
 # "blackwell" is dropped because the RTX PRO cards are all Blackwell and only some names say so.
+# "Tensor Core" is product wording in NVIDIA's T4 name, as used in Lium's feed.
+# https://www.nvidia.com/en-us/data-center/tesla-t4/
 _DROPPED = frozenset({
     "nvidia", "geforce", "tesla", "quadro", "amd", "rtx", "gtx",
     "blackwell", "edition", "edit", "generation", "gpu", "hbm",
+    "tensor", "core", "tensorcore",
 })
 
 # Whole words that name an edition or a form of the same card.
@@ -44,7 +47,9 @@ _FORMS = {
     "maxq": "maxq", "pcie": "pcie", "sxm": "sxm", "sff": "sff",
     # RunPod's GPU type reference names "NVIDIA B300 SXM6 AC" as B300.
     # https://docs.runpod.io/references/gpu-types
-    "ac": "ac",
+    # Lium also lists "B300 SXM6 PC". Keep the suffix when a user names it.
+    # https://lium.io/api/public/v1/nodes (read 2026-11-09)
+    "ac": "ac", "pc": "pc",
 }
 
 _WORD = re.compile(r"[a-z0-9]+")

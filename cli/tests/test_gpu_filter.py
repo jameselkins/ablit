@@ -28,9 +28,10 @@ def test_names_split_on_commas_and_repeat_without_blanks_or_duplicates():
     assert parse_gpu_names(None) == ()
 
 
-def test_a_name_with_nothing_to_compare_is_refused():
+@pytest.mark.parametrize("name", ["NVIDIA GeForce", "Tensor Core GPU", "PC"])
+def test_a_name_with_nothing_to_compare_is_refused(name):
     with pytest.raises(ValueError):
-        parse_gpu_names(["NVIDIA GeForce"])
+        parse_gpu_names([name])
 
 
 def test_both_commands_accept_the_flags_repeated():
@@ -107,6 +108,11 @@ def test_a_short_name_never_matches_a_different_model():
     ("B300", "NVIDIA B300 SXM6 AC"),             # RunPod catalog ID
     ("B300 SXM", "B300 SXM6 AC"),
     ("B300 AC", "B300 SXM6 AC"),
+    ("B300", "B300 SXM6 PC"),
+    ("B300 PC", "B300 SXM6 PC"),
+    ("T4", "T4 Tensor Core GPU"),
+    ("NVIDIA T4 Tensor Core GPU", "Tesla T4"),
+    ("T4", "NVIDIA T4 TensorCore GPU"),
     ("RTX 4000 Ada", "RTX 4000 SFF Ada Generation"),
     ("RTX A6000", "A6000"),
     ("L40", "L40"),
@@ -122,6 +128,11 @@ def test_edition_and_form_words_are_optional(name, model):
     ("V100 32GB", "Tesla V100SXM216GB"),
     ("RTX PRO 6000 Server", "RTX PRO 6000 WS"),
     ("B300 AC", "B300"),
+    ("B300 PC", "B300"),
+    ("B300 PC", "B300 SXM6 AC"),
+    ("B300 AC", "B300 SXM6 PC"),
+    ("T4", "T400"),
+    ("T4", "NVIDIA T4G Tensor Core GPU"),
 ])
 def test_a_form_word_the_user_gives_must_be_in_the_offer(name, model):
     assert not gpu_matches(model, [name])
@@ -166,11 +177,13 @@ def test_no_gpu_flags_remove_nothing():
 
 
 @pytest.mark.parametrize("exclude", [False, True])
-def test_b300_filter_handles_the_sxm6_ac_suffix_in_both_flags(exclude):
-    offers = [make_offer("b300", gpu_model="B300 SXM6 AC"), make_offer("b200", gpu_model="B200")]
-    opts = PlanOptions(exclude_gpu=("B300",)) if exclude else PlanOptions(gpu=("B300",))
+@pytest.mark.parametrize(("name", "model"), [("B300", "B300 SXM6 AC"), ("B300", "B300 SXM6 PC"),
+                                           ("T4", "T4 Tensor Core GPU")])
+def test_gpu_filters_handle_marketplace_names_in_both_flags(exclude, name, model):
+    offers = [make_offer("matched", gpu_model=model), make_offer("b200", gpu_model="B200")]
+    opts = PlanOptions(exclude_gpu=(name,)) if exclude else PlanOptions(gpu=(name,))
     kept = apply_filter_chain(offers, REQ, opts).kept
-    assert [offer.offer_id for offer in kept] == (["b200"] if exclude else ["b300"])
+    assert [offer.offer_id for offer in kept] == (["b200"] if exclude else ["matched"])
 
 
 # --- plan end to end -------------------------------------------------------
