@@ -204,7 +204,7 @@ The `public` value would open the marketplace's mapped port over plain HTTP. It 
 | 4 | Missing or rejected credentials |
 | 5 | Quote incomplete, or the cap can't cover setup and 10 minutes of use |
 | 6 | Bootstrap, speed check or health check failed, the start deadline passed, SSH did not answer in time, or the run was stopped before the engine was ready |
-| 7 | Cleanup pending, or billing stop not confirmed, including Ctrl-C before the endpoint exists |
+| 7 | Cleanup pending, or billing stop not confirmed, including Ctrl-C during `up` before the endpoint passes health checks |
 | 8 | Cap reached, and the watchdog destroyed the run |
 | 9 | The marketplace rejected the workload. ablit cleans up and doesn't retry elsewhere. |
 

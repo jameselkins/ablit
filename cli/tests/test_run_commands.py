@@ -1072,9 +1072,12 @@ def test_cleanup_errors_redact_keys_before_printing_and_saving(monkeypatch, caps
 
 
 @pytest.mark.parametrize("stubborn", [False, True])
-def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billing_on_interrupt(monkeypatch, capsys, stubborn):
+@pytest.mark.parametrize("interrupt_during_health", [False, True])
+def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billing_on_interrupt(monkeypatch, capsys, stubborn, interrupt_during_health):
     store = RunStore()
     r = saved_run(store)
+    r["state"] = "creating"
+    store.save(r)
     keys.secret_set(r["run_id"], "invented-endpoint-key")
     keys.secret_set("watchdog/" + r["run_id"], "invented-scoped-token")
     from ablit.backends import Creds
@@ -1110,14 +1113,20 @@ def test_up_monitor_starts_bootstrap_checks_health_opens_tunnel_and_keeps_billin
         store.save(record)
     monkeypatch.setattr(monitor_mod, "SSH", Remote)
     monkeypatch.setattr(monitor_mod, "refresh", refreshed)
-    monkeypatch.setattr(monitor_mod.engines, "health", lambda *args: events.append("health"))
+    def health(*args):
+        events.append("health")
+        if interrupt_during_health:
+            raise KeyboardInterrupt
+    monkeypatch.setattr(monitor_mod.engines, "health", health)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: pytest.fail("an explicit interrupt leaves billing running"))
     def interrupt(seconds): raise KeyboardInterrupt
     monkeypatch.setattr(monitor_mod.time, "sleep", interrupt)
-    assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == 0
+    assert monitor_mod.monitor(store, r, None, Creds("invented-account-key"), want_ready=True) == (7 if interrupt_during_health else 0)
     assert events == ["tools", "upload", "start", "tunnel", "health", "tunnel-closed"] + (["tunnel-killed"] if stubborn else [])
     out = capsys.readouterr().out
-    assert "Endpoint: http://127.0.0.1:18001/v1" in out and "Billing continues" in out
-    assert store.load(r["run_id"])["state"] == "running"
+    assert ("Endpoint: http://127.0.0.1:18001/v1" in out) == (not interrupt_during_health)
+    assert "Billing continues" in out
+    assert store.load(r["run_id"])["state"] == ("creating" if interrupt_during_health else "running")
     assert "local_port" not in store.load(r["run_id"])
 
 

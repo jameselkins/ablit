@@ -79,6 +79,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
     """Poll while up, status --watch or tunnel remains attached."""
     run_id = record["run_id"]
     tunnel = None
+    endpoint_ready = False
     tunnel_id = uuid.uuid4().hex
     uploaded = False
     stage = None
@@ -236,6 +237,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     engines.health(f"http://127.0.0.1:{port}", key, record["model_id"])
                     record.update(state="running", local_port=port, local_tunnel_id=tunnel_id)
                     store.save(record)
+                    endpoint_ready = True
                     endpoint(record)
                     if record.get("report_requested"):
                         from ablit.runs.store import atomic_json
@@ -258,8 +260,8 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                     raise RunError(f"The SSH tunnel closed with exit code {tunnel_exit}.")
     except KeyboardInterrupt:
         print(f"Billing continues. Run `ablit down {run_id}` to stop it.")
-        # Leaving before there is an endpoint is not a success. Billing is not confirmed stopped.
-        return 7 if want_ready and tunnel is None else 0
+        # An open tunnel alone does not confirm that the endpoint passed its health checks.
+        return 7 if want_ready and not endpoint_ready else 0
     # Leaving this loop ends the local cap check while the machine keeps billing, so any error
     # destroys the run. That covers keyring errors and bugs, such as an AttributeError on a reply
     # with a shape nobody expected.
