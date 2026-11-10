@@ -22,6 +22,8 @@ Setup tests the key before offering to save it, and failure messages redact the 
 
 `plan` requires the installed engine lock to match the entry's `engine_lock` name. A missing or mismatched lock exits 2 before marketplace searches, so another image's hardware requirements cannot be used for the quote. A matching lock can still be planned when its image digest is not yet pinned.
 
+Invalid YAML, an empty engine lock or a lock without a matching name is also refused. `catalog show` can still display the entry's profile and notes when the engine lock is unavailable.
+
 When you omit a run ID, `status`, `logs`, `tunnel` and `down` use the only active run. If all runs have stopped, they use the run with the latest start time. When several runs are active, ablit asks you to name a run ID.
 
 `ablit up` stays running after it prints the endpoint, because it keeps the SSH tunnel open and checks spending. Scripts should keep the process running and poll `ablit status --json` for `state: "running"` and `local_port`. Interrupting `up` closes the tunnel and stops the local check, and billing continues until the machine is destroyed. The monitor removes its saved `local_port` after closing the tunnel. If another monitor has opened a newer tunnel, its endpoint stays in the record.

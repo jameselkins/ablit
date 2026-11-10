@@ -23,8 +23,13 @@ def engine_lock(entry) -> dict:
     root = repo_root()
     if root is None:
         raise ValueError("The engine files were not found next to this package. Reinstall ablit.")
-    lock = yaml.safe_load((root / "engines" / entry.profile.engine / "lock.yaml").read_text())
-    if lock["name"] != entry.profile.engine_lock:
+    try:
+        lock = yaml.safe_load((root / "engines" / entry.profile.engine / "lock.yaml").read_text(encoding="utf-8"))
+    except yaml.YAMLError as error:
+        raise ValueError("The engine lock is not valid YAML.") from error
+    if not isinstance(lock, dict):
+        raise ValueError("The engine lock must hold a YAML mapping.")
+    if lock.get("name") != entry.profile.engine_lock:
         raise ValueError("The entry and image lock disagree.")
     return lock
 

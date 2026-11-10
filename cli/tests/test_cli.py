@@ -121,6 +121,30 @@ def test_plan_requires_the_entrys_engine_lock_before_searching(capsys, tmp_path,
     assert "engine lock" in captured.err.lower() or "image lock" in captured.err.lower()
 
 
+@pytest.mark.parametrize("text", ["", "[]", "a scalar", "{}", "name: ["])
+@pytest.mark.parametrize("command", ["plan", "show"])
+def test_unreadable_engine_lock_shapes_do_not_break_catalog_commands(capsys, tmp_path, monkeypatch, text, command):
+    model = "llama31-8b-abliterated-q4km"
+    directory = tmp_path / "engines/llamacpp"
+    directory.mkdir(parents=True)
+    (directory / "lock.yaml").write_text(text, encoding="utf-8")
+    monkeypatch.setattr("ablit.engines.repo_root", lambda: tmp_path)
+
+    class NoSearch:
+        def search(self, *args):
+            pytest.fail("an invalid engine lock must stop before searches")
+
+    argv = ["plan", model, "--json"] if command == "plan" else ["catalog", "show", model]
+    code = main(argv, backends={"vast": NoSearch()}, environ={})
+    captured = capsys.readouterr()
+    if command == "plan":
+        assert code == 2 and captured.out == ""
+        assert "engine lock is unavailable" in captured.err
+    else:
+        assert code == 0 and captured.err == ""
+        assert model in captured.out and "Required disk: unknown" in captured.out
+
+
 def test_catalog_list_reports_a_filename_mismatch_and_keeps_valid_entries(capsys, tmp_path, repo_root):
     seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
     text = seed.read_text(encoding="utf-8")
