@@ -69,6 +69,29 @@ def test_different_directories_can_hold_artifacts_with_the_same_basename():
     assert check_entry(data) == []
 
 
+@pytest.mark.parametrize("parent,child", [
+    ("part-1", "part-1/config.json"),
+    ("nested/weights", "nested/./weights//config.json"),
+])
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("unfilled", [False, True])
+def test_an_artifact_file_cannot_also_be_a_download_directory(parent, child, reverse, unfilled):
+    data = base_entry()
+    data["artifacts"][0]["path"] = parent
+    data["artifacts"].append({**data["artifacts"][0], "path": child, "repo": "other/model"})
+    if unfilled:
+        data["artifacts"][0]["bytes"] = None
+    if reverse:
+        data["artifacts"].reverse()
+    assert any("also an artifact file" in problem and parent in problem for problem in check_entry(data))
+
+
+def test_a_shared_filename_prefix_does_not_make_a_directory_conflict():
+    data = base_entry()
+    data["artifacts"].append({**data["artifacts"][0], "path": "part-10/config.json"})
+    assert check_entry(data) == []
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")], ids=["nan", "infinity", "negative-infinity"])
 @pytest.mark.parametrize("field", [
     "profile.host_ram_gb", "profile.min_download_mbps", "profile.startup_hours_estimate",

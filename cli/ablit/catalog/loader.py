@@ -100,6 +100,12 @@ def check_entry(data: dict[str, Any], schema: dict[str, Any] | None = None) -> l
         if destination in seen:
             problems.append(f"artifacts: {artifact['path']} is listed twice as a download destination")
         seen.add(destination)
+    for destination in sorted(seen):
+        for parent in destination.parents:
+            if parent in seen:
+                problems.append(
+                    f"artifacts: {str(destination)!r} needs directory {str(parent)!r}, which is also an artifact file"
+                )
 
     entry = Entry.from_dict(data)
     if all(a.bytes is not None for a in entry.artifacts):
