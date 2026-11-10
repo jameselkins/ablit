@@ -44,6 +44,40 @@ def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):
     assert "CONTRIBUTING.md" in err
 
 
+@pytest.mark.parametrize(("model", "cuda", "generations"), [
+    ("ds41-1017-xq-v3-uncensored", "13.0", "8.6, 8.9, 12.0"),
+    ("llama31-8b-abliterated-q4km", "12.8", None),
+])
+@pytest.mark.parametrize("unfilled", [False, True])
+def test_catalog_show_includes_engine_gpu_and_driver_requirements(capsys, tmp_path, repo_root, model, cuda, generations, unfilled):
+    seed = repo_root / "catalog/models" / (model + ".yaml")
+    data = yaml.safe_load(seed.read_text(encoding="utf-8"))
+    if unfilled:
+        data["artifacts"][0]["bytes"] = None
+    (tmp_path / seed.name).write_text(yaml.safe_dump(data), encoding="utf-8")
+    code, out, err = run(capsys, "catalog", "show", model, "--catalog", str(tmp_path))
+    assert code == 0, err
+    assert f"Host CUDA:    driver must support CUDA {cuda} or newer" in out
+    if generations:
+        assert f"Engine GPU generations: {generations} only" in out
+    else:
+        assert "Engine GPU generations:" not in out
+    if unfilled:
+        assert "Peak disk:    unknown" in out
+
+
+def test_catalog_show_keeps_an_entry_inspectable_when_its_engine_lock_does_not_match(capsys, tmp_path, repo_root):
+    model = "llama31-8b-abliterated-q4km"
+    seed = repo_root / "catalog/models" / (model + ".yaml")
+    data = yaml.safe_load(seed.read_text(encoding="utf-8"))
+    data["profile"]["engine_lock"] = "invented-lock"
+    (tmp_path / seed.name).write_text(yaml.safe_dump(data), encoding="utf-8")
+    code, out, err = run(capsys, "catalog", "show", model, "--catalog", str(tmp_path))
+    assert code == 0, err
+    assert "invented-lock" in out
+    assert "Host CUDA:" not in out and "Engine GPU generations:" not in out
+
+
 def test_catalog_list_reports_a_filename_mismatch_and_keeps_valid_entries(capsys, tmp_path, repo_root):
     seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
     text = seed.read_text(encoding="utf-8")

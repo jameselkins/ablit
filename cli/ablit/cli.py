@@ -23,6 +23,7 @@ from ablit.catalog import (
 from ablit.backends import Backend, default_backends
 from ablit.catalog.models import Entry
 from ablit.catalog.staging import StagingError, compute_staging
+from ablit.engines import engine_lock
 from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
 from ablit.plan import UnknownBackend, gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
@@ -210,6 +211,15 @@ def _describe(entry: Entry) -> str:
     ]
     if gpu.compute_capability_min is not None:
         lines.append(f"Compute capability: {gpu.compute_capability_min:g} or higher")
+    try:
+        lock = engine_lock(entry)
+    except (OSError, ValueError):
+        lock = {}
+    if lock.get("cuda_architectures"):
+        generations = ", ".join(f"{int(value) / 10:.1f}" for value in sorted(lock["cuda_architectures"]))
+        lines.append(f"Engine GPU generations: {generations} only")
+    if lock.get("cuda_version_min") is not None:
+        lines.append(f"Host CUDA:    driver must support CUDA {lock['cuda_version_min']:.1f} or newer")
     lines.append(f"Host RAM:     at least {p.host_ram_gb:g} GB"
                  + (f" ({p.host_ram_gb_recommended:g} GB recommended)" if p.host_ram_gb_recommended else ""))
     try:

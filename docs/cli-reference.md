@@ -14,7 +14,7 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 | `ablit logs [run] --saved` | Reads the local copy of the logs that ablit was able to save after a failure. The copy includes all saved stages and needs no marketplace key. |
 | `ablit tunnel [run]` | Re-opens the SSH tunnel and checks endpoint health before printing its address. A failed check triggers cleanup, with exit 6 when cleanup succeeds or 7 when it remains pending. For other run states, explains whether to resume startup, finish cleanup or start a new rental. |
 | `ablit down [run]` | Destroys every billable resource the run created and confirms with the marketplace. Never asks for confirmation. Works even for a backend whose new launches are disabled. |
-| `ablit catalog list\|show <id>\|validate <file>` | Lists entries and their test status, explains one entry, or checks a contributor's file. |
+| `ablit catalog list\|show <id>\|validate <file>` | Lists entries and their test status, explains one entry's hardware and engine requirements, or checks a contributor's file. |
 
 Setup tests the key before offering to save it, and failure messages redact the entered key. If the key is too short to redact safely, setup omits response details.
 
@@ -47,6 +47,8 @@ The "Checked at" timestamp in plan text and rental quotes shows the UTC time the
 Each offer shows the host driver's advertised CUDA support when the marketplace reports it. JSON offers expose it as `cuda_version_max`, with `null` for an unknown value. The engine's required version is `request.cuda_version_min`.
 
 In JSON plans, `request.cuda_architectures` lists the GPU generations supported by the engine image. Values are compute capability times ten, e.g. `86` for 8.6. A `null` value means the image sets no generation list. Each offer's `compute_capability` uses the usual decimal value, such as `8.6`, or `null` when unknown.
+
+`catalog show` also lists the engine image's supported GPU generations and minimum host CUDA support when the entry names a matching engine lock. The host CUDA requirement refers to what the host driver supports. The GPU must meet both the profile's compute-capability floor and the image's generation list.
 
 ## Flags for plan and up
 
