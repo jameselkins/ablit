@@ -386,6 +386,8 @@ class CloreBackend(RentalBackend):
         if isinstance(code, bool) or not isinstance(code, int):
             code = None
         if status in (401, 403) or code == 3:
+            if creds is None:
+                raise RequestRejected(self.name, status, "the anonymous request was refused. No API key was sent.")
             raise CredentialsRejected(self.name, status, "the API key was refused")
         if code is not None and code != 0:
             error = data.get("error")

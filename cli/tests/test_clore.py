@@ -266,9 +266,23 @@ def test_search_without_a_key_sends_no_key_and_a_key_goes_in_the_auth_header(dri
     assert first.headers["user-agent"].startswith("ablit/")
 
 
-def test_a_rejected_key_on_search_is_a_credential_error(driver):
+@pytest.mark.parametrize("status,body", [(401, {"code": 3}), (403, None), (200, {"code": 3})])
+def test_an_anonymous_search_refusal_does_not_claim_a_key_was_rejected(driver, status, body):
     with respx.mock as router:
-        router.get(MARKET).respond(401, json={"code": 3})
+        route = router.get(MARKET).respond(status, json=body)
+        with pytest.raises(RequestRejected) as error:
+            driver.search(REQ, None, OPTS)
+    assert type(error.value) is RequestRejected
+    assert error.value.status == status
+    assert "anonymous request was refused" in str(error.value)
+    assert "No API key was sent" in str(error.value)
+    assert route.call_count == 1 and "auth" not in route.calls[0].request.headers
+
+
+@pytest.mark.parametrize("status,body", [(401, {"code": 3}), (403, None), (200, {"code": 3})])
+def test_a_rejected_key_on_search_is_a_credential_error(driver, status, body):
+    with respx.mock as router:
+        router.get(MARKET).respond(status, json=body)
         with pytest.raises(CredentialsRejected):
             driver.search(REQ, KEY, OPTS)
 
@@ -397,6 +411,27 @@ def test_a_huge_clore_cuda_version_does_not_stop_other_marketplace_results(capsy
     clore = next(report for report in data["backends"] if report["name"] == "clore")
     assert clore["status"] == "failed" and "outside the supported numeric range" in clore["reason"]
     assert version not in out
+
+
+@pytest.mark.parametrize("json_output", [False, True])
+def test_plan_reports_an_anonymous_clore_refusal_and_keeps_other_results(capsys, json_output):
+    from ablit.backends.vast import VastBackend
+    from market_fixtures import VAST_URL, FakeVast, vast_row
+
+    with respx.mock as router:
+        router.get(MARKET).respond(401, json={"code": 3})
+        router.post(VAST_URL).mock(side_effect=FakeVast([vast_row(7101)]))
+        flags = ["--json"] if json_output else []
+        code = main(["plan", "llama31-8b-abliterated-q4km", "--backends", "clore,vast", *flags],
+                    backends={"clore": CloreBackend(httpx.Client()), "vast": VastBackend(httpx.Client())}, environ={})
+    out = capsys.readouterr().out
+    assert code == 0 and "No API key was sent" in out and "the API key was refused" not in out
+    if json_output:
+        report = json.loads(out)
+        assert report["complete"] is False and report["chosen"]["backend"] == "vast"
+        assert next(row for row in report["backends"] if row["name"] == "clore")["status"] == "failed"
+    else:
+        assert "Chosen offer" in out and "The comparison did not include clore" in out
 
 
 def test_plan_with_clore_only_prices_the_offer_with_fee_and_creation_fee(capsys):
