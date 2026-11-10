@@ -44,6 +44,21 @@ def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):
     assert "CONTRIBUTING.md" in err
 
 
+@pytest.mark.parametrize("field", ["display_name", "notes"])
+def test_catalog_show_removes_terminal_controls_from_entry_text(capsys, tmp_path, repo_root, field):
+    model = "llama31-8b-abliterated-q4km"
+    seed = repo_root / "catalog/models" / (model + ".yaml")
+    data = yaml.safe_load(seed.read_text(encoding="utf-8"))
+    text = "Invented modèle\x1b[2J\x1b]52;c;aW52ZW50ZWQ=\x07\x9b31m"
+    data[field] = [text] if field == "notes" else text
+    (tmp_path / seed.name).write_text(yaml.safe_dump(data), encoding="utf-8")
+    code, out, err = run(capsys, "catalog", "show", model, "--catalog", str(tmp_path))
+    assert code == 0 and err == ""
+    assert "Invented modèle" in out
+    assert not any(control in out for control in ("\x1b", "\x07", "\x9b"))
+    assert "Source repo:" in out and "Sources:\n" in out
+
+
 @pytest.mark.parametrize(("model", "allowance", "displayed"), [
     ("llama31-8b-abliterated-q4km", 10.0, "15.0"),
     ("ds41-1017-xq-v3-uncensored", 232.0, "603.8"),

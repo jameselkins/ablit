@@ -252,7 +252,7 @@ def _describe(entry: Entry) -> str:
     lines += ["", "Sources:"]
     for item in entry.sources:
         lines.append(f"  - {item if isinstance(item, str) else item['url']}")
-    return "\n".join(lines)
+    return strip_control("\n".join(lines))
 
 
 def _cmd_catalog_show(args: argparse.Namespace) -> int:

@@ -20,6 +20,8 @@ Setup tests the key before offering to save it, and failure messages redact the 
 
 `catalog show` lists the full disk requirement used to filter offers, including the engine image and the engine lock's temporary disk allowances. The displayed minimum rounds up to the next tenth of a GB. It is unknown when artifact sizes are missing or the engine lock cannot be matched.
 
+`catalog show` removes terminal control characters from the entry text it displays, including names and notes. Tabs and newlines are preserved, and the catalog file is unchanged.
+
 `plan` requires the installed engine lock to match the entry's `engine_lock` name. A missing or mismatched lock exits 2 before marketplace searches, so another image's hardware requirements cannot be used for the quote. A matching lock can still be planned when its image digest is not yet pinned.
 
 Invalid YAML, an empty engine lock or a lock without a matching name is also refused. `catalog show` can still display the entry's profile and notes when the engine lock is unavailable.
