@@ -64,6 +64,20 @@ def test_total_vram_floor():
     assert [o.offer_id for o in apply_filter_chain([small, big], req, OPTS).kept] == ["big"]
 
 
+def test_advertised_cuda_support_must_meet_the_engine_requirement():
+    req = dataclasses.replace(REQ, cuda_version_min=13.0)
+    offers = [make_offer("old", cuda_version_max=12.8), make_offer("exact", cuda_version_max=13.0),
+              make_offer("new", cuda_version_max=13.1), make_offer("unknown", cuda_version_max=None)]
+    result = apply_filter_chain(offers, req, OPTS)
+    assert [o.offer_id for o in result.kept] == ["exact", "new", "unknown"]
+    assert result.steps[0].reasons == {"host CUDA support below the engine requirement": 1}
+
+
+def test_cuda_support_does_not_add_a_requirement_when_the_engine_has_none():
+    offers = [make_offer("old", cuda_version_max=11.0), make_offer("unknown", cuda_version_max=None)]
+    assert apply_filter_chain(offers, REQ, OPTS).kept == offers
+
+
 def test_gpu_count_must_match_exactly():
     req = dataclasses.replace(REQ, gpu_count=8, vram_gb_each=80)
     seven = make_offer("seven", gpu_count=7, gpu_vram_gb_each=80)

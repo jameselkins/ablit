@@ -41,6 +41,9 @@ def engine_floor(req: HardwareRequest) -> Check:
                 return "compute capability unknown"
             if round(offer.compute_capability * 10) not in req.cuda_architectures:
                 return "GPU generation is not in the engine image"
+        if (req.cuda_version_min is not None and offer.cuda_version_max is not None
+                and offer.cuda_version_max < req.cuda_version_min):
+            return "host CUDA support below the engine requirement"
         if offer.host_ram_gb < req.host_ram_gb:
             return "not enough host RAM"
         if offer.os != req.os:

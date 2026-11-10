@@ -75,6 +75,19 @@ def test_text_output_removes_terminal_controls_from_marketplace_gpu_names(capsys
     assert not any(control in out + err for control in ("\x1b", "\x07", "\x9b"))
 
 
+def test_plan_drops_a_cheap_offer_that_advertises_insufficient_cuda_support(capsys):
+    fake = FakeVast([
+        vast_row(9101, base=0.1, allocated=ALLOCATED, cuda_max_good=12.0),
+        vast_row(9102, base=0.8, allocated=ALLOCATED, cuda_max_good=12.8),
+    ])
+    code, out, err = run_plan(capsys, "--json", vast=fake, runpod=FakeRunPod([]))
+    assert code == 0, err
+    report = json.loads(out)
+    assert report["chosen"]["offer_id"] == "9102"
+    assert report["filter_steps"][0]["reasons"] == {"host CUDA support below the engine requirement": 1}
+    assert fake.bodies[0]["cuda_max_good"] == {"gte": 12.8}
+
+
 def test_text_report_has_every_part(capsys):
     code, out, err = run_plan(capsys, "--hours", "3", "--max-spend", "20",
                               vast=FakeVast(vast_rows()), runpod=FakeRunPod(runpod_types()))
