@@ -126,6 +126,7 @@ def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, 
     assert "index.json" in files and "llama31-8b-abliterated-q4km.json" in files
     index = json.loads((out / "index.json").read_text())
     assert len(index) == 9
+    assert all(row["complete"] for row in index.values())
     plan = json.loads((out / "llama31-8b-abliterated-q4km.json").read_text())
     assert plan["schema"] == 1
     assert {row["name"] for row in plan["backends"] if row["status"] == "ok"} == {"clore", "lium", "runpod", "vast"}
@@ -133,3 +134,36 @@ def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, 
     assert {entry["host"] for entry in log} == {"console.vast.ai", "api.runpod.io", "api.clore.ai", "lium.io"}
     assert {entry["method"] for entry in log} == {"GET", "POST"}
     assert not any(key in headers for headers in seen_headers for key in ("authorization", "auth", "x-api-key"))
+
+
+@pytest.mark.parametrize("code,text,complete", [
+    (0, '{"complete": true}', True),
+    (3, '{"complete": true}', True),
+    (0, '{"complete": false}', False),
+    (3, '{"complete": false}', False),
+    (2, '', False),
+    (0, 'invalid JSON', False),
+])
+def test_smoke_check_reports_incomplete_plans_and_finishes_saving_results(tmp_path, monkeypatch, capsys, code, text, complete):
+    from types import SimpleNamespace
+
+    entries = [SimpleNamespace(id="first-model"), SimpleNamespace(id="second-model")]
+    monkeypatch.setattr(live_plan, "load_catalog", lambda: SimpleNamespace(entries=entries))
+
+    def plan(argv, **kwargs):
+        assert kwargs["environ"] == {}
+        if argv[1] == "first-model":
+            print(text, end="")
+            return code
+        print('{"complete": true}')
+        return 0
+
+    monkeypatch.setattr(live_plan, "main", plan)
+    output = tmp_path / "live"
+    assert live_plan.cli([str(output)]) == (0 if complete else 1)
+    index = json.loads((output / "index.json").read_text())
+    assert index["first-model"] == {"exit_code": code, "bytes": len(text), "complete": complete}
+    assert index["second-model"]["complete"] is True
+    assert (output / "first-model.json").read_text() == text
+    assert json.loads((output / "second-model.json").read_text())["complete"] is True
+    assert f"{0 if complete else 1} incomplete or failed plans" in capsys.readouterr().err

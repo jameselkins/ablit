@@ -19,6 +19,10 @@ OUTPUT_DIR receives one JSON file per entry (the raw output of `ablit plan
 one line per request (method, host, path, status, time and size, with no
 bodies). The script refuses to write inside this repository, because marketplace
 price data must not be published.
+
+The index also records whether each comparison completed. The tool saves every
+result, then exits 1 if any comparison was incomplete or failed to produce a
+valid report. A complete search with no qualifying offers is not a smoke failure.
 """
 
 from __future__ import annotations
@@ -129,11 +133,20 @@ def run(output_dir: Path, hours: float) -> int:
             code = main(["plan", entry.id, "--json", "--hours", f"{hours:g}"], backends=backends, environ={})
         text = buffer.getvalue()
         (output_dir / f"{entry.id}.json").write_text(text, encoding="utf-8")
-        index[entry.id] = {"exit_code": code, "bytes": len(text)}
-        print(f"{entry.id}: exit {code}", file=sys.stderr)
+        try:
+            report = json.loads(text)
+        except ValueError:
+            report = None
+        # Plan exits 3 when a complete search finds no qualifying offer.
+        complete = code in (0, 3) and isinstance(report, dict) and report.get("complete") is True
+        index[entry.id] = {"exit_code": code, "bytes": len(text), "complete": complete}
+        state = "complete" if complete else "incomplete or failed"
+        print(f"{entry.id}: exit {code}, comparison {state}", file=sys.stderr)
     (output_dir / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     print(f"{transport.count} requests, log in {log_path}", file=sys.stderr)
-    return 0
+    failures = sum(not row["complete"] for row in index.values())
+    print(f"{failures} incomplete or failed plans", file=sys.stderr)
+    return 1 if failures else 0
 
 
 def cli(argv: list[str] | None = None) -> int:
