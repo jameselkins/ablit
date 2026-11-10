@@ -51,6 +51,8 @@ During an outage, `up` and `tunnel` count API calls, retry waits and polling del
 
 While marketplace checks fail, the monitor still updates estimated spending from known prices and elapsed time. If the local cap check requires a stop, it attempts cleanup immediately instead of waiting for the outage limit.
 
+The monitor saves each outage estimate even when the run remains below its cap. Later checks and saved status retain the highest estimate across polls, including after an interruption or a backward clock change.
+
 The spending estimate keeps the largest value seen across local estimates, watchdog totals and reported marketplace totals in USD. Marketplace totals are saved as `reported_spend_usd`, so later missing or lower reports do not erase spending evidence. The totals are compared rather than added to avoid counting charges twice. Clore's reported `spend` excludes its creation fee, so the driver adds `creation_fee` before returning a total. Lium's `spend_to_date` is billed USD and can lag until the next five-minute billing update. The field definitions are in the [Clore API reference](https://docs.clore.ai/for-hosts/api) and [Lium API schema](https://lium.io/api/openapi.json).
 
 A lower hourly rate, restarted watchdog counter or backward clock change cannot reduce a saved spending estimate. The estimate can therefore remain above a later calculation at a lower rate.

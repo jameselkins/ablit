@@ -124,6 +124,7 @@ def monitor(store, record, driver, creds, *, want_ready=False):
                         store.save(record)
                         code = down(store, record, driver, creds)
                         return code or (8 if record["stop_reason"] == "watchdog_cap" else 6)
+                    store.save(record)
                     # A short network or marketplace outage should not end a paid
                     # run. The watchdog on the box keeps counting meanwhile. After
                     # five minutes without an answer, stop the run.

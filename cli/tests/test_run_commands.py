@@ -1407,6 +1407,38 @@ def test_a_short_marketplace_outage_does_not_end_the_run(monkeypatch, capsys):
     assert len(calls) == 2 and "marketplace check failed (ConnectError" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("want_ready", [False, True])
+@pytest.mark.parametrize("previous,expected", [(0.0, 1.0), (2.0, 2.0)])
+def test_monitor_saves_outage_spending_below_the_cap(monkeypatch, want_ready, previous, expected):
+    from ablit.backends import Creds
+
+    store = RunStore()
+    record = saved_run(store)
+    record.update(started_at=0.0, cap_usd=5.0, spend_estimate_usd=previous,
+                  transfer_estimate_usd=0.0, observed_hourly_rate=2.0)
+    record["offer"].update(hourly_all_in=1.0, bandwidth_cost_per_gb=0.0, fixed_fees=0.0)
+    store.save(record)
+    clock = [1800.0]
+    saved_estimates = []
+
+    def refreshed(*args):
+        raise httpx.ReadTimeout("invented outage")
+
+    def sleep(seconds):
+        saved_estimates.append(store.load(record["run_id"])["spend_estimate_usd"])
+        if len(saved_estimates) == 2:
+            raise KeyboardInterrupt
+        clock[0] = 900.0  # A backward clock change must not erase the first estimate.
+
+    monkeypatch.setattr(monitor_mod, "refresh", refreshed)
+    monkeypatch.setattr(monitor_mod.time, "time", lambda: clock[0])
+    monkeypatch.setattr(monitor_mod.time, "sleep", sleep)
+    monkeypatch.setattr(monitor_mod, "down", lambda *args: pytest.fail("the cap still covers this run"))
+    assert monitor_mod.monitor(store, record, None, Creds("invented-account-key"), want_ready=want_ready) == (7 if want_ready else 0)
+    assert saved_estimates == [expected, expected]
+    assert store.load(record["run_id"])["spend_estimate_usd"] == pytest.approx(expected)
+
+
 @pytest.mark.parametrize("cleanup_code", [0, 7])
 @pytest.mark.parametrize("marketplace_state", [None, "running"])
 @pytest.mark.parametrize(("observed_rate", "transfer", "fixed", "cap", "estimate"), [
