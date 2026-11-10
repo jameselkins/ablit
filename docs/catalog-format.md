@@ -61,6 +61,8 @@ notes: []                          # where each figure came from
 
 Numeric fields must be finite. Validation rejects YAML `.nan`, `.inf` and `-.inf` values and reports the affected field before the entry can be used for hardware checks or cost estimates.
 
+Each artifact needs a distinct download destination, even when artifacts come from different repositories or revisions. All downloads share the model directory. Validation treats equivalent paths such as `weights/model.gguf` and `weights/./model.gguf` as the same destination and rejects duplicates before launch.
+
 When computing peak disk, every input selected by a join or extraction must already be downloaded and still present. A step that deletes its inputs makes them unavailable to later transforms until another download restores them. An invalid order is rejected instead of producing a disk estimate.
 
 ## Status and launch rules

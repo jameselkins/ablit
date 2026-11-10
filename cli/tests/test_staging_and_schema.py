@@ -50,6 +50,25 @@ def test_base_entry_is_valid():
     assert check_entry(base_entry()) == []
 
 
+@pytest.mark.parametrize("source", [{}, {"repo": "other/model"}, {"revision": "d" * 40}])
+@pytest.mark.parametrize("path", ["part-1", "./part-1", ".//part-1"])
+@pytest.mark.parametrize("unfilled", [False, True])
+def test_artifacts_must_have_distinct_download_destinations(source, path, unfilled):
+    data = base_entry()
+    duplicate = {**data["artifacts"][0], **source, "path": path}
+    if unfilled:
+        duplicate["bytes"] = None
+    data["artifacts"].append(duplicate)
+    problems = check_entry(data)
+    assert any("download destination" in problem and path in problem for problem in problems)
+
+
+def test_different_directories_can_hold_artifacts_with_the_same_basename():
+    data = base_entry()
+    data["artifacts"].append({**data["artifacts"][0], "path": "draft/part-1", "repo": "other/model"})
+    assert check_entry(data) == []
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")], ids=["nan", "infinity", "negative-infinity"])
 @pytest.mark.parametrize("field", [
     "profile.host_ram_gb", "profile.min_download_mbps", "profile.startup_hours_estimate",

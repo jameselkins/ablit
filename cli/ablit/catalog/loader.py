@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import yaml
@@ -92,16 +92,14 @@ def check_entry(data: dict[str, Any], schema: dict[str, Any] | None = None) -> l
     for path in sources.uncovered_numbers(data):
         problems.append(f"{path} has no source (add it to `covers` in a sources entry)")
 
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[PurePosixPath] = set()
     for artifact in data["artifacts"]:
-        key = (
-            artifact.get("repo") or data["source"]["repo"],
-            artifact.get("revision") or data["source"]["revision"],
-            artifact["path"],
-        )
-        if key in seen:
-            problems.append(f"artifacts: {key[2]} is listed twice for {key[0]}")
-        seen.add(key)
+        # Every repo downloads into the same model directory. Normalize dots and
+        # repeated slashes so alternate spellings cannot share a destination.
+        destination = PurePosixPath(artifact["path"])
+        if destination in seen:
+            problems.append(f"artifacts: {artifact['path']} is listed twice as a download destination")
+        seen.add(destination)
 
     entry = Entry.from_dict(data)
     if all(a.bytes is not None for a in entry.artifacts):
