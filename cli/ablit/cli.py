@@ -222,14 +222,20 @@ def _describe(entry: Entry) -> str:
         lines.append(f"Host CUDA:    driver must support CUDA {lock['cuda_version_min']:.1f} or newer")
     lines.append(f"Host RAM:     at least {p.host_ram_gb:g} GB"
                  + (f" ({p.host_ram_gb_recommended:g} GB recommended)" if p.host_ram_gb_recommended else ""))
+    required_disk = "unknown"
     try:
         report = compute_staging(entry)
         download, peak = _size_text(report.download_gb), _size_text(report.peak_gb)
+        if lock:
+            minimum = request_from_entry(entry).disk_gb
+            required_disk = (f"at least {math.ceil(minimum * 10) / 10:.1f} GB "
+                             "(including the engine image and temporary disk allowances)")
     except StagingError:
         download = peak = _size_text(None)
     lines += [
         f"Download:     {download}",
         f"Peak disk:    {peak} (computed from the staging steps, before the engine image)",
+        f"Required disk: {required_disk}",
         f"Random-read storage required: {'yes' if p.storage.random_read_required else 'no'}",
         f"Context:      {p.context_tokens} tokens, {p.concurrency} request at a time, port {p.port}",
         f"Startup estimate: {p.startup_hours_estimate:g} hours after the download (an estimate)",

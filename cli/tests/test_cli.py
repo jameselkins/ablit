@@ -44,6 +44,24 @@ def test_catalog_show_unknown_model_exits_3_with_a_link(capsys):
     assert "CONTRIBUTING.md" in err
 
 
+@pytest.mark.parametrize(("model", "allowance", "displayed"), [
+    ("llama31-8b-abliterated-q4km", 10.0, "15.0"),
+    ("ds41-1017-xq-v3-uncensored", 232.0, "603.8"),
+])
+def test_catalog_show_includes_the_full_planner_disk_floor(capsys, model, allowance, displayed):
+    from ablit.catalog import load_catalog, resolve
+    from ablit.catalog.staging import compute_staging
+    from ablit.select.request import request_from_entry
+
+    entry = resolve(load_catalog().entries, model)
+    minimum = compute_staging(entry).peak_gb + allowance
+    assert request_from_entry(entry).disk_gb == pytest.approx(minimum)
+    code, out, err = run(capsys, "catalog", "show", model)
+    assert code == 0, err
+    assert minimum <= float(displayed) < minimum + 0.1
+    assert f"Required disk: at least {displayed} GB (including the engine image and temporary disk allowances)" in out
+
+
 @pytest.mark.parametrize(("model", "cuda", "generations"), [
     ("ds41-1017-xq-v3-uncensored", "13.0", "8.6, 8.9, 12.0"),
     ("llama31-8b-abliterated-q4km", "12.8", None),
@@ -64,6 +82,7 @@ def test_catalog_show_includes_engine_gpu_and_driver_requirements(capsys, tmp_pa
         assert "Engine GPU generations:" not in out
     if unfilled:
         assert "Peak disk:    unknown" in out
+        assert "Required disk: unknown" in out
 
 
 def test_catalog_show_keeps_an_entry_inspectable_when_its_engine_lock_does_not_match(capsys, tmp_path, repo_root):
@@ -76,6 +95,7 @@ def test_catalog_show_keeps_an_entry_inspectable_when_its_engine_lock_does_not_m
     assert code == 0, err
     assert "invented-lock" in out
     assert "Host CUDA:" not in out and "Engine GPU generations:" not in out
+    assert "Required disk: unknown" in out
 
 
 def test_catalog_list_reports_a_filename_mismatch_and_keeps_valid_entries(capsys, tmp_path, repo_root):
