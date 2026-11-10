@@ -106,6 +106,16 @@ def check_entry(data: dict[str, Any], schema: dict[str, Any] | None = None) -> l
                 problems.append(
                     f"artifacts: {str(destination)!r} needs directory {str(parent)!r}, which is also an artifact file"
                 )
+    directories = {parent for destination in seen for parent in destination.parents}
+    for destination in sorted(seen):
+        for suffix in (".part", ".part.state"):
+            working = PurePosixPath(str(destination) + suffix)
+            if (working in seen or working in directories
+                    or any(parent in seen for parent in working.parents)):
+                problems.append(
+                    f"artifacts: download working path {str(working)!r} for {str(destination)!r} "
+                    "conflicts with an artifact file or directory"
+                )
 
     entry = Entry.from_dict(data)
     if all(a.bytes is not None for a in entry.artifacts):

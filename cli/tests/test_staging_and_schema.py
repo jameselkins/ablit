@@ -92,6 +92,29 @@ def test_a_shared_filename_prefix_does_not_make_a_directory_conflict():
     assert check_entry(data) == []
 
 
+@pytest.mark.parametrize("path", [
+    "part-1.part", "./part-1.part.state",
+    "part-1.part/config.json", "part-1.part.state/config.json",
+])
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("unfilled", [False, True])
+def test_artifacts_cannot_overlap_download_working_paths(path, reverse, unfilled):
+    data = base_entry()
+    data["artifacts"].append({**data["artifacts"][0], "path": path, "repo": "other/model"})
+    if unfilled:
+        data["artifacts"][0]["bytes"] = None
+    if reverse:
+        data["artifacts"].reverse()
+    assert any("download working path" in problem for problem in check_entry(data))
+
+
+def test_download_working_suffixes_are_allowed_without_a_path_conflict():
+    data = base_entry()
+    for path in ("separate.part", "separate.part.state", "part-1.partial/config.json"):
+        data["artifacts"].append({**data["artifacts"][0], "path": path})
+    assert check_entry(data) == []
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")], ids=["nan", "infinity", "negative-infinity"])
 @pytest.mark.parametrize("field", [
     "profile.host_ram_gb", "profile.min_download_mbps", "profile.startup_hours_estimate",

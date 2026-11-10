@@ -65,6 +65,8 @@ Each artifact needs a distinct download destination, even when artifacts come fr
 
 An artifact file cannot also be a directory needed by another artifact. For example, `weights` and `weights/config.json` conflict and are rejected in either listing order.
 
+The downloader reserves `<path>.part` and `<path>.part.state` for each artifact's partial download and resume state. Other artifacts cannot occupy those paths or require them as directories. For example, `weights.bin` conflicts with both `weights.bin.part` and `weights.bin.part/config.json`.
+
 When computing peak disk, every input selected by a join or extraction must already be downloaded and still present. A step that deletes its inputs makes them unavailable to later transforms until another download restores them. An invalid order is rejected instead of producing a disk estimate.
 
 ## Status and launch rules
