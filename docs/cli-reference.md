@@ -36,6 +36,8 @@ and labels it as saved state. It can show that record without a marketplace key.
 
 After a failed remote check, status includes `ssh_check: "unavailable"`. The next successful remote check removes the warning.
 
+Status reports `hourly_rate_usd` as the quoted all-in hourly price. `spending_hourly_rate_usd` is the rate used for local spending estimates and cap checks, which is the higher of the quoted price and the latest saved marketplace rate. The marketplace rate remains available as `observed_hourly_rate` when reported.
+
 If a marketplace check fails during `status --watch`, the command retries and includes `marketplace_check: "unavailable"` in the saved status. It estimates spending from known rates and elapsed time, and attempts cleanup when the cap requires it. A successful marketplace check clears the warning. Retry diagnostics go to standard error, so `--json` continues to print JSON on standard output. Explicit credential or workload rejections still exit with code 4 or 9.
 
 Remote stage markers must be known names. Malformed stage lists mark SSH data as unavailable, and local spending checks continue.

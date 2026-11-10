@@ -629,6 +629,38 @@ def test_status_shows_the_cleaned_remote_progress(monkeypatch, capsys):
                                               "files_done": 1, "files_total": 4, "at": 1.0}}
 
 
+@pytest.mark.parametrize("json_output", [False, True])
+@pytest.mark.parametrize(("observed", "saved_observed", "expected"), [
+    (None, None, 1.0), (0.0, None, 1.0), (0.5, None, 1.0), (2.0, None, 2.0), (None, 2.5, 2.5),
+])
+def test_status_names_the_spending_rate_and_keeps_the_quoted_rate(monkeypatch, capsys, json_output, observed, saved_observed, expected):
+    from ablit.backends.base import Observation
+
+    store = RunStore()
+    record = saved_run(store)
+    record.update(started_at=0.0, transfer_estimate_usd=0.0)
+    record["offer"].update(hourly_all_in=1.0, bandwidth_cost_per_gb=0.0, fixed_fees=0.0)
+    if saved_observed is not None:
+        record["observed_hourly_rate"] = saved_observed
+    store.save(record)
+
+    class Driver:
+        def observe(self, allocation, creds):
+            return Observation(record["started_at"], "running", hourly_rate=observed)
+
+    monkeypatch.setattr(SSH, "probe", lambda self: {})
+    monkeypatch.setattr("ablit.runs.lifecycle.time.time", lambda: 3600.0)
+    flags = ["--json"] if json_output else []
+    assert main(["status", record["run_id"], *flags], backends={"vast": Driver()},
+                environ={"VAST_API_KEY": "invented-account-key"}) == 0
+    data = json.loads(capsys.readouterr().out)
+    view = data["runs"][0] if json_output else data
+    assert view["spending_hourly_rate_usd"] == expected
+    assert view["hourly_rate_usd"] == 1.0
+    assert view["spend_estimate_usd"] == pytest.approx(expected)
+    assert store.load(record["run_id"])["offer"]["hourly_all_in"] == 1.0
+
+
 def test_clean_progress_drops_everything_it_does_not_know():
     from ablit.runs.lifecycle import clean_progress
     assert clean_progress(None) == {} and clean_progress([]) == {} and clean_progress({"download": 3}) == {}

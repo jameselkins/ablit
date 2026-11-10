@@ -94,6 +94,9 @@ def status(args, records, drivers, environ, store):
                     code = max(code, 8)
                 view = {k: v for k, v in record.items() if k not in ("entry", "quote", "offer", "local_tunnel_id")}
                 view["hourly_rate_usd"] = record["offer"]["hourly_all_in"]
+                view["spending_hourly_rate_usd"] = max(
+                    view["hourly_rate_usd"], record.get("observed_hourly_rate", 0),
+                )
                 try:
                     view["saved_log_available"] = store.saved_log_path(record["run_id"]).is_file()
                 except OSError:
