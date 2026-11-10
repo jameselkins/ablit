@@ -31,6 +31,7 @@ import argparse
 import contextlib
 import io
 import json
+import math
 import os
 import sys
 import time
@@ -159,8 +160,8 @@ def cli(argv: list[str] | None = None) -> int:
     if inside(output_dir, ROOT):
         print("live_plan: refusing to write inside the repository. Choose a directory outside it.", file=sys.stderr)
         return 2
-    if not args.hours > 0:
-        print("live_plan: --hours must be above zero", file=sys.stderr)
+    if not math.isfinite(args.hours) or not args.hours > 0:
+        print("live_plan: --hours must be a finite number above zero", file=sys.stderr)
         return 2
     return run(output_dir, args.hours)
 

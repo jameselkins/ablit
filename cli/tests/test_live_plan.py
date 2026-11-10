@@ -42,6 +42,24 @@ def test_refuses_to_run_in_ci(monkeypatch, tmp_path: Path, capsys):
     assert not (tmp_path / "out").exists()
 
 
+@pytest.mark.parametrize("hours", ["inf", "1e309", "nan", "-inf", "0", "-1"])
+def test_invalid_hours_stop_before_creating_files_or_starting_searches(tmp_path, monkeypatch, capsys, hours):
+    output = tmp_path / "live"
+    monkeypatch.setattr(live_plan, "run", lambda *args: pytest.fail("invalid hours must stop before searches"))
+    assert live_plan.cli([str(output), f"--hours={hours}"]) == 2
+    assert not output.exists()
+    assert "above zero" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("hours", ["0.25", "24"])
+def test_finite_positive_hours_reach_the_smoke_check(tmp_path, monkeypatch, hours):
+    calls = []
+    output = tmp_path / "live"
+    monkeypatch.setattr(live_plan, "run", lambda directory, duration: calls.append((directory, duration)) or 0)
+    assert live_plan.cli([str(output), f"--hours={hours}"]) == 0
+    assert calls == [(output, float(hours))]
+
+
 @pytest.fixture
 def refuse_network():
     def refuse(request):

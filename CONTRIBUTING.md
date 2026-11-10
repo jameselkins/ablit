@@ -44,6 +44,8 @@ The shell tests need Bash 3.2 or newer, including the Bash that ships with macOS
 
 For a manual live search check, run `python3 tools/live_plan.py OUTPUT_DIR` with a directory outside this repository. It saves anonymous plans for every catalog entry across Vast, RunPod, Clore and Lium, plus a request log. The index records whether each comparison completed, and the tool exits 1 after saving all results if any comparison was incomplete or failed. A complete search with no qualifying offers is allowed. The tool permits only search requests, sends no marketplace keys, and refuses to run in CI. Keep its price data outside the repository.
 
+The live check's `--hours N` sets the session length and requires a finite number above zero. Invalid durations exit 2 before creating output files or starting searches.
+
 A weekly job runs check 2 again on every entry, and it fails when an artifact has disappeared. A maintainer then sets that entry to `removed`.
 
 ## Entry status
