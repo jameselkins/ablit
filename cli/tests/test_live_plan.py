@@ -12,6 +12,9 @@ import respx
 import live_plan
 from market_fixtures import RUNPOD_URL, VAST_URL, FakeRunPod, FakeVast, runpod_type, vast_row
 
+CLORE_URL = "https://api.clore.ai/v1/marketplace"
+LIUM_URL = "https://lium.io/api/public/v1/nodes"
+
 
 @pytest.fixture(autouse=True)
 def _outside_ci(monkeypatch, request):
@@ -39,10 +42,25 @@ def test_refuses_to_run_in_ci(monkeypatch, tmp_path: Path, capsys):
     assert not (tmp_path / "out").exists()
 
 
-def test_transport_allows_only_the_two_search_endpoints_and_plain_queries(tmp_path: Path):
+@pytest.fixture
+def refuse_network():
+    def refuse(request):
+        pytest.fail("A refused request reached the network transport")
+    return httpx.MockTransport(refuse)
+
+
+def test_transport_allows_only_search_endpoints_and_plain_queries(tmp_path: Path, monkeypatch, refuse_network):
     transport = live_plan.ReadOnlyTransport(tmp_path / "requests.log")
+    monkeypatch.setattr(transport, "_inner", refuse_network)
     client = httpx.Client(transport=transport)
-    for method, url in (("GET", VAST_URL), ("POST", "https://example.com/graphql"), ("POST", "https://console.vast.ai/api/v0/instances/")):
+    for method, url in (
+        ("GET", VAST_URL), ("POST", "https://example.com/graphql"),
+        ("POST", "https://console.vast.ai/api/v0/instances/"),
+        ("POST", CLORE_URL), ("POST", LIUM_URL),
+        ("GET", "https://api.clore.ai/v1/my_orders"), ("POST", "https://api.clore.ai/v1/create_order"),
+        ("POST", "https://lium.io/api/executors/invented/rent"), ("DELETE", "https://lium.io/api/pods/invented"),
+        ("GET", CLORE_URL.replace("https:", "http:")),
+    ):
         with pytest.raises(RuntimeError, match="not an allowed search endpoint"):
             client.request(method, url, json={})
     with pytest.raises(RuntimeError, match="not a plain query"):
@@ -51,9 +69,40 @@ def test_transport_allows_only_the_two_search_endpoints_and_plain_queries(tmp_pa
         client.post(VAST_URL, json={}, headers={"Authorization": "Bearer invented-test-key"})
 
 
+@pytest.mark.parametrize(("method", "url", "body"), [
+    ("POST", VAST_URL, {}), ("POST", RUNPOD_URL, {"query": "query { gpuTypes { id } }"}),
+    ("GET", CLORE_URL, None), ("GET", LIUM_URL, None),
+])
+def test_transport_sends_and_logs_each_anonymous_search(tmp_path, monkeypatch, method, url, body):
+    log_path = tmp_path / "requests.log"
+    transport = live_plan.ReadOnlyTransport(log_path)
+    sent = []
+
+    def respond(request):
+        sent.append(request)
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(transport, "_inner", httpx.MockTransport(respond))
+    with httpx.Client(transport=transport) as client:
+        assert client.request(method, url, json=body).status_code == 200
+    assert len(sent) == transport.count == 1
+    logged = json.loads(log_path.read_text())
+    assert logged["method"] == method and logged["host"] == httpx.URL(url).host
+
+
+@pytest.mark.parametrize(("url", "header"), [(CLORE_URL, "auth"), (LIUM_URL, "X-API-Key")])
+def test_transport_rejects_provider_key_headers(tmp_path, monkeypatch, refuse_network, url, header):
+    transport = live_plan.ReadOnlyTransport(tmp_path / "requests.log")
+    monkeypatch.setattr(transport, "_inner", refuse_network)
+    with httpx.Client(transport=transport) as client:
+        with pytest.raises(RuntimeError, match="header in an anonymous run"):
+            client.get(url, headers={header: "invented-test-key"})
+
+
 def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, monkeypatch, repo_root: Path):
     monkeypatch.setattr(live_plan, "MIN_SECONDS_BETWEEN_REQUESTS", 0.0)
-    monkeypatch.setenv("VAST_API_KEY", "invented-test-key")  # must not be sent
+    for name in ("VAST_API_KEY", "RUNPOD_API_KEY", "CLORE_API_KEY", "LIUM_API_KEY"):
+        monkeypatch.setenv(name, "invented-test-key")  # must not be sent
     seen_headers = []
 
     def vast(request: httpx.Request):
@@ -63,6 +112,13 @@ def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, 
     router = respx.mock(assert_all_called=False)
     router.post(VAST_URL).mock(side_effect=vast)
     router.post(RUNPOD_URL).mock(side_effect=FakeRunPod([runpod_type("NVIDIA L40S", "L40S", 48, price=0.9)]))
+    def public_feed(request):
+        seen_headers.append(dict(request.headers))
+        data = {"code": 0, "servers": []} if request.url.host == "api.clore.ai" else {"nodes": []}
+        return httpx.Response(200, json=data)
+
+    router.get(CLORE_URL).mock(side_effect=public_feed)
+    router.get(LIUM_URL).mock(side_effect=public_feed)
     out = tmp_path / "live"
     with router:
         assert live_plan.cli([str(out)]) == 0
@@ -72,6 +128,8 @@ def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, 
     assert len(index) == 9
     plan = json.loads((out / "llama31-8b-abliterated-q4km.json").read_text())
     assert plan["schema"] == 1
+    assert {row["name"] for row in plan["backends"] if row["status"] == "ok"} == {"clore", "lium", "runpod", "vast"}
     log = [json.loads(line) for line in (out / "requests.log").read_text().splitlines()]
-    assert log and all(entry["method"] == "POST" for entry in log)
-    assert not any("authorization" in h for h in seen_headers)
+    assert {entry["host"] for entry in log} == {"console.vast.ai", "api.runpod.io", "api.clore.ai", "lium.io"}
+    assert {entry["method"] for entry in log} == {"GET", "POST"}
+    assert not any(key in headers for headers in seen_headers for key in ("authorization", "auth", "x-api-key"))

@@ -9,8 +9,9 @@ when it sees a CI environment variable. It makes anonymous, read-only search
 requests and nothing else:
 
 1. It sends no API keys, even when keys are set in the environment.
-2. It allows only POST requests to console.vast.ai/api/v0/bundles/ and
-   api.runpod.io/graphql, and it refuses any GraphQL text that holds a mutation.
+2. It allows only HTTPS search requests: POST to console.vast.ai/api/v0/bundles/
+   and api.runpod.io/graphql, and GET to api.clore.ai/v1/marketplace and
+   lium.io/api/public/v1/nodes. It refuses GraphQL text that holds a mutation.
 3. It leaves at least one second between requests.
 
 OUTPUT_DIR receives one JSON file per entry (the raw output of `ablit plan
@@ -37,13 +38,15 @@ import httpx
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "cli"))
 
-from ablit.backends import RunPodBackend, VastBackend  # noqa: E402
+from ablit.backends import CloreBackend, LiumBackend, RunPodBackend, VastBackend  # noqa: E402
 from ablit.catalog import load_catalog  # noqa: E402
 from ablit.cli import main  # noqa: E402
 
 ALLOWED = {
-    ("console.vast.ai", "/api/v0/bundles/"),
-    ("api.runpod.io", "/graphql"),
+    ("POST", "console.vast.ai", "/api/v0/bundles/"),
+    ("POST", "api.runpod.io", "/graphql"),
+    ("GET", "api.clore.ai", "/v1/marketplace"),
+    ("GET", "lium.io", "/api/public/v1/nodes"),
 }
 MIN_SECONDS_BETWEEN_REQUESTS = 1.1
 CI_VARIABLES = ("CI", "GITHUB_ACTIONS", "BUILDKITE", "GITLAB_CI", "JENKINS_URL", "TF_BUILD")
@@ -60,10 +63,11 @@ class ReadOnlyTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         host, path = request.url.host, request.url.path
-        if request.method != "POST" or (host, path) not in ALLOWED:
+        if request.url.scheme != "https" or (request.method, host, path) not in ALLOWED:
             raise RuntimeError(f"refusing {request.method} {host}{path}: not an allowed search endpoint")
-        if "authorization" in request.headers:
-            raise RuntimeError("refusing to send an Authorization header in an anonymous run")
+        for header in ("Authorization", "auth", "X-API-Key"):
+            if header in request.headers:
+                raise RuntimeError(f"refusing to send an {header} header in an anonymous run")
         if host == "api.runpod.io":
             query = json.loads(request.content).get("query", "")
             if not query.lstrip().startswith("query") or "mutation" in query.lower():
@@ -114,7 +118,8 @@ def run(output_dir: Path, hours: float) -> int:
     log_path = output_dir / "requests.log"
     transport = ReadOnlyTransport(log_path)
     client = httpx.Client(transport=transport, timeout=httpx.Timeout(60.0))
-    backends = {"runpod": RunPodBackend(client), "vast": VastBackend(client)}
+    backends = {"clore": CloreBackend(client), "lium": LiumBackend(client),
+                "runpod": RunPodBackend(client), "vast": VastBackend(client)}
     entries = load_catalog().entries
     index: dict[str, Any] = {}
     for entry in entries:
