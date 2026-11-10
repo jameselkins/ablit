@@ -12,11 +12,37 @@ import tarfile
 import httpx
 import pytest
 import respx
+import yaml
 
 from ablit import engines
 from ablit.catalog import load_catalog, resolve
 from ablit.runs import RunStore
 from test_run_commands import MODEL, saved_run
+
+
+@pytest.mark.parametrize("field", ["image_gb", "disk_margin_gb", "extract_disk_gb"])
+@pytest.mark.parametrize("value", [-1, float("nan"), float("inf"), True, "11", None, 10 ** 1000],
+                         ids=["negative", "nan", "infinity", "boolean", "string", "null", "integer-overflow"])
+def test_engine_disk_allowances_must_be_finite_nonnegative_numbers(tmp_path, monkeypatch, field, value):
+    entry = resolve(load_catalog().entries, MODEL)
+    directory = tmp_path / "engines/llamacpp"
+    directory.mkdir(parents=True)
+    lock = {"name": entry.profile.engine_lock, field: value}
+    (directory / "lock.yaml").write_text(yaml.safe_dump(lock), encoding="utf-8")
+    monkeypatch.setattr(engines, "repo_root", lambda: tmp_path)
+    with pytest.raises(ValueError, match=field):
+        engines.engine_lock(entry)
+
+
+@pytest.mark.parametrize("value", [0, 0.5, 11])
+def test_engine_disk_allowances_accept_zero_and_positive_values(tmp_path, monkeypatch, value):
+    entry = resolve(load_catalog().entries, MODEL)
+    directory = tmp_path / "engines/llamacpp"
+    directory.mkdir(parents=True)
+    lock = {"name": entry.profile.engine_lock, "image_gb": value, "disk_margin_gb": value, "extract_disk_gb": value}
+    (directory / "lock.yaml").write_text(yaml.safe_dump(lock), encoding="utf-8")
+    monkeypatch.setattr(engines, "repo_root", lambda: tmp_path)
+    assert engines.engine_lock(entry) == lock
 
 
 def test_bundle_has_only_reviewed_scripts_and_nonsecret_config():

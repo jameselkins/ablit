@@ -148,6 +148,8 @@ Each marketplace has a note under `backends/` that lists every API call, its doc
 
 Each engine has a folder `engines/<name>/` with `bootstrap.sh`, `health.sh` and `lock.yaml`. The lock names the image by digest, and ablit refuses to rent when the digest is null. A lock with `anthropic_messages: true` says that the engine also answers the Anthropic Messages API at `/v1/messages`. `ablit up` copies the value into the run record and prints a Claude Code block only when it is true. The llama.cpp and Xolotl locks set it, and the vLLM lock does not, because nobody has checked `/v1/messages` on that version. All template code is written for this project. The shared scripts are `engines/lib/common.sh` and the download client `engines/lib/fetch.py`.
 
+The lock's `image_gb`, `disk_margin_gb` and `extract_disk_gb` fields, when present, must be finite numbers at least zero and fit the CLI's floating point range. Invalid allowances are rejected before quotes or launch bundles are built.
+
 | Engine | Image | Notes |
 |---|---|---|
 | llama.cpp | `ghcr.io/ggml-org/llama.cpp` server CUDA image, pinned by digest | Key through `LLAMA_API_KEY` |

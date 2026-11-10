@@ -121,7 +121,8 @@ def test_plan_requires_the_entrys_engine_lock_before_searching(capsys, tmp_path,
     assert "engine lock" in captured.err.lower() or "image lock" in captured.err.lower()
 
 
-@pytest.mark.parametrize("text", ["", "[]", "a scalar", "{}", "name: ["])
+@pytest.mark.parametrize("text", ["", "[]", "a scalar", "{}", "name: [",
+                                  "name: llamacpp-server-cuda\nimage_gb: .nan\n"])
 @pytest.mark.parametrize("command", ["plan", "show"])
 def test_unreadable_engine_lock_shapes_do_not_break_catalog_commands(capsys, tmp_path, monkeypatch, text, command):
     model = "llama31-8b-abliterated-q4km"

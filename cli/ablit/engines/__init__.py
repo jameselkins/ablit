@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import shlex
+import sys
 import tarfile
 import time
 from collections.abc import Iterator
@@ -31,6 +32,11 @@ def engine_lock(entry) -> dict:
         raise ValueError("The engine lock must hold a YAML mapping.")
     if lock.get("name") != entry.profile.engine_lock:
         raise ValueError("The entry and image lock disagree.")
+    for field in ("image_gb", "disk_margin_gb", "extract_disk_gb"):
+        if field in lock:
+            value = lock[field]
+            if type(value) not in (int, float) or not 0 <= value <= sys.float_info.max:
+                raise ValueError(f"The engine lock's {field} must be a finite nonnegative number within the supported range.")
     return lock
 
 
