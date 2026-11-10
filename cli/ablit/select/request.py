@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from ablit.catalog.models import Entry
-from ablit.catalog.staging import compute_staging
+from ablit.catalog.staging import StagingError, compute_staging
+from ablit.engines import engine_lock
 from ablit.select.types import HardwareRequest
 
 
 def request_from_entry(entry: Entry, image_gb: float | None = None) -> HardwareRequest:
     """Turn an entry's profile and staging plan into the numbers the filters use.
 
-    Raises StagingError when the entry's sizes are not filled in yet.
+    Raises StagingError when sizes are unknown or the matching engine lock is unavailable.
     """
-    from ablit.catalog.loader import repo_root
-    import yaml
-    root = repo_root()
-    path = root / "engines" / entry.profile.engine / "lock.yaml" if root else None
-    lock = yaml.safe_load(path.read_text()) if path and path.exists() else {}
+    try:
+        lock = engine_lock(entry)
+    except (OSError, ValueError) as error:
+        raise StagingError(f"The engine lock is unavailable. {error}") from error
     if image_gb is None:
         image_gb = lock.get("image_gb", 0.0)
     report = compute_staging(entry)

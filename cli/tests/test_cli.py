@@ -98,6 +98,29 @@ def test_catalog_show_keeps_an_entry_inspectable_when_its_engine_lock_does_not_m
     assert "Required disk: unknown" in out
 
 
+@pytest.mark.parametrize("problem", ["mismatch", "missing"])
+@pytest.mark.parametrize("json_output", [False, True])
+def test_plan_requires_the_entrys_engine_lock_before_searching(capsys, tmp_path, repo_root, monkeypatch, problem, json_output):
+    model = "llama31-8b-abliterated-q4km"
+    seed = repo_root / "catalog/models" / (model + ".yaml")
+    data = yaml.safe_load(seed.read_text(encoding="utf-8"))
+    if problem == "mismatch":
+        data["profile"]["engine_lock"] = "invented-lock"
+    else:
+        monkeypatch.setattr("ablit.engines.repo_root", lambda: tmp_path)
+    (tmp_path / seed.name).write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    class NoSearch:
+        def search(self, *args):
+            pytest.fail("an unusable engine lock must stop before marketplace searches")
+
+    flags = ["--json"] if json_output else []
+    assert main(["plan", model, "--catalog", str(tmp_path), *flags], backends={"vast": NoSearch()}, environ={}) == 2
+    captured = capsys.readouterr()
+    assert captured.out == "" and "cannot be planned yet" in captured.err
+    assert "engine lock" in captured.err.lower() or "image lock" in captured.err.lower()
+
+
 def test_catalog_list_reports_a_filename_mismatch_and_keeps_valid_entries(capsys, tmp_path, repo_root):
     seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
     text = seed.read_text(encoding="utf-8")
