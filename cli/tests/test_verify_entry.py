@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import http.client
 import io
 import urllib.error
 from pathlib import Path
@@ -275,6 +276,61 @@ def test_regular_file_requests_still_read_the_whole_response():
     client._opener = Opener()
     assert client.file("owner/name", REV, "config.json") == body
     assert response.closed
+
+
+@pytest.mark.parametrize("failure_at", ["open", "read"])
+def test_connection_and_truncated_response_failures_retry_anonymous_header_reads(monkeypatch, failure_at):
+    body = b"GGUF invented header"
+    waits, responses, calls = [], [], []
+
+    class Response(io.BytesIO):
+        def read(self, size=-1):
+            if len(calls) == 1 and failure_at == "read":
+                raise http.client.IncompleteRead(b"GG", 14)
+            return super().read(size)
+
+    class Opener:
+        def open(self, request, timeout):
+            calls.append(request)
+            if len(calls) == 1 and failure_at == "open":
+                raise http.client.RemoteDisconnected("invented disconnect")
+            response = Response(body)
+            responses.append(response)
+            return response
+
+    client = ve.HFClient(retries=3)
+    client._opener = Opener()
+    monkeypatch.setattr(ve.time, "sleep", waits.append)
+    assert client.head_bytes("owner/name", REV, "weights.gguf", 16) == body[:16]
+    assert len(calls) == 2 and waits == [1]
+    assert all(response.closed for response in responses)
+    assert all(request.get_header("Range") == "bytes=0-15" for request in calls)
+
+
+def test_exhausted_disconnect_retries_report_each_entry_without_aborting_the_catalog(tmp_path, capsys, monkeypatch):
+    from ablit.catalog.dump import dump_entry
+
+    repos, files = make_world()
+    data = ve.fill_entry(skeleton(), FakeClient(repos, files))
+    paths, calls = [], []
+    for entry_id in ("first-entry", "second-entry"):
+        data["id"] = entry_id
+        path = tmp_path / (entry_id + ".yaml")
+        path.write_text(dump_entry(data), encoding="utf-8")
+        paths.append(str(path))
+
+    class Opener:
+        def open(self, request, timeout):
+            calls.append(request)
+            raise http.client.RemoteDisconnected("invented disconnect")
+
+    client = ve.HFClient(retries=2)
+    client._opener = Opener()
+    monkeypatch.setattr(ve.time, "sleep", lambda seconds: None)
+    assert ve.main(paths, client=client) == 1
+    output = capsys.readouterr().out
+    assert "FAIL first-entry.yaml" in output and "FAIL second-entry.yaml" in output
+    assert output.count("invented disconnect") == 2 and len(calls) == 4
 
 
 def test_allowed_hosts():

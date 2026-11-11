@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import sys
 import time
@@ -88,6 +89,8 @@ class HFClient:
                 if error.code in (401, 403, 404):
                     raise
                 last = error
+            except http.client.HTTPException as error:
+                last = urllib.error.URLError(error)
             except (urllib.error.URLError, TimeoutError) as error:
                 last = error
             time.sleep(2 ** attempt)
