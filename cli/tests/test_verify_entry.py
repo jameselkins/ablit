@@ -333,6 +333,58 @@ def test_exhausted_disconnect_retries_report_each_entry_without_aborting_the_cat
     assert output.count("invented disconnect") == 2 and len(calls) == 4
 
 
+@pytest.mark.parametrize("failure_at", ["open", "read"])
+def test_exhausted_header_timeouts_report_the_entry_and_continue(tmp_path, capsys, monkeypatch, failure_at):
+    import struct
+
+    from ablit.catalog.dump import dump_entry
+
+    def string(text):
+        raw = text.encode()
+        return struct.pack("<Q", len(raw)) + raw
+
+    header = (b"GGUF" + struct.pack("<IQQ", 3, 0, 1)
+              + string("general.architecture") + struct.pack("<I", 8) + string("llama"))
+    repos, files = make_world()
+    fake = FakeClient(repos, files)
+    data = ve.fill_entry(skeleton(), fake)
+    data["artifacts"][0]["path"] = "weights.gguf"
+    repos[("owner/name", REV)]["siblings"][0]["rfilename"] = "weights.gguf"
+    paths, calls, responses = [], [], []
+    for entry_id in ("first-entry", "second-entry"):
+        data["id"] = entry_id
+        path = tmp_path / (entry_id + ".yaml")
+        path.write_text(dump_entry(data), encoding="utf-8")
+        paths.append(str(path))
+
+    class Response(io.BytesIO):
+        def read(self, size=-1):
+            if len(calls) <= 2 and failure_at == "read":
+                raise TimeoutError("invented header timeout")
+            return super().read(size)
+
+    class Opener:
+        def open(self, request, timeout):
+            calls.append(request)
+            if len(calls) <= 2 and failure_at == "open":
+                raise TimeoutError("invented header timeout")
+            response = Response(header)
+            responses.append(response)
+            return response
+
+    client = ve.HFClient(retries=2)
+    client._opener = Opener()
+    monkeypatch.setattr(client, "revision", fake.revision)
+    monkeypatch.setattr(client, "file", fake.file)
+    monkeypatch.setattr(ve, "_engine_lock", lambda data: {"supported_architectures": ["llama"]})
+    monkeypatch.setattr(ve.time, "sleep", lambda seconds: None)
+    assert ve.main(paths, client=client) == 1
+    output = capsys.readouterr().out
+    assert "FAIL first-entry.yaml" in output and "ok   second-entry.yaml" in output
+    assert "cannot read the GGUF header of weights.gguf: invented header timeout" in output
+    assert len(calls) == 3 and all(response.closed for response in responses)
+
+
 def test_allowed_hosts():
     assert ve._host_allowed("huggingface.co")
     assert ve._host_allowed("cas-bridge.xethub.hf.co")

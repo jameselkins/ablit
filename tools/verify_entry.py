@@ -263,7 +263,7 @@ def _check_gguf_architecture(
                 size *= 4
                 if size > 1 << 28:
                     return [f"{data['id']}: the GGUF header of {artifact['path']} is larger than 256 MB"]
-            except (gguf.NotGguf, urllib.error.URLError, ValueError) as error:
+            except (gguf.NotGguf, urllib.error.URLError, ValueError, TimeoutError) as error:
                 return [f"{data['id']}: cannot read the GGUF header of {artifact['path']}: {error}"]
         if arch not in supported:
             problems.append(

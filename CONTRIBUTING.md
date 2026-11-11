@@ -40,7 +40,7 @@ CI runs these checks on every pull request. None of them rents anything.
 
 The GGUF architecture check reads only the requested header bytes from each response, including when a server ignores the HTTP range request.
 
-Online verification retries disconnected or truncated HTTP responses. If retries run out, the tool reports the affected entry as failed and continues checking the remaining entries.
+Online verification retries timeouts and disconnected or truncated HTTP responses. If retries run out, including during a GGUF header check, the tool reports the affected entry as failed and continues checking the remaining entries.
 
 On a fork, where the network may be unavailable, run the schema part alone with `python3 tools/verify_entry.py --offline`. To check the whole repository, run `uv run --with-editable . --with pytest --with hypothesis --with respx --with import-linter pytest -q` from the top of the repository, run `lint-imports` there too, run `python3 tools/verify_entry.py --offline` for every entry, and run `python3 tools/build_catalog.py`.
 
