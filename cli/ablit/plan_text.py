@@ -83,7 +83,7 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
         if not cap["covers_setup_and_ten_minutes"]:
             lines.append("               The cap does not cover the download, startup and 10 minutes of use.")
         elif not cap["covers_minimum_spend_cap"]:
-            lines.append("               The cap does not include enough for the watchdog reserve.")
+            lines.append("               The cap is below the rounded launch minimum, including the watchdog reserve.")
     return lines
 
 
