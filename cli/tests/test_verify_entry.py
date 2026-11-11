@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import urllib.error
 from pathlib import Path
 
@@ -235,6 +236,45 @@ def test_the_client_refuses_other_hosts_and_plain_http():
         client._get("https://example.org/anything")
     with pytest.raises(ValueError):
         client._get("http://huggingface.co/api/models/x")
+
+
+@pytest.mark.parametrize("status", [200, 206])
+def test_header_requests_read_only_the_requested_bytes_and_close_the_response(status):
+    body = b"GGUF" + b"invented model bytes" * 100
+    reads = []
+
+    class Response(io.BytesIO):
+        def read(self, size=-1):
+            reads.append(size)
+            return super().read(size)
+
+    response = Response(body)
+    response.status = status
+
+    class Opener:
+        def open(self, request, timeout):
+            assert request.get_header("Range") == "bytes=0-15"
+            return response
+
+    client = ve.HFClient(retries=1)
+    client._opener = Opener()
+    assert client.head_bytes("owner/name", REV, "weights.gguf", 16) == body[:16]
+    assert reads == [16] and response.closed
+
+
+def test_regular_file_requests_still_read_the_whole_response():
+    body = b"invented configuration" * 100
+    response = io.BytesIO(body)
+
+    class Opener:
+        def open(self, request, timeout):
+            assert request.get_header("Range") is None
+            return response
+
+    client = ve.HFClient(retries=1)
+    client._opener = Opener()
+    assert client.file("owner/name", REV, "config.json") == body
+    assert response.closed
 
 
 def test_allowed_hosts():

@@ -74,7 +74,7 @@ class HFClient:
         self._api_cache: dict[tuple[str, str], dict[str, Any]] = {}
         self._file_cache: dict[tuple[str, str, str], bytes] = {}
 
-    def _get(self, url: str, headers: dict[str, str] | None = None) -> bytes:
+    def _get(self, url: str, headers: dict[str, str] | None = None, *, max_bytes: int | None = None) -> bytes:
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme != "https" or not _host_allowed(parsed.hostname or ""):
             raise ValueError(f"refusing to contact {parsed.hostname}")
@@ -83,7 +83,7 @@ class HFClient:
         for attempt in range(self._retries):
             try:
                 with self._opener.open(request, timeout=self._timeout) as response:
-                    return response.read()
+                    return response.read() if max_bytes is None else response.read(max_bytes)
             except urllib.error.HTTPError as error:
                 if error.code in (401, 403, 404):
                     raise
@@ -114,7 +114,7 @@ class HFClient:
         url = RESOLVE.format(
             repo=urllib.parse.quote(repo, safe="/"), rev=rev, path=urllib.parse.quote(path, safe="/")
         )
-        return self._get(url, {"Range": f"bytes=0-{count - 1}"})
+        return self._get(url, {"Range": f"bytes=0-{count - 1}"}, max_bytes=count)
 
 
 def git_blob_id(content: bytes) -> str:
