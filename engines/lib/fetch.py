@@ -60,6 +60,7 @@ import errno
 import hashlib
 import http.client
 import json
+import math
 import os
 import random
 import ssl
@@ -100,8 +101,11 @@ class Config:
 
         def number(name: str, default: float) -> float:
             raw = env.get(name, "")
+            if raw == "":
+                return default
             try:
-                return float(raw) if raw != "" else default
+                value = float(raw)
+                return value if math.isfinite(value) else default
             except ValueError:
                 return default
 

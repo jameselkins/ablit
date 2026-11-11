@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import runpy
 import subprocess
 import sys
 import threading
@@ -196,6 +197,33 @@ def dirs(tmp_path):
 
 def all_args(tsv: Path, data: Path, state: Path, *extra: str) -> list[str]:
     return ["all", "--tsv", str(tsv), "--root", str(data), "--state", str(state), *extra]
+
+
+@pytest.fixture(scope="module")
+def fetch_config():
+    return runpy.run_path(str(FETCH))["Config"]
+
+
+@pytest.mark.parametrize("setting", [
+    "ABLIT_DOWNLOAD_FILES", "ABLIT_DOWNLOAD_STALL_SECONDS", "ABLIT_DOWNLOAD_BACKOFF_SECONDS",
+])
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf", "1e1000"])
+def test_nonfinite_download_settings_use_the_defaults(fetch_config, setting, value):
+    assert vars(fetch_config({setting: value})) == vars(fetch_config({}))
+
+
+def test_finite_download_settings_are_preserved(fetch_config):
+    config = fetch_config({"ABLIT_DOWNLOAD_FILES": "3", "ABLIT_DOWNLOAD_STALL_SECONDS": "1.25"})
+    assert config.files == 3 and config.stall == 1.25
+
+
+@pytest.mark.parametrize("value", ["nan", "inf"])
+def test_invalid_connection_settings_do_not_crash_the_download_command(dirs, tmp_path, value):
+    data, state = dirs
+    tsv = tmp_path / "empty.tsv"
+    tsv.write_text("")
+    code, result, err = run_fetch(all_args(tsv, data, state), {"ABLIT_DOWNLOAD_CONNECTIONS": value})
+    assert code == 0 and result[0] == "OK", err
 
 
 def test_several_files_download_in_ranges_and_are_verified(dirs, tmp_path):

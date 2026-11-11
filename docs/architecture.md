@@ -164,7 +164,7 @@ The bootstrap runs nine stages. Each writes a marker under `/ablit/stages/`, so 
 2. Check GPU count, VRAM and compute capability (`nvidia-smi`), the container memory limit, the locked-memory limit (`ulimit -l`), and free disk on the data path. Fail with exit code 6 if any is below the profile.
 3. For profiles with `random_read_required`, run a bounded random-read test on a scratch file and report the result.
 4. Measure download speed with the real download client. The Xolotl bootstrap runs it for 45 seconds on the first files of the real list and keeps those bytes. The measure is the larger of the average rate and the rate over the last 10 seconds, and it must reach 90% of the floor. Below that, the run fails, ablit destroys it, and the host goes on the local deny list. ablit never picks a replacement host automatically.
-5. Download only the listed artifacts at the pinned revision with `engines/lib/fetch.py`.
+5. Download only the listed artifacts at the pinned revision with `engines/lib/fetch.py`. Numeric downloader settings from the environment use their defaults when they are not finite numbers.
 6. Run the staging steps with a checkpoint after each, and delete an input only after its output is verified.
 7. Render the engine config with the real port and paths, and start the engine on `127.0.0.1` with a random 32-byte key passed by environment variable.
 8. Health check. `GET /v1/models`, one chat completion with `max_tokens: 1`, one streamed completion, and a check that requests with no key or a wrong key are refused.
