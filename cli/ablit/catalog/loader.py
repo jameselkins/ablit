@@ -69,6 +69,8 @@ def load_entry_file(path: str | Path) -> dict[str, Any]:
     try:
         with open(path, encoding="utf-8") as handle:
             data = yaml.safe_load(handle)
+    except UnicodeError as error:
+        raise CatalogError(f"{path}: the file must be UTF-8 text") from error
     except (OSError, yaml.YAMLError) as error:
         raise CatalogError(f"{path}: {error}") from error
     if not isinstance(data, dict):

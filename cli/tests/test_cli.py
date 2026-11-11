@@ -172,6 +172,24 @@ def test_catalog_list_reports_a_filename_mismatch_and_keeps_valid_entries(capsys
     assert "copied.yaml was skipped" in err and "file name must match" in err
 
 
+def test_catalog_list_skips_invalid_utf8_without_hiding_valid_entries(capsys, tmp_path, repo_root):
+    seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
+    (tmp_path / seed.name).write_bytes(seed.read_bytes())
+    (tmp_path / "broken.yaml").write_bytes(b"display_name: caf\xe9\n")
+    code, out, err = run(capsys, "catalog", "list", "--catalog", str(tmp_path))
+    assert code == exitcodes.INVALID_FILE
+    assert "llama31-8b-abliterated-q4km" in out
+    assert "broken.yaml was skipped" in err and "UTF-8" in err
+
+
+def test_catalog_validate_reports_invalid_utf8_as_an_invalid_file(capsys, tmp_path):
+    path = tmp_path / "broken.yaml"
+    path.write_bytes(b"display_name: caf\xe9\n")
+    code, out, err = run(capsys, "catalog", "validate", str(path))
+    assert code == exitcodes.INVALID_FILE and out == ""
+    assert "broken.yaml" in err and "UTF-8" in err
+
+
 def test_catalog_show_ambiguous_repo_asks_for_a_variant(capsys, tmp_path: Path, repo_root: Path):
     # The curated catalog has one build per repo, so a local catalog adds a second build.
     source = repo_root / "catalog" / "models" / "ds41-1017-xq-v3-uncensored.yaml"
