@@ -92,7 +92,7 @@ COST_MARGIN = 1.05
 COST_MARGIN_ABS = 0.01
 
 # Volume disk price: $0.10 per GB per month, from https://docs.runpod.io/pods/pricing
-# (checked 2026-10-20). A month is counted as 730 hours.
+# (checked 2026-11-11). The quote assumes 730 hours per month; RunPod's conversion is unverified.
 VOLUME_DISK_USD_PER_GB_MONTH = 0.10
 HOURS_PER_MONTH = 730.0
 
@@ -309,6 +309,8 @@ class RunPodBackend(RentalBackend):
         ] + secure
         gpus = f"{req.gpu_count} GPU" if req.gpu_count == 1 else f"{req.gpu_count} GPUs"
         note = (
+            f"Disk cost estimate: {disk} GB at ${VOLUME_DISK_USD_PER_GB_MONTH:.2f}/GB/month, "
+            f"assuming {HOURS_PER_MONTH:g} hours/month. "
             f"GPU types with no price for {gpus} and {memory} GB of RAM: "
             f"{missing_any} in any cloud, {missing_secure} in Secure Cloud"
         )
