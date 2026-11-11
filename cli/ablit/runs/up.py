@@ -30,9 +30,8 @@ from ablit.runs.lifecycle import allocation, down, run_redactor
 from ablit.runs.monitor import monitor
 from ablit.runs.ssh import SSH
 from ablit.select import apply_filter_chain
-from ablit.select.cost import total_cost
+from ablit.select.cost import minimum_cap
 from ablit.select.request import request_from_entry
-from ablit.watchdog.ablit_watchdog import Config, reserve
 
 # Vast supplies SSH in this launch mode and replaces the image entrypoint.
 # https://docs.vast.ai/guides/instances/connect/overview
@@ -58,13 +57,6 @@ CLORE_START = (ONSTART + " "
                "mkdir -p /run/sshd; ssh-keygen -A >/dev/null 2>&1; "
                "(ss -ltn 2>/dev/null | grep -q ':22 ' || /usr/sbin/sshd -e -o PasswordAuthentication=no "
                "-o PermitRootLogin=prohibit-password)")
-
-
-def minimum_cap(offer, req, floor) -> float:
-    # RunPod reports no speed per host. The planner ranks such an offer at the floor, so the reserve does too.
-    cfg = Config(0, offer.hourly_all_in, offer.bandwidth_cost_per_gb, 0, offer.download_mbps or floor)
-    amount = total_cost(offer, req, 10 / 60, floor) + reserve(cfg)
-    return math.ceil(amount * 100 - 1e-9) / 100
 
 
 def make_intent(store, entry, offer, report, args, lock) -> dict:

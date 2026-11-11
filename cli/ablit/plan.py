@@ -30,7 +30,7 @@ from ablit.select import (
     apply_filter_chain,
     rank_offers,
 )
-from ablit.select.cost import cost_breakdown
+from ablit.select.cost import cost_breakdown, minimum_cap
 from ablit.select.filters import floor_for
 from ablit.select.types import Offer
 
@@ -257,11 +257,14 @@ def cap_info(ranked: RankedOffer, report: PlanReport) -> dict[str, Any] | None:
     hours_to_cap: float | None = None
     if offer.hourly_all_in > 0 and cap > one_time:
         hours_to_cap = (cap - one_time) / offer.hourly_all_in
+    smallest = minimum_cap(offer, report.req, floor)
     return {
         "cap_usd": cap,
         "one_time_usd": one_time,
         "hours_until_cap": hours_to_cap,
         "covers_setup_and_ten_minutes": cap >= cost_breakdown(offer, report.req, 10 / 60, floor).total,
+        "minimum_spend_cap_usd": smallest,
+        "covers_minimum_spend_cap": cap >= smallest,
     }
 
 

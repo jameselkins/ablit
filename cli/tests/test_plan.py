@@ -128,6 +128,29 @@ def test_cap_text_distinguishes_a_zero_hourly_rate_from_exhausted_upfront_charge
         assert "reached before use" not in out
 
 
+@pytest.mark.parametrize("cap,covers_setup,covers_minimum", [
+    (0.20, False, False), (0.22, True, False), (0.24, True, True),
+])
+def test_json_plan_exposes_the_launch_minimum_including_the_watchdog_reserve(capsys, cap, covers_setup, covers_minimum):
+    offer = vast_row(9100, base=0.5, allocated=ALLOCATED, storage_cost=0.0,
+                     inet_down=1000.0, inet_down_cost=0.0, internet_down_cost_per_tb=0.0)
+    _, out, _ = run_plan(capsys, "--json", "--backends", "vast", "--max-spend", str(cap),
+                         vast=FakeVast([offer]), expect_exit=0)
+    info = json.loads(out)["chosen"]["cap"]
+    assert info["covers_setup_and_ten_minutes"] is covers_setup
+    assert info["minimum_spend_cap_usd"] == 0.24
+    assert info["covers_minimum_spend_cap"] is covers_minimum
+
+
+def test_text_plan_warns_when_the_cap_covers_setup_but_not_the_watchdog_reserve(capsys):
+    offer = vast_row(9100, base=0.5, allocated=ALLOCATED, storage_cost=0.0,
+                     inet_down=1000.0, inet_down_cost=0.0, internet_down_cost_per_tb=0.0)
+    _, out, _ = run_plan(capsys, "--backends", "vast", "--max-spend", "0.22",
+                         vast=FakeVast([offer]), expect_exit=0)
+    assert "Minimum cap: $0.24 (setup, ten minutes and the watchdog reserve)" in out
+    assert "The cap does not include enough for the watchdog reserve." in out
+
+
 def test_text_report_marks_estimates_that_exceed_the_rental_time(capsys):
     offer = vast_row(9100, allocated=ALLOCATED, duration=24 * 3600)
     _, out, _ = run_plan(capsys, "--backends", "vast", vast=FakeVast([offer]), expect_exit=0)

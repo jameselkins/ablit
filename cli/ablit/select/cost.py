@@ -12,9 +12,11 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from ablit.select.types import HardwareRequest, Offer
+from ablit.watchdog.ablit_watchdog import Config, reserve
 
 
 @dataclass(frozen=True)
@@ -65,3 +67,11 @@ def total_cost(
     offer: Offer, req: HardwareRequest, hours: float, floor_mbps: float | None = None
 ) -> float:
     return cost_breakdown(offer, req, hours, floor_mbps).total
+
+
+def minimum_cap(offer: Offer, req: HardwareRequest, floor: float) -> float:
+    """Smallest cap covering setup, ten minutes and the watchdog reserve, rounded up to cents."""
+    # Unknown download speeds use the same floor for ranking and the reserve.
+    cfg = Config(0, offer.hourly_all_in, offer.bandwidth_cost_per_gb, 0, offer.download_mbps or floor)
+    amount = total_cost(offer, req, 10 / 60, floor) + reserve(cfg)
+    return math.ceil(amount * 100 - 1e-9) / 100

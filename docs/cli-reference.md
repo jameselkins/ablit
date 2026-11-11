@@ -152,6 +152,8 @@ The quote shows these items:
 
 When the hourly rate is zero and the quoted transfer and fixed charges are below the cap, the quote says those costs do not reach it. A cap no higher than those one-time charges is still shown as reached before use.
 
+When `--max-spend` is set, plans also show the minimum cap required to launch, including download, startup, ten minutes of use and the watchdog reserve. The minimum rounds up to cents and uses the same calculation as `up`. In each offer's JSON `cap` object, `minimum_spend_cap_usd` gives the minimum and `covers_minimum_spend_cap` says whether the supplied cap meets it. The existing `covers_setup_and_ten_minutes` field excludes the reserve.
+
 After confirmation, ablit checks the offer again before renting. It cancels if the offer disappears, the price changes or the offer no longer passes the search filters. It also cancels if a change in download speed makes the cap too small to cover setup, ten minutes of use and the watchdog reserve. Run `ablit up` again for a new quote.
 
 The spend cap notice is printed on every quote, in the README and in `ablit up --help`. A test checks that this page and the README hold the exact text.

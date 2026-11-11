@@ -71,6 +71,7 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
     cap = cap_info(ranked, report)
     if cap is not None:
         lines.append(f"  Cap:         {_usd(cap['cap_usd'])}")
+        lines.append(f"  Minimum cap: {_usd(cap['minimum_spend_cap_usd'])} (setup, ten minutes and the watchdog reserve)")
         if cap["cap_usd"] <= cap["one_time_usd"]:
             lines.append("               The cap is no higher than the one-time charges, so it is reached before use.")
         elif cap["hours_until_cap"] is None:
@@ -81,6 +82,8 @@ def _offer_block(ranked: RankedOffer, report: PlanReport, title: str) -> list[st
             )
         if not cap["covers_setup_and_ten_minutes"]:
             lines.append("               The cap does not cover the download, startup and 10 minutes of use.")
+        elif not cap["covers_minimum_spend_cap"]:
+            lines.append("               The cap does not include enough for the watchdog reserve.")
     return lines
 
 
