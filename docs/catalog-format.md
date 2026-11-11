@@ -63,6 +63,8 @@ notes: []                          # where each figure came from
 
 Numeric fields must be finite. Validation rejects YAML `.nan`, `.inf` and `-.inf` values and reports the affected field before the entry can be used for hardware checks or cost estimates.
 
+Booleans are distinct from numbers. The schema version must be `1`, and YAML `schema: true` is rejected.
+
 Each artifact needs a distinct download destination, even when artifacts come from different repositories or revisions. All downloads share the model directory. Validation treats equivalent paths such as `weights/model.gguf` and `weights/./model.gguf` as the same destination and rejects duplicates before launch.
 
 An artifact file cannot also be a directory needed by another artifact. For example, `weights` and `weights/config.json` conflict and are rejected in either listing order.

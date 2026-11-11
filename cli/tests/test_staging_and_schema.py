@@ -50,6 +50,26 @@ def test_base_entry_is_valid():
     assert check_entry(base_entry()) == []
 
 
+@pytest.mark.parametrize("value", [True, False])
+def test_catalog_schema_version_cannot_be_a_boolean(value):
+    data = base_entry()
+    data["schema"] = value
+    assert any("$.schema:" in problem and "must be 1" in problem for problem in check_entry(data))
+
+
+@pytest.mark.parametrize("constant,value", [
+    (1, True), (1.0, True), (0, False), (0.0, False),
+    (True, 1), (True, 1.0), (False, 0), (False, 0.0),
+])
+def test_schema_constants_distinguish_booleans_from_numbers(constant, value):
+    assert schema_check.validate(value, {"const": constant})
+
+
+@pytest.mark.parametrize("constant,value", [(1, 1.0), (1.0, 1), (True, True), (False, False)])
+def test_schema_constants_keep_equal_numbers_and_matching_booleans_valid(constant, value):
+    assert schema_check.validate(value, {"const": constant}) == []
+
+
 @pytest.mark.parametrize("source", [{}, {"repo": "other/model"}, {"revision": "d" * 40}])
 @pytest.mark.parametrize("path", ["part-1", "./part-1", ".//part-1"])
 @pytest.mark.parametrize("unfilled", [False, True])

@@ -64,8 +64,11 @@ def _check(value: Any, schema: dict[str, Any], root: dict[str, Any], path: str) 
         if not any(_TYPE_CHECKS[name](value) for name in wanted):
             return [f"{path}: expected {' or '.join(wanted)}, got {_type_name(value)}"]
 
-    if "const" in schema and value != schema["const"]:
-        errors.append(f"{path}: must be {schema['const']!r}")
+    if "const" in schema:
+        constant = schema["const"]
+        # Python equates True with 1 and False with 0; JSON keeps their types distinct.
+        if value != constant or isinstance(value, bool) != isinstance(constant, bool):
+            errors.append(f"{path}: must be {constant!r}")
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{path}: {value!r} is not one of {schema['enum']}")
 
