@@ -67,6 +67,8 @@ Booleans are distinct from numbers. The schema version must be `1`, and YAML `sc
 
 Each artifact needs a distinct download destination, even when artifacts come from different repositories or revisions. All downloads share the model directory. Validation treats equivalent paths such as `weights/model.gguf` and `weights/./model.gguf` as the same destination and rejects duplicates before launch.
 
+Validation rejects artifact pairs such as `weights/part-1` and `weights%2Fpart-1`, because they share a download checkpoint. A checkpoint for one file could make the downloader skip the other file.
+
 An artifact file cannot also be a directory needed by another artifact. For example, `weights` and `weights/config.json` conflict and are rejected in either listing order.
 
 The downloader reserves `<path>.part` and `<path>.part.state` for each artifact's partial download and resume state. Other artifacts cannot occupy those paths or require them as directories. For example, `weights.bin` conflicts with both `weights.bin.part` and `weights.bin.part/config.json`.

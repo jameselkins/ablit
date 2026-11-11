@@ -135,6 +135,31 @@ def test_download_working_suffixes_are_allowed_without_a_path_conflict():
     assert check_entry(data) == []
 
 
+@pytest.mark.parametrize("path,other", [
+    ("nested/part-1", "nested%2Fpart-1"),
+    ("./nested/part-1", ".%2Fnested%2Fpart-1"),
+    ("nested//part-1", "nested%2F%2Fpart-1"),
+])
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("unfilled", [False, True])
+def test_artifacts_must_have_distinct_download_checkpoints(path, other, reverse, unfilled):
+    data = base_entry()
+    data["artifacts"][0]["path"] = path
+    data["artifacts"].append({**data["artifacts"][0], "path": other, "repo": "other/model"})
+    if unfilled:
+        data["artifacts"][0]["bytes"] = None
+    if reverse:
+        data["artifacts"].reverse()
+    assert any("download checkpoint" in problem for problem in check_entry(data))
+
+
+def test_literal_percent_sequences_are_allowed_when_checkpoints_are_distinct():
+    data = base_entry()
+    data["artifacts"][0]["path"] = "nested/part-1"
+    data["artifacts"].append({**data["artifacts"][0], "path": "other%2Fpart-1"})
+    assert check_entry(data) == []
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")], ids=["nan", "infinity", "negative-infinity"])
 @pytest.mark.parametrize("field", [
     "profile.host_ram_gb", "profile.min_download_mbps", "profile.startup_hours_estimate",

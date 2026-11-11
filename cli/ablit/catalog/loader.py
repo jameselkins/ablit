@@ -95,6 +95,7 @@ def check_entry(data: dict[str, Any], schema: dict[str, Any] | None = None) -> l
         problems.append(f"{path} has no source (add it to `covers` in a sources entry)")
 
     seen: set[PurePosixPath] = set()
+    checkpoints: dict[str, str] = {}
     for artifact in data["artifacts"]:
         # Every repo downloads into the same model directory. Normalize dots and
         # repeated slashes so alternate spellings cannot share a destination.
@@ -102,6 +103,14 @@ def check_entry(data: dict[str, Any], schema: dict[str, Any] | None = None) -> l
         if destination in seen:
             problems.append(f"artifacts: {artifact['path']} is listed twice as a download destination")
         seen.add(destination)
+        # Match marker_name in fetch.py and ablit_mark_consumed in common.sh.
+        # Those checkpoints use the original path, including dots and repeated slashes.
+        artifact_path = artifact["path"]
+        checkpoint = artifact_path.replace("/", "%2F")
+        previous = checkpoints.get(checkpoint)
+        if previous is not None and previous != artifact_path:
+            problems.append(f"artifacts: {previous!r} and {artifact_path!r} share a download checkpoint")
+        checkpoints.setdefault(checkpoint, artifact_path)
     for destination in sorted(seen):
         for parent in destination.parents:
             if parent in seen:
