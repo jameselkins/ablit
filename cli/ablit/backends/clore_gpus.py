@@ -19,6 +19,12 @@ against NVIDIA's current and legacy tables on that date:
 - https://developer.nvidia.com/cuda/gpus
 - https://developer.nvidia.com/cuda/gpus/legacy
 
+The Tesla V100PCIE32GB and Tesla V100SPCIE32GB names were read from the feed
+on 2026-11-12. NVIDIA's data sheet places V100 PCIe and V100S PCIe in the
+V100 Volta family. Their 7.0 values follow the V100 entry in the legacy list:
+
+- https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -67,7 +73,10 @@ _TURING = (
     "NVIDIA GeForce RTX 2080 Ti", "NVIDIA GeForce GTX 1650", "NVIDIA GeForce GTX 1660 SUPER",
     "NVIDIA GeForce GTX 1660 Ti", "Tesla T4", "Quadro RTX 6000", "Quadro RTX 8000",
 )
-_VOLTA = ("Tesla V100SXM216GB", "Tesla V100SXM232GB")
+_VOLTA = (
+    "Tesla V100SXM216GB", "Tesla V100SXM232GB",
+    "Tesla V100PCIE32GB", "Tesla V100SPCIE32GB",
+)
 _PASCAL = (
     "NVIDIA GeForce GT 1030", "NVIDIA GeForce GTX 1050", "NVIDIA GeForce GTX 1050 Ti",
     "NVIDIA GeForce GTX 1060 6GB", "NVIDIA GeForce GTX 1070", "NVIDIA GeForce GTX 1070 Ti",

@@ -130,6 +130,8 @@ def test_a_gpu_name_the_table_lacks_has_no_compute_capability():
     ("NVIDIA RTX A5000", 8.6),
     ("Tesla P40", 6.1),
     ("Tesla M40", 5.2),
+    ("Tesla V100PCIE32GB", 7.0),
+    ("Tesla V100SPCIE32GB", 7.0),
 ])
 def test_additional_marketplace_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
     from dataclasses import replace
