@@ -10,6 +10,8 @@ When loading a catalog directory, the CLI skips files whose names do not match t
 
 Catalog files must use UTF-8 text. A file with invalid encoding is reported and skipped, so other valid entries remain available. `catalog validate` reports the affected file and exits 1.
 
+Source URLs must use HTTPS and include a hostname and a valid port when given. The validator rejects localhost names and non-public literal IP addresses. Offline checks do not resolve hostnames or fetch the cited page. Public documentation paths may contain words such as `localhost`.
+
 When a run record is created, `catalog_sha256` hashes the raw YAML files in filename order from the selected catalog directory. `--catalog` takes precedence over `ABLIT_CATALOG`, and the bundled catalog is used when neither is set.
 
 A new paid launch from either catalog override requires `--untested`, even when the local entry says `boot-tested`. Planning from a local catalog rents nothing and needs no such flag.

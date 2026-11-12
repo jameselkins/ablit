@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from fnmatch import fnmatchcase
+from ipaddress import ip_address
 from typing import Any
+from urllib.parse import urlsplit
 
 
 def profile_numbers(profile: dict[str, Any], prefix: str = "profile") -> list[str]:
@@ -43,10 +45,25 @@ def uncovered_numbers(entry: dict[str, Any]) -> list[str]:
     return missing
 
 
+def _public_https_url(url: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").rstrip(".")
+        _ = parsed.port  # Reject invalid port text and numbers.
+    except ValueError:
+        return False
+    if parsed.scheme != "https" or not host or any(character.isspace() for character in host):
+        return False
+    if host == "localhost" or host.endswith(".localhost"):
+        return False
+    try:
+        address = ip_address(host)
+    except ValueError:
+        # Keep refusing shorthand loopback addresses such as 127.1.
+        return not (host.startswith("127.") and all(character in "0123456789." for character in host))
+    return address.is_global and not address.is_multicast
+
+
 def bad_source_urls(entry: dict[str, Any]) -> list[str]:
     """Return sources that are not public https URLs."""
-    bad = []
-    for url in source_urls(entry.get("sources", [])):
-        if not url.startswith("https://") or "localhost" in url or url.startswith("https://127."):
-            bad.append(url)
-    return bad
+    return [url for url in source_urls(entry.get("sources", [])) if not _public_https_url(url)]

@@ -263,6 +263,33 @@ def test_every_profile_number_needs_a_source():
     assert any("profile.host_ram_gb has no source" in p for p in problems)
 
 
+@pytest.mark.parametrize("url", [
+    "https://", "https:///notes", "https://?page=notes",
+    "https://localhost/notes", "https://LOCALHOST/notes", "https://localhost./notes",
+    "https://model.localhost/notes", "https://127.0.0.1/notes", "https://127.1/notes",
+    "https://[::1]/notes", "https://[::ffff:127.0.0.1]/notes",
+    "https://10.0.0.1/notes", "https://192.168.1.1/notes", "https://169.254.1.1/notes",
+    "https://[fc00::1]/notes", "https://[ff02::1]/notes",
+    "https://example.org:notaport/notes", "https://[broken/notes", "https://bad host/notes",
+])
+def test_source_urls_require_a_public_https_host(url):
+    data = base_entry()
+    data["sources"] = [{"url": url, "covers": ["profile.*"]}]
+    assert any("not a public https URL" in problem for problem in check_entry(data))
+
+
+@pytest.mark.parametrize("url", [
+    "https://docs.example.org/guide/localhost",
+    "https://localhost-guide.example.org/notes",
+    "https://example.org/notes?example=localhost",
+    "https://8.8.8.8/notes", "https://[2606:4700:4700::1111]/notes",
+])
+def test_source_url_validation_keeps_public_hosts_and_checks_the_host_only(url):
+    data = base_entry()
+    data["sources"] = [{"url": url, "covers": ["profile.*"]}]
+    assert check_entry(data) == []
+
+
 def test_profile_numbers_ignore_booleans_and_nulls():
     numbers = profile_numbers({"a": 1, "b": True, "c": None, "d": {"e": 2.5, "f": "x"}})
     assert numbers == ["profile.a", "profile.d.e"]
