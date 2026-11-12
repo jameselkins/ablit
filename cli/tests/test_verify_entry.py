@@ -307,12 +307,15 @@ def test_connection_and_truncated_response_failures_retry_anonymous_header_reads
     assert all(request.get_header("Range") == "bytes=0-15" for request in calls)
 
 
-def test_exhausted_disconnect_retries_report_each_entry_without_aborting_the_catalog(tmp_path, capsys, monkeypatch):
+@pytest.mark.parametrize("attempts, expected_calls, expected_waits", [(1, 2, []), (3, 6, [1, 2, 1, 2])])
+def test_exhausted_disconnect_retries_report_each_entry_without_aborting_the_catalog(
+    tmp_path, capsys, monkeypatch, attempts, expected_calls, expected_waits
+):
     from ablit.catalog.dump import dump_entry
 
     repos, files = make_world()
     data = ve.fill_entry(skeleton(), FakeClient(repos, files))
-    paths, calls = [], []
+    paths, calls, waits = [], [], []
     for entry_id in ("first-entry", "second-entry"):
         data["id"] = entry_id
         path = tmp_path / (entry_id + ".yaml")
@@ -324,13 +327,14 @@ def test_exhausted_disconnect_retries_report_each_entry_without_aborting_the_cat
             calls.append(request)
             raise http.client.RemoteDisconnected("invented disconnect")
 
-    client = ve.HFClient(retries=2)
+    client = ve.HFClient(retries=attempts)
     client._opener = Opener()
-    monkeypatch.setattr(ve.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(ve.time, "sleep", waits.append)
     assert ve.main(paths, client=client) == 1
     output = capsys.readouterr().out
     assert "FAIL first-entry.yaml" in output and "FAIL second-entry.yaml" in output
-    assert output.count("invented disconnect") == 2 and len(calls) == 4
+    assert output.count("invented disconnect") == 2 and len(calls) == expected_calls
+    assert waits == expected_waits
 
 
 @pytest.mark.parametrize("failure_at", ["open", "read"])
@@ -350,7 +354,7 @@ def test_exhausted_header_timeouts_report_the_entry_and_continue(tmp_path, capsy
     data = ve.fill_entry(skeleton(), fake)
     data["artifacts"][0]["path"] = "weights.gguf"
     repos[("owner/name", REV)]["siblings"][0]["rfilename"] = "weights.gguf"
-    paths, calls, responses = [], [], []
+    paths, calls, responses, waits = [], [], [], []
     for entry_id in ("first-entry", "second-entry"):
         data["id"] = entry_id
         path = tmp_path / (entry_id + ".yaml")
@@ -377,12 +381,13 @@ def test_exhausted_header_timeouts_report_the_entry_and_continue(tmp_path, capsy
     monkeypatch.setattr(client, "revision", fake.revision)
     monkeypatch.setattr(client, "file", fake.file)
     monkeypatch.setattr(ve, "_engine_lock", lambda data: {"supported_architectures": ["llama"]})
-    monkeypatch.setattr(ve.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(ve.time, "sleep", waits.append)
     assert ve.main(paths, client=client) == 1
     output = capsys.readouterr().out
     assert "FAIL first-entry.yaml" in output and "ok   second-entry.yaml" in output
     assert "cannot read the GGUF header of weights.gguf: invented header timeout" in output
     assert len(calls) == 3 and all(response.closed for response in responses)
+    assert waits == [1]
 
 
 def test_allowed_hosts():

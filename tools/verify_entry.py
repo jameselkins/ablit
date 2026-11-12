@@ -93,7 +93,8 @@ class HFClient:
                 last = urllib.error.URLError(error)
             except (urllib.error.URLError, TimeoutError) as error:
                 last = error
-            time.sleep(2 ** attempt)
+            if attempt + 1 < self._retries:
+                time.sleep(2 ** attempt)
         assert last is not None
         raise last
 
