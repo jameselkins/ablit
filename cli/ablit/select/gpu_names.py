@@ -3,10 +3,10 @@
 Each marketplace names the same GPU differently. Vast says "RTX 5090" and
 "RTX PRO 6000 WS", RunPod says "RTX 5090" and "RTX PRO 6000 Blackwell
 Workstation Edition", Clore keeps NVIDIA's name, such as "NVIDIA GeForce RTX
-5090", glues some parts together ("Tesla V100SXM216GB") and cuts some long names
-short ("RTX PRO 6000 Blackwell Server Edit"). Lium uses short names, such as
-"RTX 5090". The drivers put those names in `Offer.gpu_model` as they are, apart
-from Clore, which strips the "NVIDIA GeForce " and "NVIDIA " prefixes.
+5090", joins some parts together ("Tesla V100SXM216GB", "Tesla V100PCIE32GB")
+and cuts some long names short ("RTX PRO 6000 Blackwell Server Edit"). Lium uses
+short names, such as "RTX 5090". The drivers put those names in
+`Offer.gpu_model` as they are, apart from Clore, which strips the "NVIDIA GeForce " and "NVIDIA " prefixes.
 
 `gpu_name_key` reads a name as two parts.
 
@@ -63,6 +63,8 @@ def gpu_name_key(name: str) -> tuple[tuple[str, ...], frozenset[str]]:
     # Clore glues the form to the model and the memory size: "v100sxm216gb", "a100sxm440gb".
     text = re.sub(r"(sxm|hbm)(\d)(\d+gb)\b", r" \1\2 \3", text)
     text = re.sub(r"(sxm|hbm)(\d*)", r" \1\2 ", text)
+    # Clore also joins PCIe to the card and memory size: "v100pcie32gb".
+    text = text.replace("pcie", " pcie ")
     model: list[str] = []
     forms: set[str] = set()
     for word in _WORD.findall(text):

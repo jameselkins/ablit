@@ -100,6 +100,11 @@ def test_a_short_name_never_matches_a_different_model():
     ("A100 SXM", "NVIDIA A100-SXM4-80GB"),
     ("V100", "Tesla V100SXM216GB"),             # Clore, glued
     ("V100", "Tesla V100-PCIE-16GB"),           # RunPod
+    ("V100", "Tesla V100PCIE32GB"),            # Clore, joined
+    ("V100 PCIe", "Tesla V100PCIE32GB"),
+    ("V100 32GB", "Tesla V100PCIE32GB"),
+    ("V100PCIE", "Tesla V100-PCIE-16GB"),
+    ("V100S", "Tesla V100SPCIE32GB"),
     ("V100 16GB", "Tesla V100-SXM2-16GB"),
     ("H100", "H100 80GB HBM3"),                 # RunPod and Lium
     ("H100", "H100 SXM"),                       # Vast
@@ -126,6 +131,11 @@ def test_edition_and_form_words_are_optional(name, model):
     ("A100 80GB", "A100-SXM4-40GB"),
     ("A100 PCIe", "A100SXM440GB"),
     ("V100 32GB", "Tesla V100SXM216GB"),
+    ("V100 16GB", "Tesla V100PCIE32GB"),
+    ("V100 SXM", "Tesla V100PCIE32GB"),
+    ("V100 PCIe", "Tesla V100SXM232GB"),
+    ("V100", "Tesla V100SPCIE32GB"),
+    ("V100S", "Tesla V100PCIE32GB"),
     ("RTX PRO 6000 Server", "RTX PRO 6000 WS"),
     ("B300 AC", "B300"),
     ("B300 PC", "B300"),
@@ -141,6 +151,7 @@ def test_a_form_word_the_user_gives_must_be_in_the_offer(name, model):
 def test_the_key_splits_model_words_from_form_words():
     assert gpu_name_key("NVIDIA GeForce RTX 5090") == (("5090",), frozenset())
     assert gpu_name_key("Tesla V100SXM216GB") == (("v", "100"), frozenset({"sxm", "16gb"}))
+    assert gpu_name_key("Tesla V100PCIE32GB") == (("v", "100"), frozenset({"pcie", "32gb"}))
     assert gpu_name_key("RTX PRO 6000 Blackwell Max-Q Workstation Edition") == (
         ("pro", "6000"), frozenset({"maxq", "workstation"}))
 
@@ -178,7 +189,9 @@ def test_no_gpu_flags_remove_nothing():
 
 @pytest.mark.parametrize("exclude", [False, True])
 @pytest.mark.parametrize(("name", "model"), [("B300", "B300 SXM6 AC"), ("B300", "B300 SXM6 PC"),
-                                           ("T4", "T4 Tensor Core GPU")])
+                                           ("T4", "T4 Tensor Core GPU"),
+                                           ("V100 PCIe 32GB", "Tesla V100PCIE32GB"),
+                                           ("V100S", "Tesla V100SPCIE32GB")])
 def test_gpu_filters_handle_marketplace_names_in_both_flags(exclude, name, model):
     offers = [make_offer("matched", gpu_model=model), make_offer("b200", gpu_model="B200")]
     opts = PlanOptions(exclude_gpu=(name,)) if exclude else PlanOptions(gpu=(name,))

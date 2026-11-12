@@ -81,6 +81,8 @@ In JSON plans, `request.cuda_architectures` lists the GPU generations supported 
 | `--catalog PATH` | bundled catalog | Local catalog for testing. A new paid launch from it also needs `--untested`, even for an entry marked `boot-tested`. The same requirement applies to a catalog selected with `ABLIT_CATALOG`. |
 | `--json` | off | Versioned machine-readable output |
 
+`--gpu` and `--exclude-gpu` also match Clore's joined PCIe names. For example, `V100 PCIe 32GB` matches `Tesla V100PCIE32GB`.
+
 `up` also takes `--yes`, which approves the quote without the prompt so that an agent or a script can rent, `--another`, which allows a second active run of the same model, and `--report`, which is accepted and recorded in the run file. `--report` does not write a log yet, so a boot test record is written by hand from the output of `ablit logs`.
 
 Without `--another`, `up` refuses to rent when the model already has an active run, and it says which run, on which marketplace and in which state. It resumes the run instead, and says so on standard error, only when all of these hold:
