@@ -38,7 +38,7 @@ CI runs these checks on every pull request. None of them rents anything.
 4. The computed peak disk is no larger than any disk figure the entry claims in `profile.storage.disk_gb_claimed`.
 5. For an entry that uses llama.cpp, the GGUF `general.architecture` is on the pinned llama.cpp build's list. The check is skipped until `engines/llamacpp/lock.yaml` lists the supported architectures.
 
-The GGUF architecture check reads only the requested header bytes from each response, including when a server ignores the HTTP range request.
+The GGUF architecture check reads only the requested header bytes from each response, including when a server ignores the HTTP range request. The reader handles nested array metadata, as allowed by the [GGUF specification](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md#file-structure), without depending on Python's recursion limit. Unknown array element types are rejected even when the array is empty.
 
 Online verification retries timeouts and disconnected or truncated HTTP responses. It waits between attempts and reports the failure immediately after the last attempt. If retries run out, including during a GGUF header check, the tool reports the affected entry as failed and continues checking the remaining entries.
 

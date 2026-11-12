@@ -46,6 +46,29 @@ def test_gguf_truncated_header_asks_for_more_bytes():
         gguf.read_architecture(data[:-3])
 
 
+def test_gguf_reads_architecture_after_deeply_nested_array_metadata():
+    nested = struct.pack("<IQ", 9, 1) * (sys.getrecursionlimit() + 10)
+    nested += struct.pack("<IQ", 8, 1) + _string("value")
+    metadata = _string("custom.nested") + struct.pack("<I", 9) + nested
+    assert gguf.read_architecture(_gguf([metadata, _kv_string("general.architecture", "llama")])) == "llama"
+
+
+def test_gguf_reads_architecture_after_several_nested_arrays():
+    arrays = struct.pack("<IQ", 9, 2)
+    arrays += struct.pack("<IQ", 8, 2) + _string("a") + _string("bb")
+    arrays += struct.pack("<IQII", 4, 2, 17, 42)
+    metadata = _string("custom.nested") + struct.pack("<I", 9) + arrays
+    assert gguf.read_architecture(_gguf([metadata, _kv_string("general.architecture", "llama")])) == "llama"
+    with pytest.raises(gguf.NeedMoreBytes):
+        gguf.read_architecture(_gguf([metadata[:-1]]))
+
+
+def test_gguf_rejects_an_unknown_array_element_type_even_when_empty():
+    metadata = _string("custom.invalid") + struct.pack("<IIQ", 9, 99, 0)
+    with pytest.raises(gguf.NotGguf, match="unknown value type 99"):
+        gguf.read_architecture(_gguf([metadata, _kv_string("general.architecture", "llama")]))
+
+
 def test_gguf_rejects_other_files():
     with pytest.raises(gguf.NotGguf):
         gguf.read_architecture(b"PK\x03\x04" + b"\0" * 40)

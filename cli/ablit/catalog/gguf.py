@@ -46,17 +46,24 @@ class _Reader:
         return self.take(length).decode("utf-8", errors="replace")
 
     def skip_value(self, kind: int) -> None:
-        if kind in _SCALARS:
-            self.take(_SCALARS[kind][1])
-        elif kind == _STRING:
-            self.string()
-        elif kind == _ARRAY:
-            inner = self.unpack("<I", 4)
-            count = self.unpack("<Q", 8)
-            for _ in range(count):
-                self.skip_value(inner)
-        else:
-            raise NotGguf(f"unknown value type {kind}")
+        pending = [(kind, 1)]
+        while pending:
+            kind, count = pending.pop()
+            if kind in _SCALARS:
+                self.take(_SCALARS[kind][1] * count)
+            elif kind == _STRING:
+                for _ in range(count):
+                    self.string()
+            elif kind == _ARRAY:
+                if not count:
+                    continue
+                if count > 1:
+                    pending.append((kind, count - 1))
+                inner = self.unpack("<I", 4)
+                length = self.unpack("<Q", 8)
+                pending.append((inner, length))
+            else:
+                raise NotGguf(f"unknown value type {kind}")
 
 
 def read_architecture(data: bytes) -> str:
