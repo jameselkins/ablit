@@ -341,14 +341,16 @@ class FileJob:
     # --- state file
 
     def save_state(self) -> None:
-        if not self.started or self.done:
-            return
-        rows = [[c.start, c.end, min(c.done, c.length)] for c in self.chunks]
-        write_json_atomic(
-            self.state_path,
-            {"v": STATE_VERSION, "size": self.size, "sha256": self.sha256, "chunks": rows},
-        )
-        self.dirty = False
+        # Finish and discard use the same lock, so a pending write cannot recreate state after cleanup.
+        with self.cond:
+            if not self.started or self.done:
+                return
+            rows = [[c.start, c.end, min(c.done, c.length)] for c in self.chunks]
+            write_json_atomic(
+                self.state_path,
+                {"v": STATE_VERSION, "size": self.size, "sha256": self.sha256, "chunks": rows},
+            )
+            self.dirty = False
 
     # --- end of a file
 
@@ -361,24 +363,25 @@ class FileJob:
             self.fd = None
 
     def discard(self) -> None:
-        self.close()
-        self.started = False  # the state file must not be written again
-        self._remove(self.part)
-        self._remove(self.state_path)
+        with self.cond:
+            self.close()
+            self.started = False  # the state file must not be written again
+            self._remove(self.part)
+            self._remove(self.state_path)
 
     def finish(self) -> None:
         """Rename the verified part file and record the result."""
-        self.close()
-        if os.stat(self.part).st_size != self.size:
-            raise Fatal("size_mismatch", self.rel)
-        os.replace(self.part, self.dest)
-        self._remove(self.state_path)
-        info = os.stat(self.dest)
-        write_json_atomic(
-            self.verified_path,
-            {"bytes": self.size, "sha256": self.sha256, "mtime_ns": info.st_mtime_ns},
-        )
         with self.cond:
+            self.close()
+            if os.stat(self.part).st_size != self.size:
+                raise Fatal("size_mismatch", self.rel)
+            os.replace(self.part, self.dest)
+            self._remove(self.state_path)
+            info = os.stat(self.dest)
+            write_json_atomic(
+                self.verified_path,
+                {"bytes": self.size, "sha256": self.sha256, "mtime_ns": info.st_mtime_ns},
+            )
             self.done = True
             self.cond.notify_all()
 

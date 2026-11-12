@@ -226,6 +226,60 @@ def test_invalid_connection_settings_do_not_crash_the_download_command(dirs, tmp
     assert code == 0 and result[0] == "OK", err
 
 
+@pytest.mark.parametrize("action", ["finish", "discard"])
+def test_finalizing_a_file_waits_for_its_inflight_state_write(dirs, monkeypatch, action):
+    from concurrent.futures import ThreadPoolExecutor
+
+    data, state = dirs
+    module = runpy.run_path(str(FETCH))
+    content = b"invented verified download"
+    job = module["FileJob"]("https://example.org/model.bin", "model.bin", len(content), sha(content),
+                            str(data), str(state))
+    job.plan(module["Config"]({}))
+    job._open_part()
+    os.pwrite(job.fd, content, 0)
+    job.chunks[0].done = len(content)
+    job.save_state()
+    save_started, allow_save = threading.Event(), threading.Event()
+    finalizer_started, finalizer_finished = threading.Event(), threading.Event()
+    write_json = module["write_json_atomic"]
+
+    def paused_write(path, value):
+        if path == job.state_path:
+            save_started.set()
+            assert allow_save.wait(5), "the state writer was not released"
+        write_json(path, value)
+
+    def finalize():
+        finalizer_started.set()
+        try:
+            getattr(job, action)()
+        finally:
+            finalizer_finished.set()
+
+    monkeypatch.setitem(job.save_state.__globals__, "write_json_atomic", paused_write)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        saving = pool.submit(job.save_state)
+        try:
+            assert save_started.wait(5), "the state writer did not start"
+            finalizing = pool.submit(finalize)
+            assert finalizer_started.wait(5), "the finalizer did not start"
+            # Let cleanup try to finish while a state write is still paused.
+            finalizer_finished.wait(0.1)
+        finally:
+            allow_save.set()
+        saving.result(timeout=5)
+        finalizing.result(timeout=5)
+
+    assert not Path(job.part).exists() and not Path(job.state_path).exists()
+    job.save_state()
+    assert not Path(job.state_path).exists()
+    if action == "finish":
+        assert Path(job.dest).read_bytes() == content and Path(job.verified_path).is_file()
+    else:
+        assert not Path(job.dest).exists() and not Path(job.verified_path).exists()
+
+
 def test_several_files_download_in_ranges_and_are_verified(dirs, tmp_path):
     data, state = dirs
     files = {"big.bin": payload("big", 100_000), "mid.bin": payload("mid", 50_000), "tiny.txt": b"hello\n"}

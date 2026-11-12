@@ -178,6 +178,8 @@ The streaming probe requests one token and allows at most 1 MiB of decoded UTF-8
 
 Progress goes to `/ablit/progress/download.json`, `join.json` and `extract.json`. Each holds `bytes_done`, `bytes_total`, `mbps`, `files_done`, `files_total` and a time. `ablit status` shows them in the run record, and `ablit up` prints a line each time a step passes another ten percent. The CLI keeps only the known steps and numeric fields, and drops a malformed file.
 
+Download state writes and file cleanup use the same lock for each file. A pending state write finishes before cleanup, so it cannot recreate a `.part.state` file after the download is verified or discarded.
+
 Progress fields must be nonnegative and fit the display's floating point range. Larger integers are dropped without stopping the run, and the percentage calculation divides before multiplying to avoid overflow.
 
 The SSH probe reads each status file independently. An incomplete JSON write in one file does not hide the other status data, and later probes read the file again.
