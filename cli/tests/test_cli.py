@@ -190,6 +190,41 @@ def test_catalog_validate_reports_invalid_utf8_as_an_invalid_file(capsys, tmp_pa
     assert "broken.yaml" in err and "UTF-8" in err
 
 
+@pytest.mark.parametrize("command", ["plan", "up", "show"])
+def test_model_commands_report_why_a_catalog_entry_was_skipped(capsys, tmp_path, repo_root, command):
+    model = "llama31-8b-abliterated-q4km"
+    seed = repo_root / "catalog/models" / (model + ".yaml")
+    data = yaml.safe_load(seed.read_text(encoding="utf-8"))
+    data["profile"]["gpu"]["count"] = 0
+    (tmp_path / seed.name).write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    class NoSearch:
+        def search(self, *args):
+            pytest.fail("a rejected entry must stop before marketplace searches")
+
+    argv = ["catalog", "show", model] if command == "show" else [command, model]
+    code = main([*argv, "--catalog", str(tmp_path)], backends={"vast": NoSearch()}, environ={})
+    captured = capsys.readouterr()
+    assert code == exitcodes.NOT_SUPPORTED and captured.out == ""
+    assert seed.name + " was skipped" in captured.err
+    assert "$.profile.gpu.count: 0 is below the minimum 1" in captured.err
+
+
+def test_plan_reports_skipped_entries_without_breaking_json_for_a_valid_model(capsys, tmp_path, repo_root):
+    import json
+
+    model = "llama31-8b-abliterated-q4km"
+    seed = repo_root / "catalog/models" / (model + ".yaml")
+    (tmp_path / seed.name).write_bytes(seed.read_bytes())
+    (tmp_path / "broken.yaml").write_text("not a mapping\n", encoding="utf-8")
+    code = main(["plan", model, "--catalog", str(tmp_path), "--json"], backends={}, environ={})
+    captured = capsys.readouterr()
+    assert code == exitcodes.NOT_SUPPORTED  # no marketplace offers were supplied
+    report = json.loads(captured.out)
+    assert report["model"]["id"] == model and report["complete"] is True
+    assert "broken.yaml was skipped" in captured.err and "must hold a YAML mapping" in captured.err
+
+
 def test_catalog_show_ambiguous_repo_asks_for_a_variant(capsys, tmp_path: Path, repo_root: Path):
     # The curated catalog has one build per repo, so a local catalog adds a second build.
     source = repo_root / "catalog" / "models" / "ds41-1017-xq-v3-uncensored.yaml"

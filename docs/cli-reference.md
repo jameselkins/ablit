@@ -52,6 +52,8 @@ Remote stage markers must be known names. Malformed stage lists mark SSH data as
 
 `<model>` is a catalog ID or a Hugging Face repo ID. A repo ID that matches several entries, e.g. two quant versions, requires `--variant`. ablit never replaces one build with another. A repo that isn't in the catalog is refused with exit code 3 and a link to CONTRIBUTING.md.
 
+When a catalog file fails validation, `catalog list`, `catalog show`, `plan` and `up` report the skipped file and its problems on standard error. Valid entries remain available, and `plan --json` keeps its report on standard output.
+
 The "Checked at" timestamp in plan text and rental quotes shows the UTC time the comparison finished. JSON plans report the same value in `checked_at`.
 
 Each offer shows the host driver's advertised CUDA support when the marketplace reports it. JSON offers expose it as `cuda_version_max`, with `null` for an unknown value. The engine's required version is `request.cuda_version_min`.

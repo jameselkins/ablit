@@ -259,6 +259,7 @@ def _cmd_catalog_show(args: argparse.Namespace) -> int:
     result = _load(args.catalog)
     if result is None:
         return exitcodes.USAGE
+    _report_problems(result)
     try:
         entry = resolve(result.entries, args.id, args.variant)
     except ModelNotInCatalog:
@@ -372,6 +373,7 @@ def _cmd_selection(
     result = _load(args.catalog)
     if result is None:
         return exitcodes.USAGE
+    _report_problems(result)
     try:
         entry = resolve(result.entries, args.model, args.variant)
     except ModelNotInCatalog:
