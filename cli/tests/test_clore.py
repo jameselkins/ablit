@@ -124,6 +124,26 @@ def test_a_gpu_name_the_table_lacks_has_no_compute_capability():
     assert offer_from_row(server(gpu="1x NVIDIA Graphics Device")).compute_capability is None
 
 
+@pytest.mark.parametrize("name,capability", [
+    ("NVIDIA H200", 9.0),
+    ("NVIDIA A30", 8.0),
+    ("NVIDIA RTX A5000", 8.6),
+    ("Tesla P40", 6.1),
+    ("Tesla M40", 5.2),
+])
+def test_additional_marketplace_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
+    from dataclasses import replace
+
+    from ablit.select.filters import engine_floor
+
+    offer = offer_from_row(server(gpu=f"1x {name}"))
+    assert offer.gpu_vendor == "nvidia" and offer.compute_capability == capability
+    req = replace(REQ, compute_capability_min=capability)
+    assert engine_floor(req)(offer) is None
+    assert engine_floor(replace(req, compute_capability_min=capability + 0.1))(offer) == "compute capability too low"
+    assert engine_floor(replace(req, cuda_architectures=(50,)))(offer) == "GPU generation is not in the engine image"
+
+
 def test_empty_country_and_missing_speed_are_allowed():
     row = server()
     row["specs"]["net"] = {"down": 0, "up": 0, "cc": ""}

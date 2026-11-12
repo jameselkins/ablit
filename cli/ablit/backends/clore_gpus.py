@@ -12,6 +12,13 @@ list on 2026-10-20. That page is built by script and could not be fetched as
 plain text on 2026-10-21, so the other entries were not re-read from it and need
 a check before a release.
 
+The NVIDIA H200, NVIDIA A30, NVIDIA RTX A5000, Tesla P40 and Tesla M40 names
+were read from Clore's feed on 2026-11-12. Their capabilities were checked
+against NVIDIA's current and legacy tables on that date:
+
+- https://developer.nvidia.com/cuda/gpus
+- https://developer.nvidia.com/cuda/gpus/legacy
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -37,7 +44,7 @@ _BLACKWELL_DESKTOP = (
     "NVIDIA RTX PRO 5000 Blackwell", "NVIDIA RTX PRO 6000 Blackwell MaxQ Works",
     "NVIDIA RTX PRO 6000 Blackwell Server Edit", "NVIDIA RTX PRO 6000 Blackwell Workstation",
 )
-_HOPPER = ("NVIDIA H100", "NVIDIA H100 NVL")
+_HOPPER = ("NVIDIA H100", "NVIDIA H100 NVL", "NVIDIA H200")
 _ADA = (
     "NVIDIA GeForce RTX 4060", "NVIDIA GeForce RTX 4060 Ti", "NVIDIA GeForce RTX 4070",
     "NVIDIA GeForce RTX 4070 SUPER", "NVIDIA GeForce RTX 4070 Ti", "NVIDIA GeForce RTX 4070 Ti SUPER",
@@ -51,9 +58,9 @@ _AMPERE_GA10X = (
     "NVIDIA GeForce RTX 3080 Ti", "NVIDIA GeForce RTX 3090", "NVIDIA GeForce RTX 3090 Ti",
     "NVIDIA GeForce RTX 3060 Laptop GPU", "NVIDIA GeForce RTX 3070 Laptop GPU",
     "NVIDIA GeForce RTX 3080 Laptop GPU",
-    "NVIDIA A2", "NVIDIA RTX A2000", "NVIDIA RTX A4000", "NVIDIA RTX A6000",
+    "NVIDIA A2", "NVIDIA RTX A2000", "NVIDIA RTX A4000", "NVIDIA RTX A5000", "NVIDIA RTX A6000",
 )
-_AMPERE_A100 = ("NVIDIA A100 80GB PCIe", "NVIDIA A100SXM440GB")
+_AMPERE_A100 = ("NVIDIA A100 80GB PCIe", "NVIDIA A100SXM440GB", "NVIDIA A30")
 _TURING = (
     "NVIDIA GeForce RTX 2060", "NVIDIA GeForce RTX 2060 SUPER", "NVIDIA GeForce RTX 2070",
     "NVIDIA GeForce RTX 2070 SUPER", "NVIDIA GeForce RTX 2080", "NVIDIA GeForce RTX 2080 SUPER",
@@ -65,7 +72,7 @@ _PASCAL = (
     "NVIDIA GeForce GT 1030", "NVIDIA GeForce GTX 1050", "NVIDIA GeForce GTX 1050 Ti",
     "NVIDIA GeForce GTX 1060 6GB", "NVIDIA GeForce GTX 1070", "NVIDIA GeForce GTX 1070 Ti",
     "NVIDIA GeForce GTX 1080", "NVIDIA GeForce GTX 1080 Ti", "NVIDIA P102100", "NVIDIA P104100",
-    "Tesla P4", "Quadro P2200", "Quadro P4000",
+    "Tesla P4", "Tesla P40", "Quadro P2200", "Quadro P4000",
 )
 
 COMPUTE_CAPABILITY_BY_CLORE_NAME: dict[str, float] = {
@@ -77,6 +84,7 @@ COMPUTE_CAPABILITY_BY_CLORE_NAME: dict[str, float] = {
     **dict.fromkeys(_TURING, 7.5),
     **dict.fromkeys(_VOLTA, 7.0),
     **dict.fromkeys(_PASCAL, 6.1),
+    "Tesla M40": 5.2,
     "Tesla M40 24GB": 5.2,
     "NVIDIA GeForce GTX 745": 5.0,
 }
