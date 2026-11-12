@@ -196,6 +196,10 @@ def test_cuda_driver_with_an_unknown_type_or_format_stops_the_search(version, er
     ("RTX PRO 4000 Blackwell", 12.0),
     ("RTX PRO 5000 Blackwell", 12.0),
     ("T4 Tensor Core GPU", 7.5),
+    ("H100 PCIe", 9.0),
+    ("RTX 4060 Ti", 8.9),
+    ("RTX 3090 Ti", 8.6),
+    ("RTX A4500", 8.6),
 ])
 def test_additional_feed_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
     from ablit.select.filters import engine_floor
