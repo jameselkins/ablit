@@ -215,6 +215,7 @@ def test_rented_and_partly_rented_servers_are_not_rentable_as_a_whole():
     (lambda r: r["specs"].update(gpu="RTX 4090"), UnknownFieldType),
     (lambda r: r["specs"].update(gpu="0x NVIDIA GeForce RTX 4090"), UnknownFieldType),
     (lambda r: r["specs"].update(disk="1 TB"), UnknownFieldType),
+    (lambda r: r["specs"].update(disk="NVME " + "9" * 400 + "GB"), UnknownUnit),
     (lambda r: r["specs"].update(gpuram="24 GB"), UnknownFieldType),
     (lambda r: r["specs"].update(net=[]), UnknownFieldType),
     (lambda r: r.update(specs=[]), UnknownFieldType),
@@ -431,6 +432,26 @@ def test_a_huge_clore_cuda_version_does_not_stop_other_marketplace_results(capsy
     clore = next(report for report in data["backends"] if report["name"] == "clore")
     assert clore["status"] == "failed" and "outside the supported numeric range" in clore["reason"]
     assert version not in out
+
+
+@pytest.mark.parametrize("digits", [400, 5000])
+def test_an_out_of_range_clore_disk_size_does_not_hide_other_offers(capsys, digits):
+    from ablit.backends.vast import VastBackend
+    from market_fixtures import VAST_URL, FakeVast, vast_row
+
+    row = server()
+    row["specs"]["disk"] = "NVME " + "9" * digits + "GB"
+    with respx.mock as router:
+        router.get(MARKET).mock(return_value=answer(row))
+        router.post(VAST_URL).mock(side_effect=FakeVast([vast_row(7101)]))
+        code = main(["plan", "llama31-8b-abliterated-q4km", "--backends", "clore,vast", "--json"],
+                    backends={"clore": CloreBackend(httpx.Client()), "vast": VastBackend(httpx.Client())}, environ={})
+    data = json.loads(capsys.readouterr().out,
+                      parse_constant=lambda value: pytest.fail(f"non-finite number in JSON: {value}"))
+    assert code == 0 and data["complete"] is False and data["chosen"]["backend"] == "vast"
+    clore = next(report for report in data["backends"] if report["name"] == "clore")
+    assert clore["status"] == "failed"
+    assert "disk" in clore["reason"] and "outside the supported numeric range" in clore["reason"]
 
 
 @pytest.mark.parametrize("json_output", [False, True])

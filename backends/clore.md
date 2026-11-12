@@ -39,6 +39,8 @@ Other pages the driver relies on:
 
 `price.on_demand["USD-Blockchain"]` is dollars per day for the whole server. The driver refuses a price outside Clore's own limit of 0.1 to 10,000 dollars per day, and refuses a server where the undocumented `price.usd.on_demand_usd` disagrees with it. `mrl` above 3000 is refused, as is a `reliability` above 1 and a `cuda_version` that is not `major.minor` or is outside the supported numeric range. Mixed-GPU servers, servers with an unknown GPU vendor and servers with no USD price are left out and counted in the search note. A CUDA floor from the catalog is applied inside the driver, because Clore has no server-side filter.
 
+A disk size outside the supported numeric range fails the Clore search. The planner keeps results from the other marketplaces and marks the comparison incomplete.
+
 The offer keeps the reported `cuda_version` for the final rental check. If that value changes or disappears after the quote, ablit cancels before creating an order and asks for a new quote.
 
 Clore reports no compute capability, so `clore_gpus.py` holds a table from Clore's GPU names to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it.

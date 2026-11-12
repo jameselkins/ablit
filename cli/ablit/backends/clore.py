@@ -230,6 +230,8 @@ def offer_from_row(
     if disk_match is None:
         raise UnknownFieldType(f"clore: field 'disk' in {where} does not end with a size in GB")
     disk_gb = float(disk_match.group(1))
+    if not math.isfinite(disk_gb):
+        raise UnknownUnit(f"clore: field 'disk' in {where} is outside the supported numeric range")
 
     net = specs.get("net")
     if not isinstance(net, dict):
