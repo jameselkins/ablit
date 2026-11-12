@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "cli"))
 
-from ablit.catalog import check_entry, load_entry_file  # noqa: E402
+from ablit.catalog import CatalogError, check_entry, load_entry_file  # noqa: E402
 
 VERSION_PATTERN = re.compile(r"^\d{4}\.\d{2}\.\d{2}\.\d+$")
 SCHEMA_VERSION = 1
@@ -36,7 +36,11 @@ def build(root: Path = ROOT) -> tuple[bytes, list[str]]:
 
     entries = []
     for path in sorted((root / "catalog" / "models").glob("*.yaml")):
-        data = load_entry_file(path)
+        try:
+            data = load_entry_file(path)
+        except CatalogError as error:
+            problems.append(str(error))
+            continue
         found = check_entry(data)
         if found:
             problems.extend(f"{path.name}: {problem}" for problem in found)

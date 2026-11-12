@@ -99,6 +99,42 @@ def test_build_catalog_rejects_a_bad_version_and_a_bad_entry(tmp_path: Path, rep
     assert any("broken.yaml" in p for p in problems)
 
 
+@pytest.mark.parametrize("content", [b"schema: [", b"- model", b"\xff", None],
+                         ids=["yaml", "mapping", "utf8", "directory"])
+def test_build_catalog_reports_unreadable_entries_and_preserves_the_output(
+    tmp_path: Path, repo_root: Path, monkeypatch, capsys, content
+):
+    sys.path.insert(0, str(repo_root / "tools"))
+    import build_catalog
+
+    shutil.copytree(repo_root / "catalog", tmp_path / "catalog", ignore=shutil.ignore_patterns("dist"))
+    models = tmp_path / "catalog" / "models"
+    broken = models / "aaa-broken.yaml"
+    if content is None:
+        broken.mkdir()
+    else:
+        broken.write_bytes(content)
+    (models / "zzz-invalid.yaml").write_text("schema: 1\nid: zzz-invalid\n", encoding="utf-8")
+    out = tmp_path / "catalog" / "dist" / "catalog.json"
+    out.parent.mkdir()
+    original = b"previous compiled catalog"
+    out.write_bytes(original)
+
+    payload, problems = build_catalog.build(tmp_path)
+    assert any("aaa-broken.yaml" in problem for problem in problems)
+    assert any("zzz-invalid.yaml" in problem for problem in problems)
+    assert len(json.loads(payload)["entries"]) == 9
+
+    build = build_catalog.build
+    monkeypatch.setattr(build_catalog, "build", lambda: build(tmp_path))
+    monkeypatch.setattr(build_catalog, "ROOT", tmp_path)
+    assert build_catalog.main() == 1
+    captured = capsys.readouterr()
+    assert "aaa-broken.yaml" in captured.err and "zzz-invalid.yaml" in captured.err
+    assert not captured.out
+    assert out.read_bytes() == original
+
+
 def test_build_catalog_script_prints_a_digest(repo_root: Path):
     result = subprocess.run([sys.executable, str(repo_root / "tools" / "build_catalog.py")],
                             capture_output=True, text=True, cwd=repo_root)
