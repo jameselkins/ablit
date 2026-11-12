@@ -35,7 +35,10 @@ def build(root: Path = ROOT) -> tuple[bytes, list[str]]:
         problems.append(f"catalog/VERSION must look like YYYY.MM.DD.N, got {version!r}")
 
     entries = []
-    for path in sorted((root / "catalog" / "models").glob("*.yaml")):
+    paths = sorted((root / "catalog" / "models").glob("*.yaml"))
+    if not paths:
+        problems.append("catalog/models: no entry files found")
+    for path in paths:
         try:
             data = load_entry_file(path)
         except CatalogError as error:

@@ -135,6 +135,32 @@ def test_build_catalog_reports_unreadable_entries_and_preserves_the_output(
     assert out.read_bytes() == original
 
 
+@pytest.mark.parametrize("source_directory", ["missing", "empty"])
+def test_build_catalog_requires_entry_files_and_preserves_the_output(
+    tmp_path: Path, monkeypatch, capsys, source_directory
+):
+    import build_catalog
+
+    catalog = tmp_path / "catalog"
+    catalog.mkdir()
+    (catalog / "VERSION").write_text("2026.10.20.1\n", encoding="utf-8")
+    if source_directory == "empty":
+        (catalog / "models").mkdir()
+    out = catalog / "dist" / "catalog.json"
+    out.parent.mkdir()
+    original = b"previous compiled catalog"
+    out.write_bytes(original)
+
+    build = build_catalog.build
+    monkeypatch.setattr(build_catalog, "build", lambda: build(tmp_path))
+    monkeypatch.setattr(build_catalog, "ROOT", tmp_path)
+    assert build_catalog.main() == 1
+    captured = capsys.readouterr()
+    assert "catalog/models: no entry files found" in captured.err
+    assert not captured.out
+    assert out.read_bytes() == original
+
+
 def test_build_catalog_script_prints_a_digest(repo_root: Path):
     result = subprocess.run([sys.executable, str(repo_root / "tools" / "build_catalog.py")],
                             capture_output=True, text=True, cwd=repo_root)
