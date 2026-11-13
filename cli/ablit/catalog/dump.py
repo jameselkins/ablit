@@ -21,13 +21,15 @@ _ORDER = [
 _FLOW_UNSAFE = re.compile(r"[,\[\]{}:#&*!|>'\"%@`]|^\s|\s$|^-|\s{2,}")
 
 
-def _is_plain_safe(text: str) -> bool:
-    if text == "" or _FLOW_UNSAFE.search(text):
-        return False
+def _reads_as_plain_string(text: str) -> bool:
     try:
         return yaml.safe_load(text) == text
-    except yaml.YAMLError:
+    except (ValueError, yaml.YAMLError):
         return False
+
+
+def _is_plain_safe(text: str) -> bool:
+    return text != "" and not _FLOW_UNSAFE.search(text) and _reads_as_plain_string(text)
 
 
 def _scalar(value: Any, flow: bool) -> str:
@@ -41,7 +43,7 @@ def _scalar(value: Any, flow: bool) -> str:
         if flow:
             return value if _is_plain_safe(value) else json.dumps(value, ensure_ascii=False)
         # Block context allows commas, colons inside words and parentheses.
-        if re.search(r"^[\s\-?:,\[\]{}#&*!|>'\"%@`]|: | #|\s$", value) or yaml.safe_load(value) != value:
+        if re.search(r"^[\s\-?:,\[\]{}#&*!|>'\"%@`]|: | #|\s$", value) or not _reads_as_plain_string(value):
             return json.dumps(value, ensure_ascii=False)
         return value
     raise TypeError(f"cannot write {type(value).__name__} as a scalar")

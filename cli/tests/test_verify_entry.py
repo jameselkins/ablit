@@ -214,6 +214,21 @@ def test_main_fill_rewrites_the_file_in_canonical_form(tmp_path: Path, capsys):
     assert "filled fake-entry.yaml" in out and "(offline checks only)" in out
 
 
+def test_main_fill_preserves_quoted_date_like_strings(tmp_path: Path):
+    repos, files = make_world()
+    data = skeleton()
+    data["display_name"] = "2026-13-01"
+    data["notes"] = ["2026-02-30", "2026-01-01T00:00:00+25:00"]
+    path = tmp_path / "fake-entry.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    assert ve.main([str(path), "--fill"], client=FakeClient(repos, files)) == 0
+    written = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert written["display_name"] == data["display_name"]
+    assert written["notes"] == data["notes"]
+    assert written["artifacts"][0]["bytes"] == 5000
+
+
 def test_main_reports_failure_with_a_nonzero_exit(tmp_path: Path):
     repos, files = make_world()
     client = FakeClient(repos, files)

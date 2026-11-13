@@ -92,6 +92,15 @@ def test_dump_quotes_strings_that_would_change_type():
     assert yaml.safe_load(dump_entry(data)) == data
 
 
+@pytest.mark.parametrize("text", [
+    "2026-13-01", "2026-02-30", "2026-01-01T00:00:00+25:00", "text\x00value",
+])
+@pytest.mark.parametrize("flow", [False, True])
+def test_dump_quotes_strings_that_cannot_be_read_as_plain_yaml(text, flow):
+    data = {"artifacts": [{"path": text}]} if flow else {"display_name": text}
+    assert yaml.safe_load(dump_entry(data)) == data
+
+
 # --- compiled catalog ------------------------------------------------------
 
 def test_build_catalog_is_deterministic_and_complete(repo_root: Path):
