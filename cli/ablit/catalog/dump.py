@@ -18,7 +18,7 @@ _ORDER = [
     "schema", "id", "display_name", "source", "artifacts", "staging",
     "profile", "sources", "tests", "status", "notes",
 ]
-_FLOW_UNSAFE = re.compile(r"[,\[\]{}:#&*!|>'\"%@`]|^\s|\s$|^-|\s{2,}")
+_FLOW_UNSAFE = re.compile(r"[,\[\]{}:?#&*!|>'\"%@`]|^\s|\s$|^-|\s{2,}")
 # PyYAML treats these Unicode characters as YAML line breaks.
 _YAML_LINE_BREAKS = "\x85\u2028\u2029"
 

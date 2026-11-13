@@ -102,6 +102,14 @@ def test_dump_quotes_strings_that_cannot_be_read_as_plain_yaml(text, flow):
     assert yaml.safe_load(dump_entry(data)) == data
 
 
+@pytest.mark.parametrize("text", ["A default?", "before?after", "?plain"])
+@pytest.mark.parametrize("field", ["sources", "artifacts"])
+def test_dump_quotes_question_marks_in_inline_values(text, field):
+    key = "note" if field == "sources" else "path"
+    data = {field: [{key: text}]}
+    assert yaml.safe_load(dump_entry(data)) == data
+
+
 def test_dump_keeps_ordinary_unicode_text_readable():
     data = {"display_name": "Café: 日本語", "artifacts": [{"path": "日本語, é"}]}
     text = dump_entry(data)

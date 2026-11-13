@@ -233,6 +233,19 @@ def test_main_fill_preserves_quoted_strings(tmp_path: Path, display_name, notes)
     assert written["artifacts"][0]["bytes"] == 5000
 
 
+def test_main_fill_preserves_question_marks_in_source_notes(tmp_path: Path):
+    repos, files = make_world()
+    data = skeleton()
+    data["sources"][0]["note"] = "A default?"
+    path = tmp_path / "fake-entry.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    assert ve.main([str(path), "--fill"], client=FakeClient(repos, files)) == 0
+    written = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert written["sources"] == data["sources"]
+    assert written["artifacts"][0]["bytes"] == 5000
+
+
 def test_main_reports_failure_with_a_nonzero_exit(tmp_path: Path):
     repos, files = make_world()
     client = FakeClient(repos, files)
