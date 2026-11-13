@@ -94,11 +94,19 @@ def test_dump_quotes_strings_that_would_change_type():
 
 @pytest.mark.parametrize("text", [
     "2026-13-01", "2026-02-30", "2026-01-01T00:00:00+25:00", "text\x00value",
+    "before\x85after", "before\u2028after", "before\u2029after",
 ])
 @pytest.mark.parametrize("flow", [False, True])
 def test_dump_quotes_strings_that_cannot_be_read_as_plain_yaml(text, flow):
     data = {"artifacts": [{"path": text}]} if flow else {"display_name": text}
     assert yaml.safe_load(dump_entry(data)) == data
+
+
+def test_dump_keeps_ordinary_unicode_text_readable():
+    data = {"display_name": "Café: 日本語", "artifacts": [{"path": "日本語, é"}]}
+    text = dump_entry(data)
+    assert yaml.safe_load(text) == data
+    assert "Café: 日本語" in text and "日本語, é" in text
 
 
 # --- compiled catalog ------------------------------------------------------

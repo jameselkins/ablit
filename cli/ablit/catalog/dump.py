@@ -19,9 +19,13 @@ _ORDER = [
     "profile", "sources", "tests", "status", "notes",
 ]
 _FLOW_UNSAFE = re.compile(r"[,\[\]{}:#&*!|>'\"%@`]|^\s|\s$|^-|\s{2,}")
+# PyYAML treats these Unicode characters as YAML line breaks.
+_YAML_LINE_BREAKS = "\x85\u2028\u2029"
 
 
 def _reads_as_plain_string(text: str) -> bool:
+    if any(char in text for char in _YAML_LINE_BREAKS):
+        return False
     try:
         return yaml.safe_load(text) == text
     except (ValueError, yaml.YAMLError):
@@ -30,6 +34,13 @@ def _reads_as_plain_string(text: str) -> bool:
 
 def _is_plain_safe(text: str) -> bool:
     return text != "" and not _FLOW_UNSAFE.search(text) and _reads_as_plain_string(text)
+
+
+def _quoted_string(text: str) -> str:
+    encoded = json.dumps(text, ensure_ascii=False)
+    for char in _YAML_LINE_BREAKS:
+        encoded = encoded.replace(char, f"\\u{ord(char):04x}")
+    return encoded
 
 
 def _scalar(value: Any, flow: bool) -> str:
@@ -41,10 +52,10 @@ def _scalar(value: Any, flow: bool) -> str:
         return repr(value)
     if isinstance(value, str):
         if flow:
-            return value if _is_plain_safe(value) else json.dumps(value, ensure_ascii=False)
+            return value if _is_plain_safe(value) else _quoted_string(value)
         # Block context allows commas, colons inside words and parentheses.
         if re.search(r"^[\s\-?:,\[\]{}#&*!|>'\"%@`]|: | #|\s$", value) or not _reads_as_plain_string(value):
-            return json.dumps(value, ensure_ascii=False)
+            return _quoted_string(value)
         return value
     raise TypeError(f"cannot write {type(value).__name__} as a scalar")
 

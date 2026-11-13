@@ -8,7 +8,9 @@ Each build is one YAML file at `catalog/models/<id>.yaml`, and `catalog/schema/v
 
 When loading a catalog directory, the CLI skips files whose names do not match their entry IDs. Other valid entries still load, and `catalog list` reports each skipped file and exits 1. A copied file cannot create a second selectable entry with the same ID.
 
-Catalog files must use UTF-8 text. Invalid encoding and invalid YAML values are reported as file errors, so other valid entries remain available. Examples include impossible dates and time zone offsets. `catalog validate` reports the affected file and exits 1. When `tools/verify_entry.py --fill` rewrites a file, it quotes date-like text that must remain a string.
+Catalog files must use UTF-8 text. Invalid encoding and invalid YAML values are reported as file errors, so other valid entries remain available. Examples include impossible dates and time zone offsets. `catalog validate` reports the affected file and exits 1.
+
+When `tools/verify_entry.py --fill` rewrites a file, it quotes date-like text that must remain a string. It escapes Unicode line breaks so the text reads back unchanged.
 
 Source URLs must use HTTPS and include a hostname and a valid port when given. The validator rejects localhost names and non-public literal IP addresses. Offline checks do not resolve hostnames or fetch the cited page. Public documentation paths may contain words such as `localhost`.
 
