@@ -217,6 +217,7 @@ def test_main_fill_rewrites_the_file_in_canonical_form(tmp_path: Path, capsys):
 @pytest.mark.parametrize("display_name, notes", [
     ("2026-13-01", ["2026-02-30", "2026-01-01T00:00:00+25:00"]),
     ("before\x85after", ["before\u2028after", "before\u2029after", "Café 日本語"]),
+    ("before\x7fafter", ["before\x80after", "\ud800", "\uffff", "Café 日本語"]),
 ])
 def test_main_fill_preserves_quoted_strings(tmp_path: Path, display_name, notes):
     repos, files = make_world()

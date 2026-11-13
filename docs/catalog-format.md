@@ -10,7 +10,7 @@ When loading a catalog directory, the CLI skips files whose names do not match t
 
 Catalog files must use UTF-8 text. Invalid encoding and invalid YAML values are reported as file errors, so other valid entries remain available. Examples include impossible dates and time zone offsets. `catalog validate` reports the affected file and exits 1.
 
-When `tools/verify_entry.py --fill` rewrites a file, it quotes date-like text that must remain a string. It escapes Unicode line breaks so the text reads back unchanged. Inline values containing question marks are quoted.
+When `tools/verify_entry.py --fill` rewrites a file, it quotes date-like text that must remain a string. It escapes Unicode line breaks and characters that YAML cannot read literally, so the text reads back unchanged. Inline values containing question marks are quoted.
 
 Source URLs must use HTTPS and include a hostname and a valid port when given. The validator rejects localhost names and non-public literal IP addresses. Offline checks do not resolve hostnames or fetch the cited page. Public documentation paths may contain words such as `localhost`.
 

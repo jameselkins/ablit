@@ -102,6 +102,16 @@ def test_dump_quotes_strings_that_cannot_be_read_as_plain_yaml(text, flow):
     assert yaml.safe_load(dump_entry(data)) == data
 
 
+@pytest.mark.parametrize("codepoint", [0x7F, 0x80, 0x84, 0x86, 0x9F, 0xD800, 0xDFFF, 0xFFFE, 0xFFFF])
+@pytest.mark.parametrize("flow", [False, True])
+def test_dump_escapes_characters_that_yaml_cannot_read_literally(codepoint, flow):
+    value = "before" + chr(codepoint) + "after"
+    data = {"artifacts": [{"path": value}]} if flow else {"display_name": value}
+    text = dump_entry(data)
+    assert yaml.safe_load(text) == data
+    assert yaml.safe_load(text.encode("utf-8")) == data
+
+
 @pytest.mark.parametrize("text", ["A default?", "before?after", "?plain"])
 @pytest.mark.parametrize("field", ["sources", "artifacts"])
 def test_dump_quotes_question_marks_in_inline_values(text, field):
