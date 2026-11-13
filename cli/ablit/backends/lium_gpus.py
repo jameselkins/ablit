@@ -27,6 +27,16 @@ architecture, and NVIDIA's PTX guide, which gives 8.6 for Ampere RTX GPUs:
 - https://www.nvidia.com/en-us/products/workstations/rtx-a4500/
 - https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-cuda-gpu-computing/
 
+The A100 80GB PCIe, RTX 3070 and RTX 4080 SUPER names were read from the
+feed on 2026-11-13. NVIDIA's current table gives 8.0 for the A100 family and
+8.6 for RTX 3070. NVIDIA's A100 page names the 80GB PCIe variant. The RTX
+4080 SUPER value follows its Ada architecture and the Ada compatibility guide,
+which gives compute capability 8.9:
+
+- https://www.nvidia.com/en-us/data-center/a100/
+- https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4080-family/
+- https://docs.nvidia.com/cuda/ada-compatibility-guide/
+
 A name that is not in the table keeps `compute_capability = None`,
 and the filter chain then removes it with the reason "compute capability
 unknown" when a profile sets a minimum.
@@ -40,14 +50,18 @@ _BLACKWELL = (
     "RTX PRO 6000 Blackwell Max-Q Workstation Edition", "RTX PRO 6000 Blackwell Workstation Edition",
 )
 _HOPPER = ("H100 80GB HBM3", "H100 PCIe", "H200", "H200 NVL")
-_ADA = ("L40", "L40S", "RTX 4060 Ti", "RTX 4070 Ti SUPER", "RTX 4080", "RTX 4090", "RTX 6000 Ada Generation")
-_AMPERE_GA10X = ("RTX 3070 Ti", "RTX 3090", "RTX 3090 Ti", "RTX A4000", "RTX A4500", "RTX A6000")
+_ADA = (
+    "L40", "L40S", "RTX 4060 Ti", "RTX 4070 Ti SUPER", "RTX 4080", "RTX 4080 SUPER",
+    "RTX 4090", "RTX 6000 Ada Generation",
+)
+_AMPERE_GA10X = ("RTX 3070", "RTX 3070 Ti", "RTX 3090", "RTX 3090 Ti", "RTX A4000", "RTX A4500", "RTX A6000")
 
 COMPUTE_CAPABILITY_BY_LIUM_NAME: dict[str, float] = {
     "B200": 10.0,
     "B300 SXM6 AC": 10.3,
     "B300 SXM6 PC": 10.3,
     "A100-SXM4-80GB": 8.0,
+    "A100 80GB PCIe": 8.0,
     "GTX 1660 Ti": 7.5,
     "T4 Tensor Core GPU": 7.5,
     **dict.fromkeys(_BLACKWELL, 12.0),
