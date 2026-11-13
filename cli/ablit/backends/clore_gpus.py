@@ -25,6 +25,10 @@ V100 Volta family. Their 7.0 values follow the V100 entry in the legacy list:
 
 - https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf
 
+The NVIDIA RTX 6000 Ada Generation name was read from the feed on
+2026-11-13. Its 8.9 value follows NVIDIA's RTX 6000 Ada entry in the
+current compute capability table above.
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -56,7 +60,7 @@ _ADA = (
     "NVIDIA GeForce RTX 4070 SUPER", "NVIDIA GeForce RTX 4070 Ti", "NVIDIA GeForce RTX 4070 Ti SUPER",
     "NVIDIA GeForce RTX 4080", "NVIDIA GeForce RTX 4080 SUPER", "NVIDIA GeForce RTX 4090",
     "NVIDIA GeForce RTX 4090 D", "NVIDIA GeForce RTX 4070 Laptop GPU", "NVIDIA GeForce RTX 4090 Laptop GPU",
-    "NVIDIA L4", "NVIDIA L40S", "NVIDIA RTX 4000 Ada Generation",
+    "NVIDIA L4", "NVIDIA L40S", "NVIDIA RTX 4000 Ada Generation", "NVIDIA RTX 6000 Ada Generation",
 )
 _AMPERE_GA10X = (
     "NVIDIA GeForce RTX 3050", "NVIDIA GeForce RTX 3060", "NVIDIA GeForce RTX 3060 Ti",
