@@ -30,9 +30,14 @@ def build(root: Path = ROOT) -> tuple[bytes, list[str]]:
     """Return the compiled catalog bytes and a list of problems."""
     problems: list[str] = []
     version_file = root / "catalog" / "VERSION"
-    version = version_file.read_text(encoding="utf-8").strip() if version_file.is_file() else ""
-    if not VERSION_PATTERN.match(version):
-        problems.append(f"catalog/VERSION must look like YYYY.MM.DD.N, got {version!r}")
+    version = ""
+    try:
+        version = version_file.read_text(encoding="utf-8").strip() if version_file.is_file() else ""
+    except (OSError, UnicodeError) as error:
+        problems.append(f"catalog/VERSION: {error}")
+    else:
+        if not VERSION_PATTERN.match(version):
+            problems.append(f"catalog/VERSION must look like YYYY.MM.DD.N, got {version!r}")
 
     entries = []
     paths = sorted((root / "catalog" / "models").glob("*.yaml"))

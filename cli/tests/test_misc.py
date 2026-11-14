@@ -193,6 +193,46 @@ def test_build_catalog_reports_unreadable_entries_and_preserves_the_output(
     assert out.read_bytes() == original
 
 
+@pytest.mark.parametrize("failure", ["utf8", "permission"])
+def test_build_catalog_reports_unreadable_version_and_preserves_the_output(
+    tmp_path: Path, repo_root: Path, monkeypatch, capsys, failure
+):
+    import build_catalog
+
+    shutil.copytree(repo_root / "catalog", tmp_path / "catalog", ignore=shutil.ignore_patterns("dist"))
+    version = tmp_path / "catalog" / "VERSION"
+    if failure == "utf8":
+        version.write_bytes(b"\xff")
+    else:
+        read_text = Path.read_text
+
+        def denied(path, *args, **kwargs):
+            if path == version:
+                raise PermissionError("access denied")
+            return read_text(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", denied)
+    (tmp_path / "catalog/models/broken.yaml").write_text("schema: 1\nid: broken\n", encoding="utf-8")
+    out = tmp_path / "catalog/dist/catalog.json"
+    out.parent.mkdir()
+    original = b"previous compiled catalog"
+    out.write_bytes(original)
+
+    payload, problems = build_catalog.build(tmp_path)
+    assert any("catalog/VERSION" in problem for problem in problems)
+    assert any("broken.yaml" in problem for problem in problems)
+    assert len(json.loads(payload)["entries"]) == 9
+
+    build = build_catalog.build
+    monkeypatch.setattr(build_catalog, "build", lambda: build(tmp_path))
+    monkeypatch.setattr(build_catalog, "ROOT", tmp_path)
+    assert build_catalog.main() == 1
+    captured = capsys.readouterr()
+    assert "catalog/VERSION" in captured.err and "broken.yaml" in captured.err
+    assert not captured.out
+    assert out.read_bytes() == original
+
+
 @pytest.mark.parametrize("source_directory", ["missing", "empty"])
 def test_build_catalog_requires_entry_files_and_preserves_the_output(
     tmp_path: Path, monkeypatch, capsys, source_directory
