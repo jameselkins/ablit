@@ -110,7 +110,9 @@ Vast returns at most 64 rows per query, so the first 64 rows by hourly price can
 3. Compute `total(H)` for each row handed over, and keep the lowest.
 4. No unseen offer can cost less than `last_all_in * (H + S)`, where `last_all_in` is the all-in price of the last row handed over.
 5. If the lowest total is at or below that bound, stop.
-6. Otherwise query again with `dph_base >= last_base` and drop rows already seen. If Vast refuses that query, returns rows below the cursor, or returns a full page at one GPU-only price, or after 10 queries, stop and label the result "cheapest of the N offers checked".
+6. Otherwise query again with `dph_base >= last_base` and drop rows already seen. If Vast refuses that query, returns rows below the cursor, or the scan cannot move past offers at one GPU-only price, stop and label the result "cheapest of the N offers checked".
+
+The driver reads at most 30 server pages (`MAX_SERVER_PAGES` in `backends/vast.py`). The planner accepts at most 10 pages sorted by all-in price (`MAX_PAGES` in `select/search.py`). Building one sorted page can require several server pages. If either limit prevents proving the lowest total, the result is labeled incomplete.
 
 If a backend fails or times out, the output names it and says the comparison did not include it. Failure reports redact the supplied marketplace key in both text and JSON output.
 
