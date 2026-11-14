@@ -36,6 +36,13 @@ in the current compute capability table:
 
 - https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-5000/
 
+The NVIDIA GeForce RTX 4060 Laptop GPU name was read from the feed on
+2026-11-14. NVIDIA's laptop comparison identifies its Ada architecture.
+Its 8.9 value follows the Ada compatibility guide:
+
+- https://www.nvidia.com/en-us/geforce/laptops/compare/
+- https://docs.nvidia.com/cuda/ada-compatibility-guide/
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -67,7 +74,8 @@ _ADA = (
     "NVIDIA GeForce RTX 4060", "NVIDIA GeForce RTX 4060 Ti", "NVIDIA GeForce RTX 4070",
     "NVIDIA GeForce RTX 4070 SUPER", "NVIDIA GeForce RTX 4070 Ti", "NVIDIA GeForce RTX 4070 Ti SUPER",
     "NVIDIA GeForce RTX 4080", "NVIDIA GeForce RTX 4080 SUPER", "NVIDIA GeForce RTX 4090",
-    "NVIDIA GeForce RTX 4090 D", "NVIDIA GeForce RTX 4070 Laptop GPU", "NVIDIA GeForce RTX 4090 Laptop GPU",
+    "NVIDIA GeForce RTX 4090 D", "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "NVIDIA GeForce RTX 4070 Laptop GPU", "NVIDIA GeForce RTX 4090 Laptop GPU",
     "NVIDIA L4", "NVIDIA L40S", "NVIDIA RTX 4000 Ada Generation", "NVIDIA RTX 6000 Ada Generation",
 )
 _AMPERE_GA10X = (

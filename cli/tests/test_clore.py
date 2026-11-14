@@ -134,6 +134,7 @@ def test_a_gpu_name_the_table_lacks_has_no_compute_capability():
     ("Tesla V100SPCIE32GB", 7.0),
     ("NVIDIA RTX 6000 Ada Generation", 8.9),
     ("NVIDIA RTX PRO 5000 72GB Blackwell", 12.0),
+    ("NVIDIA GeForce RTX 4060 Laptop GPU", 8.9),
 ])
 def test_additional_marketplace_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
     from dataclasses import replace
