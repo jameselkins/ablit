@@ -71,6 +71,8 @@ def load_entry_file(path: str | Path) -> dict[str, Any]:
             data = yaml.safe_load(handle)
     except UnicodeError as error:
         raise CatalogError(f"{path}: the file must be UTF-8 text") from error
+    except RecursionError as error:
+        raise CatalogError(f"{path}: the YAML nesting is too deep") from error
     except (OSError, ValueError, yaml.YAMLError) as error:
         raise CatalogError(f"{path}: {error}") from error
     if not isinstance(data, dict):

@@ -205,6 +205,23 @@ def test_catalog_commands_report_invalid_yaml_dates_and_keep_valid_entries(
     assert "broken.yaml" in err and reason in err
 
 
+def test_catalog_commands_report_deep_yaml_without_hiding_valid_entries(capsys, tmp_path, repo_root):
+    seed = repo_root / "catalog/models/llama31-8b-abliterated-q4km.yaml"
+    (tmp_path / seed.name).write_bytes(seed.read_bytes())
+    broken = tmp_path / "broken.yaml"
+    depth = sys.getrecursionlimit() + 10
+    broken.write_text("notes: " + "[" * depth + "text" + "]" * depth + "\n", encoding="utf-8")
+
+    code, out, err = run(capsys, "catalog", "list", "--catalog", str(tmp_path))
+    assert code == exitcodes.INVALID_FILE
+    assert "llama31-8b-abliterated-q4km" in out
+    assert "broken.yaml was skipped" in err and "nesting is too deep" in err
+
+    code, out, err = run(capsys, "catalog", "validate", str(broken))
+    assert code == exitcodes.INVALID_FILE and out == ""
+    assert "broken.yaml" in err and "nesting is too deep" in err
+
+
 def test_catalog_validate_reports_invalid_utf8_as_an_invalid_file(capsys, tmp_path):
     path = tmp_path / "broken.yaml"
     path.write_bytes(b"display_name: caf\xe9\n")

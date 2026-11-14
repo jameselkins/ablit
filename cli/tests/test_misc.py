@@ -157,8 +157,11 @@ def test_build_catalog_rejects_a_bad_version_and_a_bad_entry(tmp_path: Path, rep
     assert any("broken.yaml" in p for p in problems)
 
 
-@pytest.mark.parametrize("content", [b"schema: [", b"- model", b"\xff", None],
-                         ids=["yaml", "mapping", "utf8", "directory"])
+@pytest.mark.parametrize("content", [
+    b"schema: [", b"- model", b"\xff",
+    b"notes: " + b"[" * (sys.getrecursionlimit() + 10) + b"text" + b"]" * (sys.getrecursionlimit() + 10),
+    None,
+], ids=["yaml", "mapping", "utf8", "deep", "directory"])
 def test_build_catalog_reports_unreadable_entries_and_preserves_the_output(
     tmp_path: Path, repo_root: Path, monkeypatch, capsys, content
 ):
