@@ -153,7 +153,9 @@ Compile time is the main risk. Six architectures on a four-core runner may take 
 
 ## Image size
 
-The size has not been measured, because the image has not been built. The estimate is 4.7 to 5.1 GB on disk and about 2 GB to pull. That is the runtime base (4.19 GB on disk), about 50 MB of system packages, about 15 MB of Python packages, a small server tree, and a binary of roughly 300 to 700 MB with six architectures. The job summary prints the real size. The runtime base is large because it includes the shared cuBLAS libraries that the engine links.
+The image pinned in `../lock.yaml` has been built and published. Anonymous GHCR requests on 2026-11-14 verified its `linux/amd64` manifest and the SHA-256 hashes of the manifest and image configuration. The [platform manifest](https://ghcr.io/v2/jameselkins/ablit-xolotl/manifests/sha256:2e86f00fe1a0f747108b72eec9cd10041c4d35cc13101160cec23b94b707c6f9) lists 16 compressed layers totaling 2,219,891,942 bytes (2.22 decimal GB).
+
+The extracted size has not been measured. The estimate remains 4.7 to 5.1 GB on disk, based on the runtime base (4.19 GB), about 50 MB of system packages, about 15 MB of Python packages, a small server tree, and a binary estimated at 300 to 700 MB. The compressed layer total does not measure the disk space Docker needs while pulling and extracting the image. The runtime base is large because it includes the shared cuBLAS libraries that the engine links.
 
 A smaller base (`base` flavor, without cuBLAS) plus copied cuBLAS files would save about 2.5 GB. It was not chosen, because the NVIDIA container license describes a derived container as one that includes the entire NVIDIA container, and that was the clearer path for redistribution.
 
