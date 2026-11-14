@@ -29,6 +29,13 @@ The NVIDIA RTX 6000 Ada Generation name was read from the feed on
 2026-11-13. Its 8.9 value follows NVIDIA's RTX 6000 Ada entry in the
 current compute capability table above.
 
+The NVIDIA RTX PRO 5000 72GB Blackwell name was read from the feed on
+2026-11-14. NVIDIA's product page lists 48GB and 72GB variants in the
+RTX PRO 5000 Blackwell family. Its 12.0 value follows the family's entry
+in the current compute capability table:
+
+- https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-5000/
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -51,7 +58,8 @@ _BLACKWELL_DESKTOP = (
     "NVIDIA GeForce RTX 5090", "NVIDIA GeForce RTX 5090 D", "NVIDIA GeForce RTX 5090 D v2",
     "NVIDIA GeForce RTX 5070 Laptop GPU", "NVIDIA GeForce RTX 5090 Laptop GPU",
     "NVIDIA RTX PRO 2000 Blackwell", "NVIDIA RTX PRO 4000 Blackwell", "NVIDIA RTX PRO 4500 Blackwell",
-    "NVIDIA RTX PRO 5000 Blackwell", "NVIDIA RTX PRO 6000 Blackwell MaxQ Works",
+    "NVIDIA RTX PRO 5000 Blackwell", "NVIDIA RTX PRO 5000 72GB Blackwell",
+    "NVIDIA RTX PRO 6000 Blackwell MaxQ Works",
     "NVIDIA RTX PRO 6000 Blackwell Server Edit", "NVIDIA RTX PRO 6000 Blackwell Workstation",
 )
 _HOPPER = ("NVIDIA H100", "NVIDIA H100 NVL", "NVIDIA H200")
