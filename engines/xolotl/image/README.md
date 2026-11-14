@@ -114,14 +114,16 @@ The config file is JSON, written by the bootstrap script. The keys that matter a
 ### Host requirements
 
 - The NVIDIA driver on the host must be version 580 or newer. The runtime base sets `NVIDIA_REQUIRE_CUDA`, so the container runtime refuses to start on an older driver, except in the compatibility cases that NVIDIA lists. ablit should filter offers by driver or CUDA version before it rents.
-- The GPU needs compute capability 7.5 or higher and must be one of the generations in the next table.
+- The current engine lock permits compute capabilities 8.6, 8.9 and 12.0. The GPU must also meet the catalog profile's VRAM and GPU count requirements.
 - The engine pins a memory arena of 60 GiB by default, as `min_memlock_kb` in `lock.yaml` records. It pins with `cudaHostRegister`, and when that is refused it pins slices, then locks pages with `mlock`, then runs unpinned with slower copies (`src/core/pinned.cu` at the pinned commit). The bootstrap logs a warning when `ulimit -l` is below the arena size and does not stop. Vast containers have an 8 MiB limit and accept no `--ulimit` option.
 
 ## GPU architectures
 
-CUDA 13 supports compute capability 7.5 and up, and it dropped 7.0 (V100). The catalog sets `compute_capability_min: 7.5`, so the image covers every generation CUDA 13 can compile for that ablit may rent, apart from the ones left out below. The compiled code is SASS (machine code for one generation), so a card needs an exact match for its generation. A newer generation does not run code built for an older one, except within the same family where the table says so.
+The pinned image's `cuda_architectures` list in `../lock.yaml` is `[86, 89, 120]`. Ablit filters offers to those generations, even when the catalog profile sets a lower `compute_capability_min`. The current lock excludes T4, A100, H100 and H200.
 
-| Value | GPUs | Why it is included |
+The table below lists the build workflow's default targets for a new image. It includes more generations than the current lock permits. Widen the lock's list only after building and pinning an image with code for the added generations. The compiled code is SASS (machine code for a GPU generation), and `ELF-ARCHS` in the image records the generations found in the binary.
+
+| Build target | GPUs | Reason for the default target |
 | --- | --- | --- |
 | 75 | RTX 20 series, T4 | The catalog floor is 7.5. Not tested by the Xolotl author. |
 | 80 | A100 | Code for 86 does not run on 80, and the catalog floor admits A100. |
@@ -130,7 +132,7 @@ CUDA 13 supports compute capability 7.5 and up, and it dropped 7.0 (V100). The c
 | 90 | H100, H200 | Hopper. Not tested by the author. |
 | 120a | RTX 50 series | Blackwell consumer cards. Plain 120 fails: ptxas rejects the FP4 block-scale instructions in the MXFP4 kernels unless the target is 120a. |
 
-Left out: 70 (CUDA 13 cannot compile it), 100 and 103 (data center Blackwell), 87 (Jetson) and 121 (DGX Spark). Rented hosts with those GPUs fail the compute capability check. The build stops if the binary lacks code for a requested value, and `ELF-ARCHS` in the image lists what was found.
+The default build targets leave out 70 (CUDA 13 cannot compile it), 100 and 103 (data center Blackwell), 87 (Jetson) and 121 (DGX Spark). The current lock also excludes those generations. The build stops if the binary lacks code for a requested target.
 
 The Xolotl author measured only on RTX 4090 and RTX 3090 cards. Turing and Hopper are untested.
 
