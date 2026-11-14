@@ -184,6 +184,24 @@ def test_staging_peak_is_computed_from_the_steps():
     assert report.final_bytes == 460
 
 
+def test_download_selector_keeps_a_literal_all_name():
+    data = base_entry()
+    data["artifacts"][0]["path"] = "__all__"
+    data["staging"] = [{"step": "download", "artifacts": ["__all__"]}]
+    report = compute_staging(Entry.from_dict(data))
+    assert report.download_bytes == report.peak_bytes == report.final_bytes == 100
+    assert check_entry(data) == []
+
+
+@pytest.mark.parametrize("sizes_known", [False, True])
+def test_a_download_selector_must_match_a_path_or_role_even_when_named_all(sizes_known):
+    data = base_entry()
+    data["staging"] = [{"step": "download", "artifacts": ["__all__"]}]
+    if not sizes_known:
+        data["artifacts"][0]["bytes"] = None
+    assert any("'__all__' matches no artifact path or role" in problem for problem in check_entry(data))
+
+
 def test_streaming_extract_lowers_the_peak():
     data = base_entry()
     data["staging"][2]["keeps_inputs_until_done"] = False

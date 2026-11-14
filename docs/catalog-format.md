@@ -58,6 +58,8 @@ status: unverified                 # unverified | boot-tested | removed
 notes: []                          # where each figure came from
 ```
 
+A staging download step with `artifacts: all` selects every artifact. A list selects artifact paths or roles.
+
 ## Rules for the schema
 
 1. `artifacts` lists every file the engine reads, including draft models and tokenizer files.

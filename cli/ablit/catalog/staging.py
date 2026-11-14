@@ -61,11 +61,10 @@ def compute_staging(entry: Entry) -> StagingReport:
     for number, step in enumerate(entry.staging, start=1):
         where = f"staging step {number} ({step.step})"
         if step.step == "download":
-            selectors = ["__all__"] if step.artifacts in (None, "all") else list(step.artifacts)  # type: ignore[arg-type]
-            if selectors == ["__all__"]:
+            if step.artifacts is None or step.artifacts == "all":
                 indexes = list(range(len(entry.artifacts)))
             else:
-                indexes = _select(entry, selectors, where)
+                indexes = _select(entry, list(step.artifacts), where)
             added = 0
             for index in indexes:
                 if index in present:
