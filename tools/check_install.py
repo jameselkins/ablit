@@ -16,9 +16,10 @@ from ablit.catalog.loader import repo_root
 
 
 def main() -> None:
-    if repo_root() != Path(ablit.__file__).resolve().parent / "_data":
+    data_root = Path(ablit.__file__).resolve().parent / "_data"
+    if repo_root() != data_root:
         raise RuntimeError("Install a built wheel in a clean environment before running this check.")
-    catalog = load_catalog()
+    catalog = load_catalog(data_root / "catalog" / "models")
     if catalog.problems:
         raise RuntimeError(f"The installed catalog has invalid entries: {catalog.problems}")
     checked = 0

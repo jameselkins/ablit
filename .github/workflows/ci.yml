@@ -92,4 +92,4 @@ jobs:
           python -m build
           python -m venv "$RUNNER_TEMP/ablit-install"
           "$RUNNER_TEMP/ablit-install/bin/python" -m pip install dist/*.whl
-          "$RUNNER_TEMP/ablit-install/bin/python" -I tools/check_install.py
+          ABLIT_CATALOG="$RUNNER_TEMP/unused-catalog" "$RUNNER_TEMP/ablit-install/bin/python" -I tools/check_install.py
