@@ -39,7 +39,9 @@ The GPU-only sticker price is shown in a separate column of the quote, and it is
 
 ## Search rule
 
-Vast returns at most 64 rows per query. The `truncated` field in the response was false on full pages in live checks, so the driver does not use it. The planner keeps the lowest total, and no unseen offer can cost less than the last row's all-in price times the hours plus the startup estimate, so the search stops when the lowest total is at or below that bound. Otherwise it reads more rows. If Vast rejects a later query, or after 10 pages, the search stops and labels the result "cheapest of the N offers checked".
+Vast returns at most 64 rows per query. The `truncated` field in the response was false on full pages in live checks, so the driver does not use it. The planner keeps the lowest total, and no unseen offer can cost less than the last row's all-in price times the hours plus the startup estimate, so the search stops when the lowest total is at or below that bound. Otherwise it reads more rows. If Vast rejects a later query before the planner proves the lowest total, the result is labeled "cheapest of the N offers checked".
+
+The driver reads at most 30 server pages (`MAX_SERVER_PAGES` in `cli/ablit/backends/vast.py`). The planner accepts at most 10 pages sorted by all-in price (`MAX_PAGES` in `cli/ablit/select/search.py`). Building one sorted page can require several server pages. If either limit prevents proving the lowest total, the result is labeled incomplete.
 
 Live checks showed two facts that change how the driver pages.
 
