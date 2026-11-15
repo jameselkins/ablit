@@ -43,6 +43,12 @@ Its 8.9 value follows the Ada compatibility guide:
 - https://www.nvidia.com/en-us/geforce/laptops/compare/
 - https://docs.nvidia.com/cuda/ada-compatibility-guide/
 
+The NVIDIA GeForce RTX 3050 Ti Laptop GPU name was read from the feed on
+2026-11-14. NVIDIA's launch article identifies the laptop model as Ampere,
+and the current compute capability table above lists RTX 3050 Ti at 8.6:
+
+- https://www.nvidia.com/en-us/geforce/news/rtx-3050-ti-laptops-out-now/
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -82,7 +88,8 @@ _AMPERE_GA10X = (
     "NVIDIA GeForce RTX 3050", "NVIDIA GeForce RTX 3060", "NVIDIA GeForce RTX 3060 Ti",
     "NVIDIA GeForce RTX 3070", "NVIDIA GeForce RTX 3070 Ti", "NVIDIA GeForce RTX 3080",
     "NVIDIA GeForce RTX 3080 Ti", "NVIDIA GeForce RTX 3090", "NVIDIA GeForce RTX 3090 Ti",
-    "NVIDIA GeForce RTX 3060 Laptop GPU", "NVIDIA GeForce RTX 3070 Laptop GPU",
+    "NVIDIA GeForce RTX 3050 Ti Laptop GPU", "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "NVIDIA GeForce RTX 3070 Laptop GPU",
     "NVIDIA GeForce RTX 3080 Laptop GPU",
     "NVIDIA A2", "NVIDIA RTX A2000", "NVIDIA RTX A4000", "NVIDIA RTX A5000", "NVIDIA RTX A6000",
 )
