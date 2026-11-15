@@ -101,6 +101,25 @@ def test_vast_super_names_still_reject_other_models(short, other):
     assert not gpu_matches(other, [short])
 
 
+@pytest.mark.parametrize("short", ["GTX 1660 S", "GTX1660S", "gtx_1660_s"])
+def test_1660_super_abbreviation_is_a_model_word(short):
+    full = "NVIDIA GeForce GTX 1660 SUPER"
+    assert gpu_matches(short, [full])
+    assert gpu_matches(full, [short])
+    assert not gpu_matches(short, ["GTX 1660"])
+    assert not gpu_matches("GTX 1660", [short])
+    assert not gpu_matches(short, ["GTX 1660 Ti"])
+    assert not gpu_matches("GTX 1660 Ti", [short])
+
+
+@pytest.mark.parametrize("exclude", [False, True])
+def test_1660_filter_keeps_the_base_and_super_models_distinct(exclude):
+    offers = [make_offer("base", gpu_model="GTX 1660"), make_offer("super", gpu_model="GTX 1660 S")]
+    opts = PlanOptions(exclude_gpu=("GTX 1660",)) if exclude else PlanOptions(gpu=("GTX 1660",))
+    kept = apply_filter_chain(offers, REQ, opts).kept
+    assert [offer.offer_id for offer in kept] == (["super"] if exclude else ["base"])
+
+
 def test_a_short_name_never_matches_a_different_model():
     assert not gpu_matches("L40S", ["L40"]) and not gpu_matches("L40", ["L40S"])
     assert not gpu_matches("RTX A1000", ["A100"]) and not gpu_matches("A100 80GB PCIe", ["A1000"])
@@ -217,7 +236,8 @@ def test_no_gpu_flags_remove_nothing():
                                            ("V100S", "Tesla V100SPCIE32GB"),
                                            ("RTX 4070 SUPER", "RTX 4070S"),
                                            ("RTX 4070 Ti SUPER", "RTX 4070S Ti"),
-                                           ("RTX 4080 SUPER", "RTX 4080S")])
+                                           ("RTX 4080 SUPER", "RTX 4080S"),
+                                           ("GTX 1660 SUPER", "GTX 1660 S")])
 def test_gpu_filters_handle_marketplace_names_in_both_flags(exclude, name, model):
     offers = [make_offer("matched", gpu_model=model), make_offer("b200", gpu_model="B200")]
     opts = PlanOptions(exclude_gpu=(name,)) if exclude else PlanOptions(gpu=(name,))

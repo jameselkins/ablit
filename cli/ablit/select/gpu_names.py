@@ -68,6 +68,9 @@ _LETTERS_OR_DIGITS = re.compile(r"[a-z]+|[0-9]+")
 def gpu_name_key(name: str) -> tuple[tuple[str, ...], frozenset[str]]:
     """Return the model words, in order, and the set of form words of a GPU name."""
     text = name.lower()
+    # Vast lists "GTX 1660 S" (read 2026-11-15). Its S names the SUPER model.
+    # https://www.nvidia.com/en-us/geforce/news/nvidia-geforce-gtx-1660-super-1650-super/
+    text = re.sub(r"(?<!\d)1660[\s_-]*s\b", "1660 super", text)
     text = re.sub(r"max[\s_-]*q\b", "maxq", text)
     # Clore glues the form to the model and the memory size: "v100sxm216gb", "a100sxm440gb".
     text = re.sub(r"(sxm|hbm)(\d)(\d+gb)\b", r" \1\2 \3", text)
