@@ -10,7 +10,7 @@ Every call below was read from Clore's own documentation. Where the documentatio
 - The renter pays a share of Clore's base fee on top of the listed price. The base fee is 10% and is split between renter and host, so the renter pays 5% on demand. A holder of CLORE who uses Proof of Holding pays less. The driver quotes 5%, and `requote` takes the higher of 5% and the account's own figure.
 - Clore adds a one-time $0.10 order fee for USD payment. Its order page says it is charged only when the order stays active for more than 10 minutes. The planner counts it in every total, which can only overstate the cost.
 - A server is rented whole or by GPU. ablit rents whole servers only. Partial rentals share the machine's RAM and disk with other renters. A server counts as rentable only if `rented` is false and all its GPUs are free.
-- The host sets how long a rental can last (`mrl`, in hours, 6 to 3000 on the marketplace). There is no way to ask for a shorter order. The driver reads `mrl` as the remaining hours.
+- The host sets a maximum rental length (`mrl`, in hours, 6 to 3000 on the marketplace). The driver reads `mrl` as the remaining hours and sends neither `rental_hours` nor `auto_renew` when creating an order.
 - Clore has no host verification, so `--trust verified` drops every Clore offer.
 - ablit prices the payment currency `USD-Blockchain` only (USDT or USDC held as a USD balance). It is the one currency whose price Clore documents as USD per day, so no exchange rate is needed. Servers that list no price in it are left out and counted in the search note. Paying in CLORE can be cheaper, and ablit does not use that yet.
 
@@ -34,6 +34,12 @@ Other pages the driver relies on:
 - Partial GPU rental, and why ablit avoids it. https://docs.clore.ai/for-renters/partial-gpu-rental
 - Error codes and names. https://docs.clore.ai/dev/reference/error-codes
 - Referral terms. https://docs.clore.ai/getting-started/deposit-withdrawal/referral-program
+
+### Rental length
+
+Checked on 2026-11-15. Clore's [fee page](https://docs.clore.ai/for-renters/fee-structure) distinguishes the host's maximum rental length of 6 to 3000 hours from a renter's requested length of 1 to 3000 whole hours. The [order page](https://docs.clore.ai/for-renters/order-management#rental-length-and-auto-renewal) confirms that billing is per minute and stops when the order is cancelled.
+
+The [API reference](https://docs.clore.ai/for-hosts/api#id-10-create_order) supports a shorter on-demand order through `rental_hours`. A request above the host's maximum requires `auto_renew: true`. ablit does not set either field, so its quote uses the host's maximum and its spend cap still relies on the local check.
 
 ### How the driver reads a server
 
@@ -81,16 +87,15 @@ These are things the documentation does not say. The driver either refuses them,
 7. The marketplace answers without a key although the documentation says it needs one.
 8. `price.usd`, `reliability`, `cuda_version`, `allowed_coins`, `gpu_array` and `specs.gpus` appear in live answers and are not documented.
 9. Units of `gpuram`, `ram` and `disk`, whether `disk` is free or total, and the unit of `net.down`. The driver reads them as GB, GB, GB and Mbps.
-10. Whether the fee page's "minimum rental 6 hours" conflicts with per minute billing and "terminate anytime" on the order page.
-11. Whether the order fee in `my_orders` is charged when the order lasts under 10 minutes, and no final cost field.
-12. `my_orders` has no status field and no label, and the documentation does not say whether finished orders are left out unless `return_completed` is set.
-13. `mrl` is in hours in `marketplace` and in seconds in `my_orders`.
-14. There is no call for one server, so a requote reads the whole marketplace.
-15. No scoped keys, and no call to create a key.
-16. The referral page does not say how long a referred account earns commission, or when the 50% promotion ends.
-17. Which wallet name holds the USD balance, and exactly what code 5 means beyond the rate limit.
-18. No bandwidth charge is documented, so the driver sets it to zero.
-19. NVIDIA's compute capability list page is built by script, so `clore_gpus.py` names the pages it follows and notes that most entries were not re-read on 2026-10-21.
+10. Whether the order fee in `my_orders` is charged when the order lasts under 10 minutes, and no final cost field.
+11. `my_orders` has no status field and no label, and the documentation does not say whether finished orders are left out unless `return_completed` is set.
+12. `mrl` is in hours in `marketplace` and in seconds in `my_orders`.
+13. There is no call for one server, so a requote reads the whole marketplace.
+14. No scoped keys, and no call to create a key.
+15. The referral page does not say how long a referred account earns commission, or when the 50% promotion ends.
+16. Which wallet name holds the USD balance, and exactly what code 5 means beyond the rate limit.
+17. No bandwidth charge is documented, so the driver sets it to zero.
+18. NVIDIA's compute capability list page is built by script, so `clore_gpus.py` names the pages it follows and notes that most entries were not re-read on 2026-10-21.
 
 ## Wiring into `ablit up`
 
