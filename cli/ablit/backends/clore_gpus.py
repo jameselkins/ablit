@@ -56,6 +56,13 @@ Its 8.6 value follows NVIDIA's PTX guide for Ampere GeForce and RTX GPUs:
 - https://developer.nvidia.com/vulkan-driver
 - https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-cuda-gpu-computing/
 
+The NVIDIA GeForce GTX 1660 name was read from the feed on 2026-11-15.
+NVIDIA's launch article identifies the model as Turing. Its 7.5 value is
+derived from the architecture's capability in the Turing compatibility guide:
+
+- https://www.nvidia.com/en-us/geforce/news/nvidia-geforce-gtx-1660/
+- https://docs.nvidia.com/cuda/turing-compatibility-guide/
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -105,8 +112,9 @@ _AMPERE_A100 = ("NVIDIA A100 80GB PCIe", "NVIDIA A100SXM440GB", "NVIDIA A30")
 _TURING = (
     "NVIDIA GeForce RTX 2060", "NVIDIA GeForce RTX 2060 SUPER", "NVIDIA GeForce RTX 2070",
     "NVIDIA GeForce RTX 2070 SUPER", "NVIDIA GeForce RTX 2080", "NVIDIA GeForce RTX 2080 SUPER",
-    "NVIDIA GeForce RTX 2080 Ti", "NVIDIA GeForce GTX 1650", "NVIDIA GeForce GTX 1660 SUPER",
-    "NVIDIA GeForce GTX 1660 Ti", "Tesla T4", "Quadro RTX 6000", "Quadro RTX 8000",
+    "NVIDIA GeForce RTX 2080 Ti", "NVIDIA GeForce GTX 1650", "NVIDIA GeForce GTX 1660",
+    "NVIDIA GeForce GTX 1660 SUPER", "NVIDIA GeForce GTX 1660 Ti", "Tesla T4",
+    "Quadro RTX 6000", "Quadro RTX 8000",
 )
 _VOLTA = (
     "Tesla V100SXM216GB", "Tesla V100SXM232GB",
