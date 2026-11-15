@@ -40,7 +40,9 @@ A paid `up` holds a lock while it quotes and rents. A second `up` waits up to 15
 
 `plan` and `status` accept `--json`. `up` prints text, so follow it with `ablit status --json`. Every JSON document has a `schema` field, now `1`. A change that breaks the shape raises that number. `catalog` and `logs` print text only.
 
-Top-level keys of `plan --json`: `schema`, `command`, `checked_at`, `result`, `complete`, `incomplete_label`, `model`, `request`, `options`, `chosen`, `next`, `qualified_count`, `checked_count`, `qualified_gpu_models`, `filter_steps`, `backends`, `notices`. When `complete` is false, at least one marketplace did not answer, and the ranking may miss offers.
+Top-level keys of `plan --json`: `schema`, `command`, `checked_at`, `result`, `complete`, `incomplete_label`, `model`, `request`, `options`, `chosen`, `next`, `qualified_count`, `checked_count`, `qualified_gpu_models`, `filter_steps`, `backends`, `notices`.
+
+When `complete` is false, at least one marketplace failed, timed out or returned an incomplete search, so the ranking may miss offers. A successful response can still leave a search incomplete, for example when it reaches a paging limit. Check each marketplace's `status`, `complete`, `reason` and `note` in `backends`.
 
 Each row in an offer's `totals` has a `fits_rental_duration` field. It is `true` when the advertised rental time covers the estimated download, startup and session, and `false` when the rental ends sooner. It is `null` when the marketplace does not report a rental limit.
 
