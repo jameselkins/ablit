@@ -101,6 +101,8 @@ total(H)   = hourly_all_in * (D + S + H)
 
 `hourly_all_in` is Vast `dph_total` at the needed `allocated_storage`, RunPod `uninterruptablePrice` for all GPUs plus volume disk, or Clore's USD price per day for the whole server divided by 24 and raised by the renter fee of 5%. Clore's one-time order fee of $0.10 goes in `fixed_fees`. `bandwidth_cost_per_gb` is Vast's `inet_down_cost`, and it is zero for RunPod and Clore. The quote shows `D` and `S` on separate lines and labels `S` an estimate. CONTRIBUTING.md explains how an entry's startup estimate is derived.
 
+For Lium, `hourly_all_in` is `price_per_gpu_hour` multiplied by the GPU count being rented. The driver uses zero for `bandwidth_cost_per_gb` and `fixed_fees`. The [Lium notes](../backends/lium.md) explain the pricing assumptions and the disk share included in an offer.
+
 ### Search rule
 
 Vast returns at most 64 rows per query, so the first 64 rows by hourly price can miss the lowest total. The search code is in `cli/ablit/select/search.py`, and it follows this rule.
