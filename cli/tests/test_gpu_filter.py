@@ -79,6 +79,8 @@ def test_editions_are_told_apart_when_named():
 
 
 @pytest.mark.parametrize(("short", "full"), [
+    ("RTX 2060S", "NVIDIA GeForce RTX 2060 SUPER"),
+    ("RTX 2070S", "NVIDIA GeForce RTX 2070 SUPER"),
     ("RTX 4070S", "NVIDIA GeForce RTX 4070 SUPER"),
     ("RTX 4070S Ti", "NVIDIA GeForce RTX 4070 Ti SUPER"),
     ("RTX 4080S", "NVIDIA GeForce RTX 4080 SUPER"),
@@ -89,6 +91,10 @@ def test_vast_super_names_match_in_both_directions(short, full):
 
 
 @pytest.mark.parametrize(("short", "other"), [
+    ("RTX 2060S", "RTX 2060"),
+    ("RTX 2060S", "RTX 2070 SUPER"),
+    ("RTX 2070S", "RTX 2070"),
+    ("RTX 2070S", "RTX 2060 SUPER"),
     ("RTX 4070S", "RTX 4070"),
     ("RTX 4070S", "RTX 4070 Ti"),
     ("RTX 4070S", "RTX 4070 Ti SUPER"),
@@ -255,6 +261,8 @@ def test_no_gpu_flags_remove_nothing():
                                            ("T4", "T4 Tensor Core GPU"),
                                            ("V100 PCIe 32GB", "Tesla V100PCIE32GB"),
                                            ("V100S", "Tesla V100SPCIE32GB"),
+                                           ("RTX 2060 SUPER", "RTX 2060S"),
+                                           ("RTX 2070 SUPER", "RTX 2070S"),
                                            ("RTX 4070 SUPER", "RTX 4070S"),
                                            ("RTX 4070 Ti SUPER", "RTX 4070S Ti"),
                                            ("RTX 4080 SUPER", "RTX 4080S"),

@@ -53,9 +53,12 @@ _FORMS = {
 }
 
 # Vast's live feed uses these model abbreviations (read 2026-11-15).
-# NVIDIA's names: https://nvidianews.nvidia.com/news/geforce-rtx-40-super-series
+# NVIDIA's names: https://www.nvidia.com/en-us/geforce/news/geforce-rtx-20-series-super-gpus/
+# https://nvidianews.nvidia.com/news/geforce-rtx-40-super-series
 # Keep the aliases specific: S also names other models, such as L40S and V100S.
 _MODEL_ALIASES = {
+    ("2060", "s"): ("2060", "super"),
+    ("2070", "s"): ("2070", "super"),
     ("4070", "s"): ("4070", "super"),
     ("4070", "s", "ti"): ("4070", "ti", "super"),
     ("4080", "s"): ("4080", "super"),

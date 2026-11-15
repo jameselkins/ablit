@@ -83,7 +83,9 @@ In JSON plans, `request.cuda_architectures` lists the GPU generations supported 
 
 `--gpu` and `--exclude-gpu` also match Clore's joined PCIe names. For example, `V100 PCIe 32GB` matches `Tesla V100PCIE32GB`.
 
-Both flags match Vast's RTX 40 SUPER abbreviations. `RTX 4070 SUPER` matches `RTX 4070S`, `RTX 4070 Ti SUPER` matches `RTX 4070S Ti`, and `RTX 4080 SUPER` matches `RTX 4080S`. The abbreviations also work as filter names. `GTX 1660 SUPER` matches Vast's `GTX 1660 S`. A SUPER name does not match the base model, and a base name does not match the SUPER model.
+Both flags match Vast's RTX 2060 SUPER and RTX 2070 SUPER abbreviations. `RTX 2060 SUPER` matches `RTX 2060S`, and `RTX 2070 SUPER` matches `RTX 2070S`.
+
+Both flags also match Vast's RTX 40 SUPER abbreviations. `RTX 4070 SUPER` matches `RTX 4070S`, `RTX 4070 Ti SUPER` matches `RTX 4070S Ti`, and `RTX 4080 SUPER` matches `RTX 4080S`. The abbreviations also work as filter names. `GTX 1660 SUPER` matches Vast's `GTX 1660 S`. A SUPER name does not match the base model, and a base name does not match the SUPER model.
 
 Both GPU flags also match Vast's shortened Quadro names. `Quadro RTX 4000` matches `Q RTX 4000`, and `Quadro RTX 6000` matches `Q RTX 6000`. The shortened names also work as filter names. The Quadro models remain distinct from the Ada, A-series and RTX PRO models.
 
