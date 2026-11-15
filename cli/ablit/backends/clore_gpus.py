@@ -49,6 +49,13 @@ and the current compute capability table above lists RTX 3050 Ti at 8.6:
 
 - https://www.nvidia.com/en-us/geforce/news/rtx-3050-ti-laptops-out-now/
 
+The NVIDIA RTX A5500 Laptop GPU name was read from the feed on 2026-11-15.
+NVIDIA's Vulkan driver page lists the exact model under Ampere RTX notebooks.
+Its 8.6 value follows NVIDIA's PTX guide for Ampere GeForce and RTX GPUs:
+
+- https://developer.nvidia.com/vulkan-driver
+- https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-cuda-gpu-computing/
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -91,6 +98,7 @@ _AMPERE_GA10X = (
     "NVIDIA GeForce RTX 3050 Ti Laptop GPU", "NVIDIA GeForce RTX 3060 Laptop GPU",
     "NVIDIA GeForce RTX 3070 Laptop GPU",
     "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "NVIDIA RTX A5500 Laptop GPU",
     "NVIDIA A2", "NVIDIA RTX A2000", "NVIDIA RTX A4000", "NVIDIA RTX A5000", "NVIDIA RTX A6000",
 )
 _AMPERE_A100 = ("NVIDIA A100 80GB PCIe", "NVIDIA A100SXM440GB", "NVIDIA A30")
