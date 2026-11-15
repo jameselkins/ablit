@@ -78,6 +78,29 @@ def test_editions_are_told_apart_when_named():
     assert gpu_matches("RTX PRO 6000 Blackwell Max-Q Workstation Edition", ["RTX PRO 6000 MaxQ"])
 
 
+@pytest.mark.parametrize(("short", "full"), [
+    ("RTX 4070S", "NVIDIA GeForce RTX 4070 SUPER"),
+    ("RTX 4070S Ti", "NVIDIA GeForce RTX 4070 Ti SUPER"),
+    ("RTX 4080S", "NVIDIA GeForce RTX 4080 SUPER"),
+])
+def test_vast_super_names_match_in_both_directions(short, full):
+    assert gpu_matches(short, [full])
+    assert gpu_matches(full, [short])
+
+
+@pytest.mark.parametrize(("short", "other"), [
+    ("RTX 4070S", "RTX 4070"),
+    ("RTX 4070S", "RTX 4070 Ti"),
+    ("RTX 4070S", "RTX 4070 Ti SUPER"),
+    ("RTX 4070S Ti", "RTX 4070 Ti"),
+    ("RTX 4070S Ti", "RTX 4070 SUPER"),
+    ("RTX 4080S", "RTX 4080"),
+])
+def test_vast_super_names_still_reject_other_models(short, other):
+    assert not gpu_matches(short, [other])
+    assert not gpu_matches(other, [short])
+
+
 def test_a_short_name_never_matches_a_different_model():
     assert not gpu_matches("L40S", ["L40"]) and not gpu_matches("L40", ["L40S"])
     assert not gpu_matches("RTX A1000", ["A100"]) and not gpu_matches("A100 80GB PCIe", ["A1000"])
@@ -191,7 +214,10 @@ def test_no_gpu_flags_remove_nothing():
 @pytest.mark.parametrize(("name", "model"), [("B300", "B300 SXM6 AC"), ("B300", "B300 SXM6 PC"),
                                            ("T4", "T4 Tensor Core GPU"),
                                            ("V100 PCIe 32GB", "Tesla V100PCIE32GB"),
-                                           ("V100S", "Tesla V100SPCIE32GB")])
+                                           ("V100S", "Tesla V100SPCIE32GB"),
+                                           ("RTX 4070 SUPER", "RTX 4070S"),
+                                           ("RTX 4070 Ti SUPER", "RTX 4070S Ti"),
+                                           ("RTX 4080 SUPER", "RTX 4080S")])
 def test_gpu_filters_handle_marketplace_names_in_both_flags(exclude, name, model):
     offers = [make_offer("matched", gpu_model=model), make_offer("b200", gpu_model="B200")]
     opts = PlanOptions(exclude_gpu=(name,)) if exclude else PlanOptions(gpu=(name,))

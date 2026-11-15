@@ -52,6 +52,15 @@ _FORMS = {
     "ac": "ac", "pc": "pc",
 }
 
+# Vast's live feed uses these RTX 40 SUPER abbreviations (read 2026-11-15).
+# NVIDIA's names: https://nvidianews.nvidia.com/news/geforce-rtx-40-super-series
+# Keep the aliases specific: S also names other models, such as L40S and V100S.
+_MODEL_ALIASES = {
+    ("4070", "s"): ("4070", "super"),
+    ("4070", "s", "ti"): ("4070", "ti", "super"),
+    ("4080", "s"): ("4080", "super"),
+}
+
 _WORD = re.compile(r"[a-z0-9]+")
 _LETTERS_OR_DIGITS = re.compile(r"[a-z]+|[0-9]+")
 
@@ -79,7 +88,8 @@ def gpu_name_key(name: str) -> tuple[tuple[str, ...], frozenset[str]]:
             forms.add(model.pop() + "gb")
         else:
             model.extend(part for part in _LETTERS_OR_DIGITS.findall(word) if part not in _DROPPED)
-    return tuple(model), frozenset(forms)
+    model_key = tuple(model)
+    return _MODEL_ALIASES.get(model_key, model_key), frozenset(forms)
 
 
 def gpu_matches(gpu_model: str, names: Iterable[str]) -> bool:
