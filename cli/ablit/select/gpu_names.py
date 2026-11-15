@@ -52,13 +52,18 @@ _FORMS = {
     "ac": "ac", "pc": "pc",
 }
 
-# Vast's live feed uses these RTX 40 SUPER abbreviations (read 2026-11-15).
+# Vast's live feed uses these model abbreviations (read 2026-11-15).
 # NVIDIA's names: https://nvidianews.nvidia.com/news/geforce-rtx-40-super-series
 # Keep the aliases specific: S also names other models, such as L40S and V100S.
 _MODEL_ALIASES = {
     ("4070", "s"): ("4070", "super"),
     ("4070", "s", "ti"): ("4070", "ti", "super"),
     ("4080", "s"): ("4080", "super"),
+    # Vast shortens Quadro to Q for these Turing cards.
+    # https://www.nvidia.com/en-eu/products/workstations/quadro/rtx-4000/
+    # https://www.nvidia.com/en-eu/products/workstations/quadro/rtx-6000/
+    ("q", "4000"): ("4000",),
+    ("q", "6000"): ("6000",),
 }
 
 _WORD = re.compile(r"[a-z0-9]+")

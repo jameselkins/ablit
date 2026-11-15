@@ -120,6 +120,27 @@ def test_1660_filter_keeps_the_base_and_super_models_distinct(exclude):
     assert [offer.offer_id for offer in kept] == (["super"] if exclude else ["base"])
 
 
+@pytest.mark.parametrize("number", ["4000", "6000"])
+def test_vast_quadro_names_match_in_both_directions(number):
+    short = f"Q RTX {number}"
+    full = f"NVIDIA Quadro RTX {number}"
+    assert gpu_matches(short, [full])
+    assert gpu_matches(full, [short])
+
+
+@pytest.mark.parametrize(("short", "other"), [
+    ("Q RTX 4000", "RTX 4000 Ada"),
+    ("Q RTX 4000", "RTX A4000"),
+    ("Q RTX 4000", "RTX PRO 4000"),
+    ("Q RTX 6000", "RTX 6000 Ada"),
+    ("Q RTX 6000", "RTX A6000"),
+    ("Q RTX 6000", "RTX PRO 6000"),
+])
+def test_vast_quadro_names_do_not_match_newer_generations(short, other):
+    assert not gpu_matches(short, [other])
+    assert not gpu_matches(other, [short])
+
+
 def test_a_short_name_never_matches_a_different_model():
     assert not gpu_matches("L40S", ["L40"]) and not gpu_matches("L40", ["L40S"])
     assert not gpu_matches("RTX A1000", ["A100"]) and not gpu_matches("A100 80GB PCIe", ["A1000"])
@@ -237,7 +258,9 @@ def test_no_gpu_flags_remove_nothing():
                                            ("RTX 4070 SUPER", "RTX 4070S"),
                                            ("RTX 4070 Ti SUPER", "RTX 4070S Ti"),
                                            ("RTX 4080 SUPER", "RTX 4080S"),
-                                           ("GTX 1660 SUPER", "GTX 1660 S")])
+                                           ("GTX 1660 SUPER", "GTX 1660 S"),
+                                           ("Quadro RTX 4000", "Q RTX 4000"),
+                                           ("Quadro RTX 6000", "Q RTX 6000")])
 def test_gpu_filters_handle_marketplace_names_in_both_flags(exclude, name, model):
     offers = [make_offer("matched", gpu_model=model), make_offer("b200", gpu_model="B200")]
     opts = PlanOptions(exclude_gpu=(name,)) if exclude else PlanOptions(gpu=(name,))

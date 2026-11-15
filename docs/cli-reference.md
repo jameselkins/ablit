@@ -85,6 +85,8 @@ In JSON plans, `request.cuda_architectures` lists the GPU generations supported 
 
 Both flags match Vast's RTX 40 SUPER abbreviations. `RTX 4070 SUPER` matches `RTX 4070S`, `RTX 4070 Ti SUPER` matches `RTX 4070S Ti`, and `RTX 4080 SUPER` matches `RTX 4080S`. The abbreviations also work as filter names. `GTX 1660 SUPER` matches Vast's `GTX 1660 S`. A SUPER name does not match the base model, and a base name does not match the SUPER model.
 
+Both GPU flags also match Vast's shortened Quadro names. `Quadro RTX 4000` matches `Q RTX 4000`, and `Quadro RTX 6000` matches `Q RTX 6000`. The shortened names also work as filter names. The Quadro models remain distinct from the Ada, A-series and RTX PRO models.
+
 `up` also takes `--yes`, which approves the quote without the prompt so that an agent or a script can rent, `--another`, which allows a second active run of the same model, and `--report`, which is accepted and recorded in the run file. `--report` does not write a log yet, so a boot test record is written by hand from the output of `ablit logs`.
 
 Without `--another`, `up` refuses to rent when the model already has an active run, and it says which run, on which marketplace and in which state. It resumes the run instead, and says so on standard error, only when all of these hold:
