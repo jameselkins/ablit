@@ -55,6 +55,8 @@ When an engine lock sets a minimum CUDA version, search leaves out nodes whose `
 
 Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU names seen in the feed on 2026-10-23 to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it. Additional feed names were checked against NVIDIA's references on 2026-11-07 and 2026-11-09. The table includes A100, B300, L40/L40S, newer RTX models and the feed's T4 name. The source dates and architecture references are in the module. The engine's compute capability floor and list of compiled GPU generations still apply.
 
+The feed names `RTX 3060 Ti` and `RTX 4070 Ti` were checked on 2026-11-16. NVIDIA's [current capability list](https://developer.nvidia.com/cuda/gpus) gives them 8.6 and 8.9, respectively.
+
 ## Creating a pod, and finding it again
 
 The rent call takes the image only through a template, so a run makes two calls. Neither one is sent twice.

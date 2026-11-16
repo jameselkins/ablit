@@ -37,6 +37,12 @@ which gives compute capability 8.9:
 - https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4080-family/
 - https://docs.nvidia.com/cuda/ada-compatibility-guide/
 
+The RTX 3060 Ti and RTX 4070 Ti names were read from the feed on
+2026-11-16. NVIDIA's current list names both products directly, with
+capabilities 8.6 and 8.9, respectively:
+
+- https://developer.nvidia.com/cuda/gpus
+
 A name that is not in the table keeps `compute_capability = None`,
 and the filter chain then removes it with the reason "compute capability
 unknown" when a profile sets a minimum.
@@ -51,10 +57,13 @@ _BLACKWELL = (
 )
 _HOPPER = ("H100 80GB HBM3", "H100 PCIe", "H200", "H200 NVL")
 _ADA = (
-    "L40", "L40S", "RTX 4060 Ti", "RTX 4070 Ti SUPER", "RTX 4080", "RTX 4080 SUPER",
+    "L40", "L40S", "RTX 4060 Ti", "RTX 4070 Ti", "RTX 4070 Ti SUPER", "RTX 4080", "RTX 4080 SUPER",
     "RTX 4090", "RTX 6000 Ada Generation",
 )
-_AMPERE_GA10X = ("RTX 3070", "RTX 3070 Ti", "RTX 3090", "RTX 3090 Ti", "RTX A4000", "RTX A4500", "RTX A6000")
+_AMPERE_GA10X = (
+    "RTX 3060 Ti", "RTX 3070", "RTX 3070 Ti", "RTX 3090", "RTX 3090 Ti",
+    "RTX A4000", "RTX A4500", "RTX A6000",
+)
 
 COMPUTE_CAPABILITY_BY_LIUM_NAME: dict[str, float] = {
     "B200": 10.0,
