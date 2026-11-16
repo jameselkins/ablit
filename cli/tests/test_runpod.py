@@ -304,10 +304,11 @@ def test_a_known_type_gets_its_compute_capability():
 @pytest.mark.parametrize(("gpu_id", "display", "vram", "capability"), [
     ("NVIDIA GeForce RTX 4080 SUPER", "RTX 4080 SUPER", 16, 8.9),
     ("NVIDIA RTX A4500", "RTX A4500", 20, 8.6),
+    ("NVIDIA RTX PRO 4500 Blackwell", "RTX PRO 4500", 32, 12.0),
 ])
 def test_additional_full_gpu_types_pass_only_the_matching_engine_generation(gpu_id, display, vram, capability):
     req = dataclasses.replace(REQ, gpu_count=1, vram_gb_each=8, vram_gb_total=8,
-                              compute_capability_min=8.0, cuda_architectures=(86, 89))
+                              compute_capability_min=8.0, cuda_architectures=(86, 89, 120))
     backend, router = backend_for(FakeRunPod([runpod_type(gpu_id, display, vram, price=0.9)]))
     with router:
         offers = backend.search(req, None, OPTS).offers
@@ -315,12 +316,16 @@ def test_additional_full_gpu_types_pass_only_the_matching_engine_generation(gpu_
     assert apply_filter_chain(offers, req, OPTS).kept == offers
     other_generation = dataclasses.replace(req, cuda_architectures=(90,))
     assert not apply_filter_chain(offers, other_generation, OPTS).kept
+    higher_minimum = dataclasses.replace(req, compute_capability_min=capability + 0.1)
+    assert not apply_filter_chain(offers, higher_minimum, OPTS).kept
 
 
 @pytest.mark.parametrize("gpu_id", [
     "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 1g.24gb",
     "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb",
     "NVIDIA RTX A4500 Ada",
+    "NVIDIA RTX PRO 4500 Blackwell MIG 1g.16gb",
+    "NVIDIA RTX PRO 4500 Blackwell Laptop",
 ])
 def test_new_mappings_do_not_infer_support_for_slices_or_different_products(gpu_id):
     from ablit.backends.runpod_gpus import compute_capability_for

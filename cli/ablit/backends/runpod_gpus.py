@@ -18,6 +18,13 @@ NVIDIA documents. The RTX 4080 SUPER and RTX A4500 ids were checked on
 - https://www.nvidia.com/en-us/products/workstations/rtx-a4500/
 - https://developer.nvidia.com/blog/understanding-ptx-the-assembly-language-of-cuda-gpu-computing
 
+The RTX PRO 4500 Blackwell id was checked on 2026-11-16. RunPod identifies
+it as the 32 GB Blackwell workstation model, and NVIDIA's capability list
+assigns that Workstation Edition a value of 12.0:
+
+- https://www.runpod.io/gpu-models/rtx-pro-4500
+- https://developer.nvidia.com/cuda/gpus
+
 A type that is not in the table keeps `compute_capability = None`, and
 the filter chain then removes it with the reason "compute capability unknown"
 when a profile sets a minimum.
@@ -25,7 +32,6 @@ when a profile sets a minimum.
 Types left out on purpose, because NVIDIA's lists do not name them:
 
 - the MIG slices of the B300 and the RTX PRO 6000 Blackwell Server Edition
-- RTX PRO 4500 Blackwell (the lists name its Server and Workstation editions only)
 - the AMD Instinct types, which have no CUDA compute capability
 """
 
@@ -42,6 +48,7 @@ COMPUTE_CAPABILITY_BY_RUNPOD_ID: dict[str, float] = {
     "NVIDIA GeForce RTX 5080": 12.0,
     "NVIDIA GeForce RTX 5090": 12.0,
     "NVIDIA RTX PRO 4000 Blackwell": 12.0,
+    "NVIDIA RTX PRO 4500 Blackwell": 12.0,
     "NVIDIA RTX PRO 4500 Blackwell Server Edition": 12.0,
     "NVIDIA RTX PRO 5000 Blackwell": 12.0,
     "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition": 12.0,
