@@ -63,10 +63,15 @@ _MODEL_ALIASES = {
     ("4070", "s", "ti"): ("4070", "ti", "super"),
     ("4080", "s"): ("4080", "super"),
     # Vast shortens Quadro to Q for these Turing cards.
+    # The 5000 and 8000 names were read from the live feed on 2026-11-18.
     # https://www.nvidia.com/en-eu/products/workstations/quadro/rtx-4000/
+    # https://www.nvidia.com/en-eu/products/workstations/quadro/rtx-5000/
     # https://www.nvidia.com/en-eu/products/workstations/quadro/rtx-6000/
+    # https://www.nvidia.com/en-eu/products/workstations/quadro/rtx-8000/
     ("q", "4000"): ("4000",),
+    ("q", "5000"): ("5000",),
     ("q", "6000"): ("6000",),
+    ("q", "8000"): ("8000",),
 }
 
 _WORD = re.compile(r"[a-z0-9]+")
