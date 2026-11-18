@@ -53,7 +53,7 @@ The disk filter uses `disk_free_gb` when reported, capped at `disk_gb`. Both are
 
 When an engine lock sets a minimum CUDA version, search leaves out nodes whose `cuda_driver` is older, missing or null, and counts them in its note. Lium documents the field as the highest CUDA version supported by the host driver. The field must be text in major.minor form, as in `12.8`. The field's meaning was checked against the public feed documentation on 2026-11-07.
 
-Lium reports no compute capability, so `lium_gpus.py` holds a table from the GPU names seen in the feed on 2026-10-23 to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it. Additional feed names were checked against NVIDIA's references on 2026-11-07 and 2026-11-09. The table includes A100, B300, L40/L40S, newer RTX models and the feed's T4 name. The source dates and architecture references are in the module. The engine's compute capability floor and list of compiled GPU generations still apply.
+Lium reports no compute capability, so [`lium_gpus.py`](../cli/ablit/backends/lium_gpus.py) maps exact GPU names from the feed to NVIDIA's published values. The module records the feed dates and the sources for each group, including NVIDIA's [current capability list](https://developer.nvidia.com/cuda/gpus), [legacy list](https://developer.nvidia.com/cuda/gpus/legacy) and product and architecture guides. A missing name stays unknown, and the common filter drops it when a profile requires a compute capability floor or a list of compiled GPU generations. Known values must meet both requirements when they are set.
 
 The feed names `RTX 3060 Ti` and `RTX 4070 Ti` were checked on 2026-11-16. NVIDIA's [current capability list](https://developer.nvidia.com/cuda/gpus) gives them 8.6 and 8.9, respectively.
 
@@ -94,11 +94,10 @@ These are things the documentation does not say. The driver either refuses them,
 8. The format of `ssh_connect_cmd`. The SDK reference describes it as `ssh <user>@<host> [-p <port>]`, and the driver accepts only that form with the user `root`. https://docs.lium.io/developers/sdk/reference
 9. That a one-time template is deleted with its pod. The SDK reference says so for `one_time_template`.
 10. Which scope `GET /users/me` needs. The docs use it to verify a key.
-11. The compute capability table was not re-read from NVIDIA's page. NVIDIA's list is built by script.
-12. Rate limits for the authenticated calls. The driver waits and retries reads and deletes on 429 and 5xx, honoring `Retry-After`, and never repeats a create. Template creation is limited to 5 per 5 seconds, 30 a minute and 300 an hour for private templates.
-13. No bandwidth charge is documented, so the driver sets it to zero.
-14. Whether `GET /pods` shows a pod with an unknown status. The driver refuses a status it does not know, for the run's own pods only.
-15. Volume and backup charges exist, but ablit makes neither.
+11. Rate limits for the authenticated calls. The driver waits and retries reads and deletes on 429 and 5xx, honoring `Retry-After`, and never repeats a create. Template creation is limited to 5 per 5 seconds, 30 a minute and 300 an hour for private templates.
+12. No bandwidth charge is documented, so the driver sets it to zero.
+13. Whether `GET /pods` shows a pod with an unknown status. The driver refuses a status it does not know, for the run's own pods only.
+14. Volume and backup charges exist, but ablit makes neither.
 
 ## Wiring into `ablit up`
 
