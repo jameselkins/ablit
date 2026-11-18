@@ -51,6 +51,8 @@ The offer keeps the reported `cuda_version` for the final rental check. If that 
 
 Clore reports no compute capability, so `clore_gpus.py` holds a table from Clore's GPU names to NVIDIA's published values. A name that is missing stays unknown and a profile with a compute capability floor drops it.
 
+The feed names `NVIDIA A100PCIE40GB`, `NVIDIA H100 80GB HBM3` and `NVIDIA RTX PRO 4000 Blackwell SFF Edition` were checked on 2026-11-18. Their compute capabilities are 8.0, 9.0 and 12.0, following NVIDIA's [current table](https://developer.nvidia.com/cuda/gpus). The table names the A100 and H100 families and the exact RTX PRO 4000 Blackwell SFF Edition. Hardware floors and the engine's list of compiled GPU generations still apply.
+
 ## Creating an order, and finding it again
 
 `create_order` has no label field and no idempotency key, and the reference documents only `{"code": 0}` as its answer. The driver therefore:

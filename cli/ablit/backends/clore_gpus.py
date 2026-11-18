@@ -63,6 +63,13 @@ derived from the architecture's capability in the Turing compatibility guide:
 - https://www.nvidia.com/en-us/geforce/news/nvidia-geforce-gtx-1660/
 - https://docs.nvidia.com/cuda/turing-compatibility-guide/
 
+The NVIDIA A100PCIE40GB, NVIDIA H100 80GB HBM3 and NVIDIA RTX PRO 4000
+Blackwell SFF Edition names were read from the feed on 2026-11-18.
+Their 8.0, 9.0 and 12.0 values follow NVIDIA's current table. It names
+the A100 and H100 families and the RTX PRO 4000 Blackwell SFF Edition:
+
+- https://developer.nvidia.com/cuda/gpus
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -84,12 +91,13 @@ _BLACKWELL_DESKTOP = (
     "NVIDIA GeForce RTX 5070", "NVIDIA GeForce RTX 5070 Ti", "NVIDIA GeForce RTX 5080",
     "NVIDIA GeForce RTX 5090", "NVIDIA GeForce RTX 5090 D", "NVIDIA GeForce RTX 5090 D v2",
     "NVIDIA GeForce RTX 5070 Laptop GPU", "NVIDIA GeForce RTX 5090 Laptop GPU",
-    "NVIDIA RTX PRO 2000 Blackwell", "NVIDIA RTX PRO 4000 Blackwell", "NVIDIA RTX PRO 4500 Blackwell",
+    "NVIDIA RTX PRO 2000 Blackwell", "NVIDIA RTX PRO 4000 Blackwell",
+    "NVIDIA RTX PRO 4000 Blackwell SFF Edition", "NVIDIA RTX PRO 4500 Blackwell",
     "NVIDIA RTX PRO 5000 Blackwell", "NVIDIA RTX PRO 5000 72GB Blackwell",
     "NVIDIA RTX PRO 6000 Blackwell MaxQ Works",
     "NVIDIA RTX PRO 6000 Blackwell Server Edit", "NVIDIA RTX PRO 6000 Blackwell Workstation",
 )
-_HOPPER = ("NVIDIA H100", "NVIDIA H100 NVL", "NVIDIA H200")
+_HOPPER = ("NVIDIA H100", "NVIDIA H100 80GB HBM3", "NVIDIA H100 NVL", "NVIDIA H200")
 _ADA = (
     "NVIDIA GeForce RTX 4060", "NVIDIA GeForce RTX 4060 Ti", "NVIDIA GeForce RTX 4070",
     "NVIDIA GeForce RTX 4070 SUPER", "NVIDIA GeForce RTX 4070 Ti", "NVIDIA GeForce RTX 4070 Ti SUPER",
@@ -108,7 +116,7 @@ _AMPERE_GA10X = (
     "NVIDIA RTX A5500 Laptop GPU",
     "NVIDIA A2", "NVIDIA RTX A2000", "NVIDIA RTX A4000", "NVIDIA RTX A5000", "NVIDIA RTX A6000",
 )
-_AMPERE_A100 = ("NVIDIA A100 80GB PCIe", "NVIDIA A100SXM440GB", "NVIDIA A30")
+_AMPERE_A100 = ("NVIDIA A100 80GB PCIe", "NVIDIA A100PCIE40GB", "NVIDIA A100SXM440GB", "NVIDIA A30")
 _TURING = (
     "NVIDIA GeForce RTX 2060", "NVIDIA GeForce RTX 2060 SUPER", "NVIDIA GeForce RTX 2070",
     "NVIDIA GeForce RTX 2070 SUPER", "NVIDIA GeForce RTX 2080", "NVIDIA GeForce RTX 2080 SUPER",
