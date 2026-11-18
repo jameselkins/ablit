@@ -57,6 +57,8 @@ Lium reports no compute capability, so [`lium_gpus.py`](../cli/ablit/backends/li
 
 The feed names `RTX 3060 Ti` and `RTX 4070 Ti` were checked on 2026-11-16. NVIDIA's [current capability list](https://developer.nvidia.com/cuda/gpus) gives them 8.6 and 8.9, respectively.
 
+The feed name `RTX PRO 4500 Blackwell Server Edition` was checked on 2026-11-18. NVIDIA's [current capability list](https://developer.nvidia.com/cuda/gpus) names the Server Edition directly with compute capability 12.0.
+
 ## Creating a pod, and finding it again
 
 The rent call takes the image only through a template, so a run makes two calls. Neither one is sent twice.

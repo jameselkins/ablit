@@ -43,6 +43,12 @@ capabilities 8.6 and 8.9, respectively:
 
 - https://developer.nvidia.com/cuda/gpus
 
+The RTX PRO 4500 Blackwell Server Edition name was read from the feed on
+2026-11-18. NVIDIA's current list names the Server Edition directly with
+compute capability 12.0:
+
+- https://developer.nvidia.com/cuda/gpus
+
 A name that is not in the table keeps `compute_capability = None`,
 and the filter chain then removes it with the reason "compute capability
 unknown" when a profile sets a minimum.
@@ -52,7 +58,8 @@ from __future__ import annotations
 
 _BLACKWELL = (
     "RTX 5060 Ti", "RTX 5070", "RTX 5070 Ti", "RTX 5080", "RTX 5090",
-    "RTX PRO 4000 Blackwell", "RTX PRO 5000 Blackwell", "RTX PRO 6000 Blackwell Server Edition",
+    "RTX PRO 4000 Blackwell", "RTX PRO 4500 Blackwell Server Edition", "RTX PRO 5000 Blackwell",
+    "RTX PRO 6000 Blackwell Server Edition",
     "RTX PRO 6000 Blackwell Max-Q Workstation Edition", "RTX PRO 6000 Blackwell Workstation Edition",
 )
 _HOPPER = ("H100 80GB HBM3", "H100 PCIe", "H200", "H200 NVL")
