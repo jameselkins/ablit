@@ -246,8 +246,8 @@ def down(store, record: dict, driver, creds) -> int:
     store.save(record)
     if errors:
         print(f"{run_id}: {record['state']}. Cleanup pending. Check {CONSOLES.get(backend, CONSOLE)}")
-        for error in errors:
-            print(error)
+        for message in errors:
+            print(message)
         return 7
     print(f"{run_id}: billing_stopped_confirmed. Billing stopped.")
     if "final_cost_usd" in record:
