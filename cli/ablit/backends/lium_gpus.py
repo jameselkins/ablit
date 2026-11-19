@@ -49,6 +49,12 @@ compute capability 12.0:
 
 - https://developer.nvidia.com/cuda/gpus
 
+The RTX 5060 and RTX 3060 names were read from the feed on 2026-11-19.
+NVIDIA's current list names both products directly, with compute
+capabilities 12.0 and 8.6, respectively:
+
+- https://developer.nvidia.com/cuda/gpus
+
 A name that is not in the table keeps `compute_capability = None`,
 and the filter chain then removes it with the reason "compute capability
 unknown" when a profile sets a minimum.
@@ -57,7 +63,7 @@ unknown" when a profile sets a minimum.
 from __future__ import annotations
 
 _BLACKWELL = (
-    "RTX 5060 Ti", "RTX 5070", "RTX 5070 Ti", "RTX 5080", "RTX 5090",
+    "RTX 5060", "RTX 5060 Ti", "RTX 5070", "RTX 5070 Ti", "RTX 5080", "RTX 5090",
     "RTX PRO 4000 Blackwell", "RTX PRO 4500 Blackwell Server Edition", "RTX PRO 5000 Blackwell",
     "RTX PRO 6000 Blackwell Server Edition",
     "RTX PRO 6000 Blackwell Max-Q Workstation Edition", "RTX PRO 6000 Blackwell Workstation Edition",
@@ -68,7 +74,7 @@ _ADA = (
     "RTX 4090", "RTX 6000 Ada Generation",
 )
 _AMPERE_GA10X = (
-    "RTX 3060 Ti", "RTX 3070", "RTX 3070 Ti", "RTX 3090", "RTX 3090 Ti",
+    "RTX 3060", "RTX 3060 Ti", "RTX 3070", "RTX 3070 Ti", "RTX 3090", "RTX 3090 Ti",
     "RTX A4000", "RTX A4500", "RTX A6000",
 )
 

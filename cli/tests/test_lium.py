@@ -208,6 +208,8 @@ def test_cuda_driver_with_an_unknown_type_or_format_stops_the_search(version, er
     ("RTX 3060 Ti", 8.6),
     ("RTX 4070 Ti", 8.9),
     ("RTX PRO 4500 Blackwell Server Edition", 12.0),
+    ("RTX 5060", 12.0),
+    ("RTX 3060", 8.6),
 ])
 def test_additional_feed_names_use_the_documented_capability_and_keep_engine_limits(name, capability):
     from ablit.select.filters import engine_floor
