@@ -106,11 +106,6 @@ module = "ablit.runs.ssh"
 disable_error_code = ["union-attr"]
 
 [[tool.mypy.overrides]]
-module = "ablit.backends.vast"
-# The rate can be None in a partial listing, and Allocation types the rate as float.
-disable_error_code = ["arg-type"]
-
-[[tool.mypy.overrides]]
 module = "ablit.cli"
 # Backend has no close() in its protocol, and the list of active runs holds None on error.
 disable_error_code = ["attr-defined", "list-item"]

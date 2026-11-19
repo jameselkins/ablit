@@ -9,13 +9,37 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal, overload
 
 from ablit.backends.errors import UnknownFieldType
 
 
 def _describe(backend: str, where: str, key: str) -> str:
     return f"{backend}: field {key!r} in {where}"
+
+
+@overload
+def number(
+    row: Mapping[str, Any],
+    key: str,
+    *,
+    backend: str,
+    where: str = "a row",
+    nullable: Literal[False] = False,
+    minimum: float | None = None,
+) -> float: ...
+
+
+@overload
+def number(
+    row: Mapping[str, Any],
+    key: str,
+    *,
+    backend: str,
+    where: str = "a row",
+    nullable: bool,
+    minimum: float | None = None,
+) -> float | None: ...
 
 
 def number(
