@@ -92,15 +92,3 @@ explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_ignores = false
 check_untyped_defs = true
-
-# Each override below silences one known finding in one module. The findings are
-# listed here so they can be fixed and the override removed.
-[[tool.mypy.overrides]]
-module = ["ablit.engines", "ablit.runs.up"]
-# repo_root() is typed Path | None, and these callers use it without a check.
-disable_error_code = ["operator"]
-
-[[tool.mypy.overrides]]
-module = "ablit.runs.ssh"
-# Popen.stdout is Optional, and logs() reads it after opening it with a pipe.
-disable_error_code = ["union-attr"]

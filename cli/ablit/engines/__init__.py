@@ -97,6 +97,8 @@ def bundle(entry, record: dict) -> bytes:
     offer = record["offer"]
     if p.engine not in LAUNCHABLE_ENGINES:
         raise ValueError(f"A paid launch has no bootstrap for the {p.engine} engine.")
+    if root is None:
+        raise ValueError("The engine files were not found next to this package. Reinstall ablit.")
     lock = engine_lock(entry)
     values = {
         "ABLIT_RUN_ID": record["run_id"], "ABLIT_MODEL_ID": entry.id,

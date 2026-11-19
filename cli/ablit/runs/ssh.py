@@ -189,6 +189,8 @@ class SSH:
         except OSError as error:
             raise RunError(f"SSH could not start ({error.__class__.__name__}).") from error
         try:
+            if proc.stdout is None:
+                raise RunError("Remote logs are unavailable.")
             for line in proc.stdout:
                 print(redactor.remote_text(line), end="", flush=True)
             if proc.wait():
