@@ -52,6 +52,8 @@ For a manual live search check, run `python3 tools/live_plan.py OUTPUT_DIR` with
 
 The live check's `--hours N` sets the session length and requires a finite number above zero. Invalid durations exit 2 before creating output files or starting searches.
 
+The live check exits 1 before marketplace searches when the catalog is empty or any entry fails to load or validate. It names each invalid file and its problems on standard error.
+
 A weekly job runs check 2 again on every entry, and it fails when an artifact has disappeared. A maintainer then sets that entry to `removed`.
 
 ## Entry status

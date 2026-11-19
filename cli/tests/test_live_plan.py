@@ -61,6 +61,27 @@ def test_finite_positive_hours_reach_the_smoke_check(tmp_path, monkeypatch, hour
     assert calls == [(output, float(hours))]
 
 
+@pytest.mark.parametrize("catalog_case", ["empty", "invalid", "schema", "unreadable", "mixed"])
+def test_catalog_problems_stop_before_marketplace_searches(tmp_path, monkeypatch, capsys, entry_files, catalog_case):
+    catalog = tmp_path / "catalog"
+    catalog.mkdir()
+    if catalog_case != "empty":
+        content = b"\xff" if catalog_case == "unreadable" else b"{}\n" if catalog_case == "schema" else b"[]\n"
+        (catalog / "broken.yaml").write_bytes(content)
+    if catalog_case == "mixed":
+        source = entry_files[0]
+        (catalog / source.name).write_bytes(source.read_bytes())
+    monkeypatch.setenv("ABLIT_CATALOG", str(catalog))
+    monkeypatch.setattr(live_plan, "main", lambda *args, **kwargs: pytest.fail("invalid catalog started searches"))
+    output = tmp_path / "live"
+    assert live_plan.cli([str(output)]) == 1
+    assert not (output / "requests.log").exists()
+    assert not (output / "index.json").exists()
+    message = capsys.readouterr().err
+    expected = "catalog has no valid entries" if catalog_case == "empty" else "broken.yaml"
+    assert expected in message
+
+
 @pytest.fixture
 def refuse_network():
     def refuse(request):
@@ -167,7 +188,7 @@ def test_smoke_check_reports_incomplete_plans_and_finishes_saving_results(tmp_pa
     from types import SimpleNamespace
 
     entries = [SimpleNamespace(id="first-model"), SimpleNamespace(id="second-model")]
-    monkeypatch.setattr(live_plan, "load_catalog", lambda: SimpleNamespace(entries=entries))
+    monkeypatch.setattr(live_plan, "load_catalog", lambda: SimpleNamespace(entries=entries, problems={}))
 
     def plan(argv, **kwargs):
         assert kwargs["environ"] == {}
@@ -201,7 +222,7 @@ def test_run_closes_its_http_client_on_success_and_failure(tmp_path, monkeypatch
     def catalog():
         if outcome == "catalog_error":
             raise RuntimeError("catalog read failed")
-        return SimpleNamespace(entries=[SimpleNamespace(id="test-model")])
+        return SimpleNamespace(entries=[SimpleNamespace(id="test-model")], problems={})
 
     def plan(argv, **kwargs):
         assert not clients[0].is_closed

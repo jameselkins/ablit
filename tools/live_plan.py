@@ -23,6 +23,7 @@ price data must not be published.
 The index also records whether each comparison completed. The tool saves every
 result, then exits 1 if any comparison was incomplete or failed to produce a
 valid report. A complete search with no qualifying offers is not a smoke failure.
+An empty catalog or any catalog loading problem fails before marketplace searches.
 """
 
 from __future__ import annotations
@@ -125,7 +126,16 @@ def run(output_dir: Path, hours: float) -> int:
     with httpx.Client(transport=transport, timeout=httpx.Timeout(60.0)) as client:
         backends = {"clore": CloreBackend(client), "lium": LiumBackend(client),
                     "runpod": RunPodBackend(client), "vast": VastBackend(client)}
-        entries = load_catalog().entries
+        catalog = load_catalog()
+        if catalog.problems:
+            for name, problems in catalog.problems.items():
+                for problem in problems:
+                    print(f"live_plan: {name}: {problem}", file=sys.stderr)
+            return 1
+        entries = catalog.entries
+        if not entries:
+            print("live_plan: the catalog has no valid entries", file=sys.stderr)
+            return 1
         index: dict[str, Any] = {}
         for entry in entries:
             buffer = io.StringIO()
