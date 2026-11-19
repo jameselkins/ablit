@@ -11,7 +11,8 @@ import httpx
 
 from ablit.backends.errors import BackendError, CredentialsRejected, WorkloadRejected
 from ablit.credentials import CredentialError, secret_get
-from ablit.runs import RunBusy
+from ablit.redact import RedactedError
+from ablit.runs import RunBusy, RunError
 from ablit.runs.common import pair
 from ablit.runs.lifecycle import down, estimate_spend, local_stop_needed, reason, refresh, run_redactor
 from ablit.runs.monitor import POLL_SECONDS
@@ -74,6 +75,14 @@ def status(args, records, drivers, environ, store):
                         store.save(record)
                         print(f"{record['run_id']}: marketplace check failed ({reason(error, redactor)}). Retrying.",
                               file=sys.stderr, flush=True)
+                    except (CredentialError, RunError) as error:
+                        error.args = (redactor.remote_text(str(error)),)
+                        raise
+                    except EOFError:
+                        raise
+                    except Exception as error:
+                        detail = redactor.remote_text(f"{type(error).__name__}: {error}")
+                        raise RedactedError(detail) from None
                     else:
                         if record.pop("marketplace_check", None) is not None:
                             store.save(record)

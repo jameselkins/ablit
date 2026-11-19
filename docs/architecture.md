@@ -59,6 +59,8 @@ A lower hourly rate, restarted watchdog counter or backward clock change cannot 
 
 `status --watch` also retries failed marketplace checks while updating estimated spending. It marks the saved status with `marketplace_check: "unavailable"` until a successful check, and attempts cleanup when the local cap check requires a stop. An older observation that the machine was absent does not suppress the cap check during an outage.
 
+Status reconciliation and refresh failures redact available marketplace, endpoint and watchdog keys before the CLI reports them.
+
 Monitor and cleanup failure messages redact available marketplace, endpoint and watchdog keys before shortening the diagnostic. Saved pending-cleanup messages use the same redacted text.
 
 Cleanup retries use saved confirmations of watchdog and SSH key deletion, so a later failure does not require deleting those keys again. Each retry still reconciles resources and checks billing before completing cleanup.

@@ -27,7 +27,7 @@ from ablit.engines import engine_lock
 from ablit.notices import SPEND_CAP_NOTICE, SPOT_WARNING
 from ablit.plan import UnknownBackend, gpu_filter_message, report_json, run_plan
 from ablit.plan_text import render
-from ablit.redact import strip_control
+from ablit.redact import RedactedError, strip_control
 from ablit.select import PlanOptions
 from ablit.runs import RunError, RunStore
 from ablit.select.gpu_names import parse_gpu_names
@@ -477,6 +477,9 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
     except (EOFError, KeyboardInterrupt):
         print("Billing continues for existing rentals. Use `ablit status --all` and `ablit down <run>`.", file=sys.stderr)
         return exitcodes.USAGE
+    except RedactedError as error:
+        print(strip_control(f"ablit: {error}"), file=sys.stderr)
+        return _unexpected_exit()
     except Exception as error:
         # BackendError, HTTP, OS and value errors land here, and so does any bug. Exit 1 promises
         # that no run is billing, so check the runs before using it.

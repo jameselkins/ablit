@@ -11,6 +11,10 @@ MASK = "[redacted]"
 MIN_SECRET_LENGTH = 6
 
 
+class RedactedError(Exception):
+    """An unexpected error with a diagnostic already filtered for known secrets."""
+
+
 def _forms(secret: str) -> set[str]:
     """Return the ways a secret can show up in text.
 
