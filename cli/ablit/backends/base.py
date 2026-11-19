@@ -133,6 +133,8 @@ def creds_from_env(backend: str, environ: Mapping[str, str] | None = None) -> Cr
 class Backend(Protocol):
     name: str
 
+    def close(self) -> None: ...
+
     def capabilities(self) -> Capabilities: ...
 
     def search(

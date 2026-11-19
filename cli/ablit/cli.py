@@ -487,7 +487,7 @@ def main(argv: Sequence[str] | None = None, *, backends=None, environ=None) -> i
 def _unexpected_exit() -> int:
     """Return 1 when no run could be billing, or else name the cleanup and return 7."""
     try:
-        active = [r for r in RunStore().all() if r["state"] != "billing_stopped_confirmed"]
+        active: list[dict | None] = [r for r in RunStore().all() if r["state"] != "billing_stopped_confirmed"]
     except Exception:
         active = [None]
     if not active:

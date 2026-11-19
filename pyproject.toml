@@ -104,8 +104,3 @@ disable_error_code = ["operator"]
 module = "ablit.runs.ssh"
 # Popen.stdout is Optional, and logs() reads it after opening it with a pipe.
 disable_error_code = ["union-attr"]
-
-[[tool.mypy.overrides]]
-module = "ablit.cli"
-# Backend has no close() in its protocol, and the list of active runs holds None on error.
-disable_error_code = ["attr-defined", "list-item"]
