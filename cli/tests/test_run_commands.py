@@ -451,6 +451,51 @@ def test_status_refresh_errors_redact_run_keys_and_keep_the_exit_code(monkeypatc
         assert captured.err.count("[redacted]") >= 4
 
 
+@pytest.mark.parametrize("command", ["logs", "down", "tunnel", "status_cleanup"])
+@pytest.mark.parametrize(("error_type", "code"), [
+    (keys.CredentialError, 4), (RunError, 2), (RuntimeError, 7), (OSError, 7), (EOFError, 2),
+    (CredentialsRejected, 4), (WorkloadRejected, 9), (BackendError, 7),
+])
+def test_existing_run_errors_redact_known_keys(monkeypatch, capsys, command, error_type, code):
+    store = RunStore()
+    run = saved_run(store)
+    run["state"] = "running"
+    store.save(run)
+    keys.secret_set("accounts/vast", "private-account-key")
+    keys.secret_set(run["run_id"], "private-endpoint-key")
+    keys.secret_set("watchdog/" + run["run_id"], "private-watchdog-key")
+
+    def failed(*args, **kwargs):
+        message = ("operation failed: private-account-key private-endpoint-key "
+                   "private-watchdog-key private-\x1baccount-key")
+        if error_type in (CredentialsRejected, WorkloadRejected):
+            raise error_type("vast", 403, message)
+        if error_type is OSError:
+            raise OSError(13, message, "private-endpoint-key")
+        raise error_type(message)
+
+    target = {"logs": "ablit.runs.ssh.SSH.logs", "down": "ablit.runs.down.down",
+              "tunnel": "ablit.runs.tunnel.monitor", "status_cleanup": "ablit.runs.status.down"}[command]
+    monkeypatch.setattr(target, failed)
+    flags = [command, run["run_id"]]
+    if command == "status_cleanup":
+        monkeypatch.setattr("ablit.runs.status.refresh", lambda *a, **kw: None)
+        monkeypatch.setattr("ablit.runs.status.local_stop_needed", lambda *a, **kw: True)
+        flags = ["status", run["run_id"], "--watch", "--json"]
+    with respx.mock:
+        assert main(flags, environ={}) == code
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "private-" not in captured.err and "\x1b" not in captured.err
+    if error_type is EOFError:
+        assert "Billing continues for existing rentals." in captured.err
+    elif error_type is WorkloadRejected:
+        assert "marketplace rejected the workload" in captured.err
+    else:
+        assert "operation failed" in captured.err
+        assert captured.err.count("[redacted]") >= 4
+
+
 @pytest.mark.parametrize("follow", [False, True])
 def test_status_and_logs_redact_known_secrets_and_show_key_is_explicit(monkeypatch, capsys, follow):
     store = RunStore()

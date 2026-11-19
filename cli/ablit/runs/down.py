@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from ablit.runs import RunBusy
-from ablit.runs.common import pair
-from ablit.runs.lifecycle import down
+from ablit.runs.common import pair, raise_redacted
+from ablit.runs.lifecycle import down, run_redactor
 
 # An attached `up` holds the run lock for one poll, which SSH timeouts can stretch.
 LOCK_WAIT_SECONDS = 90
@@ -17,7 +17,11 @@ def down_command(run_id, store, drivers, environ):
             if record["state"] == "billing_stopped_confirmed":
                 return down(store, record, None, None)
             driver, creds = pair(record, drivers, environ)
-            return down(store, record, driver, creds)
+            redactor = run_redactor(record, creds)
+            try:
+                return down(store, record, driver, creds)
+            except Exception as error:
+                raise_redacted(error, redactor)
     except RunBusy:
         print("Cleanup is pending because another command holds the run lock. Re-run down.")
         return 7

@@ -5,7 +5,8 @@ from __future__ import annotations
 import sys
 
 from ablit.runs import RunError
-from ablit.runs.common import pair
+from ablit.runs.common import pair, raise_redacted
+from ablit.runs.lifecycle import run_redactor
 from ablit.runs.monitor import monitor
 
 
@@ -19,4 +20,8 @@ def tunnel(record, store, drivers, environ):
     if record["state"] != "running":
         raise RunError("The run is still starting. Run the same `ablit up` command again with the same --max-spend to resume it, or run `ablit down`.")
     driver, creds = pair(record, drivers, environ)
-    return monitor(store, record, driver, creds)
+    redactor = run_redactor(record, creds)
+    try:
+        return monitor(store, record, driver, creds)
+    except Exception as error:
+        raise_redacted(error, redactor)

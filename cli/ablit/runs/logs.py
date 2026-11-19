@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from ablit.redact import strip_control
 from ablit.runs import RunError
+from ablit.runs.common import raise_redacted
 from ablit.runs.lifecycle import run_redactor
 from ablit.runs.ssh import SSH
 
 
 def logs(args, record, store, creds):
-    SSH(store, record).logs(args.stage, args.follow, run_redactor(record, creds))
+    redactor = run_redactor(record, creds)
+    try:
+        SSH(store, record).logs(args.stage, args.follow, redactor)
+    except Exception as error:
+        raise_redacted(error, redactor)
     return 0
 
 
