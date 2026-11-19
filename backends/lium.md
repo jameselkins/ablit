@@ -102,6 +102,7 @@ These are things the documentation does not say. The driver either refuses them,
 12. No bandwidth charge is documented, so the driver sets it to zero.
 13. Whether `GET /pods` shows a pod with an unknown status. The driver refuses a status it does not know, for the run's own pods only.
 14. Volume and backup charges exist, but ablit makes neither.
+15. The public feed does not report free space specifically at the bootstrap's `/models` path. The [create guide](https://docs.lium.io/pod-users/create-pod) says about two thirds of a pod's disk share is its local volume, and the rest is pod disk. In the [API schema](https://lium.io/api/openapi.json), `PodDetailResponse.disk_size_gb` includes both, while `volume_limit_gb` covers the local volume. ablit mounts the local volume at `/root` and downloads to `/models`. The usable capacity at `/models` as a fraction of the feed's allocation remains unverified. The bootstrap checks free bytes at `/models` before downloading.
 
 ## Wiring into `ablit up`
 
