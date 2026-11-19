@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -185,3 +186,40 @@ def test_smoke_check_reports_incomplete_plans_and_finishes_saving_results(tmp_pa
     assert (output / "first-model.json").read_text() == text
     assert json.loads((output / "second-model.json").read_text())["complete"] is True
     assert f"{0 if complete else 1} incomplete or failed plans" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("outcome", ["complete", "incomplete", "catalog_error", "plan_error", "interrupted"])
+def test_run_closes_its_http_client_on_success_and_failure(tmp_path, monkeypatch, outcome):
+    clients = []
+    client_class = httpx.Client
+
+    def make_client(*args, **kwargs):
+        client = client_class(*args, **kwargs)
+        clients.append(client)
+        return client
+
+    def catalog():
+        if outcome == "catalog_error":
+            raise RuntimeError("catalog read failed")
+        return SimpleNamespace(entries=[SimpleNamespace(id="test-model")])
+
+    def plan(argv, **kwargs):
+        assert not clients[0].is_closed
+        if outcome == "plan_error":
+            raise RuntimeError("plan failed")
+        if outcome == "interrupted":
+            raise KeyboardInterrupt
+        print(json.dumps({"complete": outcome == "complete"}))
+        return 0
+
+    monkeypatch.setattr(live_plan.httpx, "Client", make_client)
+    monkeypatch.setattr(live_plan, "load_catalog", catalog)
+    monkeypatch.setattr(live_plan, "main", plan)
+    if outcome in ("catalog_error", "plan_error", "interrupted"):
+        error = KeyboardInterrupt if outcome == "interrupted" else RuntimeError
+        with pytest.raises(error):
+            live_plan.run(tmp_path, 1.0)
+    else:
+        assert live_plan.run(tmp_path, 1.0) == (0 if outcome == "complete" else 1)
+    assert len(clients) == 1
+    assert clients[0].is_closed
