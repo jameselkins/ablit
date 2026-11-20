@@ -36,6 +36,43 @@ def test_refuses_a_path_that_reaches_into_the_repository_through_dots(repo_root:
     assert live_plan.cli([str(sneaky)]) == 2
 
 
+@pytest.mark.parametrize("existing", ["results", "hidden", "subdirectory", "file"])
+def test_refuses_used_output_paths_without_changing_them(tmp_path, monkeypatch, capsys, existing):
+    output = tmp_path / "live"
+    if existing == "file":
+        output.write_bytes(b"keep this file\n")
+    else:
+        output.mkdir()
+        if existing == "results":
+            (output / "index.json").write_text('{"previous-model": {"complete": true}}\n')
+            (output / "requests.log").write_text("previous request\n")
+        elif existing == "hidden":
+            (output / ".previous-run").write_bytes(b"keep this file\n")
+        else:
+            (output / "previous-run").mkdir()
+
+    def snapshot():
+        return {str(path.relative_to(tmp_path)): None if path.is_dir() else path.read_bytes()
+                for path in tmp_path.rglob("*")}
+
+    before = snapshot()
+    monkeypatch.setattr(live_plan, "run", lambda *args: pytest.fail("used output path reached the live check"))
+    assert live_plan.cli([str(output)]) == 2
+    assert snapshot() == before
+    assert "empty output directory" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("already_exists", [False, True])
+def test_allows_new_or_empty_output_directories(tmp_path, monkeypatch, already_exists):
+    output = tmp_path / "live"
+    if already_exists:
+        output.mkdir()
+    calls = []
+    monkeypatch.setattr(live_plan, "run", lambda directory, hours: calls.append((directory, hours)) or 0)
+    assert live_plan.cli([str(output)]) == 0
+    assert calls == [(output, 1.0)]
+
+
 def test_refuses_to_run_in_ci(monkeypatch, tmp_path: Path, capsys):
     monkeypatch.setenv("CI", "true")
     assert live_plan.cli([str(tmp_path / "out")]) == 2

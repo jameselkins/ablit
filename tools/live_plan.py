@@ -17,8 +17,9 @@ requests and nothing else:
 OUTPUT_DIR receives one JSON file per entry (the raw output of `ablit plan
 --json`), `index.json` with the exit code of each plan, and `requests.log` with
 one line per request (method, host, path, status, time and size, with no
-bodies). The script refuses to write inside this repository, because marketplace
-price data must not be published.
+bodies). The script requires a new or empty directory, so results and request
+logs from different runs cannot be mixed. It refuses to write inside this
+repository, because marketplace price data must not be published.
 
 The index also records whether each comparison completed. The tool saves every
 result, then exits 1 if any comparison was incomplete or failed to produce a
@@ -114,7 +115,7 @@ def inside(path: Path, parent: Path) -> bool:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("output_dir", help="a directory outside this repository")
+    parser.add_argument("output_dir", help="a new or empty directory outside this repository")
     parser.add_argument("--hours", type=float, default=1.0, help="session length used to rank offers. Default 1.")
     return parser.parse_args(argv)
 
@@ -172,6 +173,9 @@ def cli(argv: list[str] | None = None) -> int:
         return 2
     if not math.isfinite(args.hours) or not args.hours > 0:
         print("live_plan: --hours must be a finite number above zero", file=sys.stderr)
+        return 2
+    if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
+        print("live_plan: choose a new or empty output directory", file=sys.stderr)
         return 2
     return run(output_dir, args.hours)
 

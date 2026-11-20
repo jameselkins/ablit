@@ -54,6 +54,8 @@ The live check's `--hours N` sets the session length and requires a finite numbe
 
 The live check exits 1 before marketplace searches when the catalog is empty or any entry fails to load or validate. It names each invalid file and its problems on standard error.
 
+Use a new or empty output directory for each live check. An existing file or a directory with any contents is refused with exit 2 before searches or file changes, so reports and request logs from different runs stay separate.
+
 A weekly job runs check 2 again on every entry, and it fails when an artifact has disappeared. A maintainer then sets that entry to `removed`.
 
 ## Entry status
