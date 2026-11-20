@@ -97,7 +97,9 @@ The start script writes the key to `/root/.ssh/authorized_keys`, installs `opens
 
 No `terminateAfter` or `stopAfter` field exists in the v2 create schema, and the schema rejects unknown fields. The driver therefore has no marketplace deadline, `marketplace_deadline` stays off, and the quote says nothing about one.
 
-After the create answers, the driver compares the pod with the approved quote: GPU type and count, allocated RAM (`gpu.memory`), container disk, cloud and hourly `cost`. A pod that differs ends the run, and `ablit up` destroys it. The cost may be up to 5% plus one cent above the quote before the pod is refused. UNVERIFIED: whether `cost` includes the disk, because the schema says only "Current cost in USD per hour". Only a clear overrun counts.
+After the create answers, the driver compares the pod with the approved quote: GPU type and count, allocated RAM (`gpu.memory`), container disk, cloud and hourly `cost`. A pod that differs ends the run, and `ablit up` destroys it. The cost may be up to 5% plus one cent above the quote before the pod is refused. The schema's `Pod.cost` description, checked on 2026-11-20, defines the value as the hourly compute rate. The quote also includes estimated disk cost, so the comparison rejects only a clear compute overrun.
+
+The schema says `cost` is returned in every status, including `EXITED`. The field does not establish what is currently billing. Local spending checks use the higher of the quoted total hourly rate and the observed compute rate. A stopped pod can still bill for volume disk, so the driver keeps treating it as potentially billing until it is absent or `TERMINATED`.
 
 Provisioning is asynchronous. A pod starts as `PROVISIONING`, then `STARTING`, then `RUNNING` (the schema's `PodStatus`). A pod that is `RUNNING` with no direct SSH mapping yet counts as starting.
 

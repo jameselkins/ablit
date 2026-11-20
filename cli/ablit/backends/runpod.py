@@ -58,9 +58,9 @@ GRAPHQL_URL = "https://api.runpod.io/graphql"
 REST_ROOT = "https://api.runpod.io"
 PODS_PATH = "/v2/pods"
 
-# Pods that are still billing. RunPod documents `cost` as 0.0 when a pod is EXITED or
-# TERMINATED, but a stopped pod still bills for its volume disk, so ablit treats every
-# listed pod that is not TERMINATED as billing.
+# RunPod's `cost` is the hourly compute rate, even in EXITED responses, not current billing.
+# A stopped pod may still bill for volume disk, so every listed pod except TERMINATED counts as billing.
+# https://api.runpod.io/v2/openapi.json (Pod.cost, checked 2026-11-20)
 # https://docs.runpod.io/pods/pricing
 POD_STATUSES = ("PROVISIONING", "STARTING", "RUNNING", "EXITED", "ERROR", "TERMINATED")
 
