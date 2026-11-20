@@ -66,7 +66,7 @@ class Profile(_Model):
 
 class StagingStep(_Model):
     step: Literal["download", "join", "engram-extract"]
-    artifacts: str | list[str] | None = None
+    artifacts: Literal["all"] | list[str] | None = None
     inputs: list[str] | None = None
     output_bytes: int | None = None
     keeps_inputs_until_done: bool = True

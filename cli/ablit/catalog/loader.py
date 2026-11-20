@@ -151,8 +151,8 @@ def _check_staging_references(entry: Entry) -> None:
     for number, step in enumerate(entry.staging, start=1):
         selectors: list[str] = []
         if step.step == "download":
-            if step.artifacts not in (None, "all"):
-                selectors = list(step.artifacts)  # type: ignore[arg-type]
+            if step.artifacts is not None and step.artifacts != "all":
+                selectors = list(step.artifacts)
         else:
             selectors = list(step.inputs or [])
         for selector in selectors:

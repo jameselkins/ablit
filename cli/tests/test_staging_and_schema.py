@@ -3,10 +3,11 @@ from __future__ import annotations
 import copy
 
 import pytest
+from pydantic import ValidationError
 
 from ablit.catalog import check_entry, schema_check
 from ablit.catalog import schema_path
-from ablit.catalog.models import Entry
+from ablit.catalog.models import Entry, StagingStep
 from ablit.catalog.staging import StagingError, check_claim, compute_staging
 from ablit.catalog.sources import profile_numbers, uncovered_numbers
 
@@ -48,6 +49,27 @@ def base_entry() -> dict:
 
 def test_base_entry_is_valid():
     assert check_entry(base_entry()) == []
+
+
+@pytest.mark.parametrize("selector", ["weight", "part-1", "ALL", ""])
+def test_staging_model_rejects_plain_string_download_selectors(selector):
+    data = base_entry()
+    data["staging"] = [{"step": "download", "artifacts": selector}]
+    assert check_entry(data)
+    with pytest.raises(ValidationError):
+        Entry.from_dict(data)
+
+
+@pytest.mark.parametrize("selector", ["all", ["weight"], ["part-1"]])
+def test_staging_model_keeps_schema_download_selectors(selector):
+    data = base_entry()
+    data["staging"] = [{"step": "download", "artifacts": selector}]
+    assert check_entry(data) == []
+    assert Entry.from_dict(data).staging[0].artifacts == selector
+
+
+def test_transform_staging_model_keeps_an_absent_download_selector():
+    assert StagingStep(step="join", inputs=["weight"], output_bytes=200).artifacts is None
 
 
 @pytest.mark.parametrize("value", [True, False])
