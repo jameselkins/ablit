@@ -102,7 +102,7 @@ MIN_TERMINATION_HOURS, MAX_TERMINATION_HOURS = 1, 720
 # Error codes on a 409 that prove the rent created nothing. The idempotency codes are left out on
 # purpose, because they say that an earlier call may have rented. https://docs.lium.io/developers/error-codes
 DEFINITE_409_CODES = ("node_paused_by_provider", "provider_banned", "node_below_bandwidth_floor",
-                      "node_rent_in_progress", "conflict", "no_executor_matches_spec")
+                      "node_rent_in_progress", "conflict", "no_executor_matches_spec", "price_changed")
 
 _CODE = re.compile(r"[A-Za-z0-9_]{1,64}")
 _ID = re.compile(r"[A-Za-z0-9-]{1,64}")
@@ -470,6 +470,9 @@ class LiumBackend(RentalBackend):
         body: dict[str, Any] = {
             "pod_name": self.label(run_id), "template_id": template_id, "user_public_key": prepared["key"],
             "gpu_count": prepared["count"],
+            # Lium refuses increases over $0.01 per GPU-hour at the rent call.
+            # https://lium.io/api/openapi.json (RentExecutorRequest, checked 2026-11-20)
+            "expected_price_per_gpu_hour": offer.hourly_all_in / prepared["count"],
         }
         if prepared["hours"] is not None:
             body["termination_hours"] = prepared["hours"]

@@ -98,6 +98,7 @@ def test_create_makes_a_one_time_template_then_rents_once_and_saves_the_id(drive
     request = rent.calls[0].request
     assert json.loads(request.content) == {
         "pod_name": "ablit-" + RUN, "template_id": TEMPLATE, "user_public_key": SSH_KEY, "gpu_count": 1,
+        "expected_price_per_gpu_hour": 0.40,
         "termination_hours": 12,  # a $5 cap at $0.40 an hour is 12 whole hours
     }
     assert request.headers["X-API-Key"] == "invented-lium-key" and request.headers["Idempotency-Key"] == "ablit-" + RUN
@@ -106,6 +107,19 @@ def test_create_makes_a_one_time_template_then_rents_once_and_saves_the_id(drive
     record = driver.store.load(RUN)
     assert record["create_sent"] is True and record["resource_ids"] == [POD]
     assert record["lium_create"]["node_id"] == NODE and record["lium_create"]["termination_hours"] == 12
+
+
+@pytest.mark.parametrize("count,hourly,per_gpu", [(1, 0.40, 0.40), (2, 0.80, 0.40),
+                                                (8, 3.20, 0.40), (3, 1.32, 0.44)])
+def test_create_sends_the_quoted_expected_price_per_gpu(driver, count, hourly, per_gpu):
+    offer = make_offer(offer_id_for(NODE, count), "lium", hourly, gpu_count=count)
+    with respx.mock as router:
+        rent = send_create(router)
+        driver.create(offer, BOOT, RUN, KEY)
+    body = json.loads(rent.calls[0].request.content)
+    assert body["gpu_count"] == count
+    assert body["expected_price_per_gpu_hour"] == pytest.approx(per_gpu)
+    assert rent.call_count == 1
 
 
 @pytest.mark.parametrize("cap,hours", [(0.2, 1), (0.8, 2), (1000.0, 720)])
@@ -179,7 +193,7 @@ def test_a_timeout_on_the_rent_is_journaled_and_a_second_create_is_never_sent(dr
 @pytest.mark.parametrize("status,code", [
     (400, "node_unavailable"), (400, "node_rent_in_progress"), (401, "unauthorized"), (402, "API_KEY_BUDGET_EXCEEDED"),
     (403, "insufficient_balance"), (404, "node_not_found"), (422, "validation_error"),
-    (409, "node_paused_by_provider"), (409, "provider_banned"), (409, "conflict"),
+    (409, "node_paused_by_provider"), (409, "provider_banned"), (409, "conflict"), (409, "price_changed"),
 ])
 def test_an_explicit_refusal_is_marked_dropped_from_templates_and_never_retried(driver, status, code):
     with respx.mock as router:

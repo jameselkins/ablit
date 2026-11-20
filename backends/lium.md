@@ -35,7 +35,7 @@ Base URL `https://lium.io/api`. The key goes in a header named `X-API-Key`, with
 | `GET /public/v1/nodes` | Search and requote. No key, and the driver sends none. | https://docs.lium.io/developers/public-nodes-feed |
 | `GET /users/me` | The one read-only call in `ablit setup lium`. | https://docs.lium.io/developers/authentication (verify a key) |
 | `POST /templates` | Makes a private one-time template for the run, with the image digest, port 22, the entrypoint override and the start command. The run's public key goes in the rent call, not the template. | https://docs.lium.io/pod-users/templates and `CustomTemplateRequest` in https://lium.io/api/openapi.json |
-| `POST /executors/{id}/rent` | Rents the node. The body is `pod_name`, `template_id`, `user_public_key`, `gpu_count` and `termination_hours`. The answer is `{"success": true, "pod_id": "<uuid>"}`. | https://docs.lium.io/developers/quickstart and `RentExecutorRequest` in the schema |
+| `POST /executors/{id}/rent` | Rents the node. The body is `pod_name`, `template_id`, `user_public_key`, `gpu_count`, `expected_price_per_gpu_hour` and `termination_hours`. The answer is `{"success": true, "pod_id": "<uuid>"}`. | https://docs.lium.io/developers/quickstart and `RentExecutorRequest` in the schema |
 | `GET /pods` | Finds the run's pod by name, reads state, price, spend and the SSH command, and checks that billing stopped. The list has no pages. | `PodListItemResponse` in the schema |
 | `DELETE /pods/{id}` | Deletes a pod. A 404 counts as done. | The schema, and https://docs.lium.io/developers/quickstart |
 | `DELETE /templates/{id}` | Best effort cleanup of the template after a rent that Lium refused. A failure is ignored, because an unused template is free. | The schema |
@@ -70,9 +70,11 @@ The rent call takes the image only through a template, so a run makes two calls.
 3. Sends the rent once. The pod name is `ablit-<run>`, which is the run label. The call also carries `Idempotency-Key: ablit-<run>`, which makes Lium answer a repeat of the call with the first pod. ablit never repeats a create anyway.
 4. Reads `pod_id` from the answer. If the answer has another shape, the driver does not guess, and the pod is found by its name.
 
-A lost answer is recovered by listing the pods and matching the name. A definite refusal (HTTP 400, 401, 402, 403, 404 or 422, or HTTP 409 with `node_paused_by_provider`, `provider_banned`, `node_below_bandwidth_floor`, `node_rent_in_progress`, `conflict` or `no_executor_matches_spec`) marks the create as rejected. HTTP 409 with `idempotency_in_progress` or `idempotency_outcome_unknown`, HTTP 429 and server errors do not, because they do not prove that nothing was rented.
+A lost answer is recovered by listing the pods and matching the name. A definite refusal (HTTP 400, 401, 402, 403, 404 or 422, or HTTP 409 with `node_paused_by_provider`, `provider_banned`, `node_below_bandwidth_floor`, `node_rent_in_progress`, `conflict`, `no_executor_matches_spec` or `price_changed`) marks the create as rejected. HTTP 409 with `idempotency_in_progress` or `idempotency_outcome_unknown`, HTTP 429 and server errors do not, because they do not prove that nothing was rented.
 
 The rent answer carries no price or hardware, so the driver cannot compare the created pod with the quote. The price is checked by the requote just before the rent, and the pod's own price is read by `observe`. The offer also keeps the host driver's reported CUDA support. If that value changes or disappears between the quote and the rental check, ablit cancels before creating a template or pod and asks for a new quote.
+
+The rent call also sends the quoted hourly total divided by the rented GPU count as `expected_price_per_gpu_hour`. Lium's schema and [error codes](https://docs.lium.io/developers/error-codes), checked on 2026-11-20, say the server refuses a new rental with HTTP 409 `price_changed` if the live price is more than $0.01 per GPU-hour higher. Ablit marks the create as rejected and attempts to delete the unused template. It does not retry the rent. The provider's one-cent allowance still applies, so the guard does not guarantee an exact price match. The request and refusal handling have synthetic tests only.
 
 ## The spend cap on Lium, and where it is weak
 
