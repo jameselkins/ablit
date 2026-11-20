@@ -419,12 +419,15 @@ class VastBackend(RentalBackend):
                 body["host_id"] = {"notin": sorted(int(host) for host in self.denied_host_ids)}
             rows = self._post(body, creds, later_page=base_cursor is not None)
             offers = [offer_from_row(row, allocated) for row in rows]
-            bases = [o.sticker_hourly for o in offers]
-            if any(b is None for b in bases):  # pragma: no cover - offer_from_row always sets it
-                raise UnknownFieldType("vast: a row has no GPU-only price")
-            if bases != sorted(bases):  # type: ignore[type-var]
+            bases: list[float] = []
+            for offer in offers:
+                base = offer.sticker_hourly
+                if base is None:  # pragma: no cover - offer_from_row always sets it
+                    raise UnknownFieldType("vast: a row has no GPU-only price")
+                bases.append(base)
+            if bases != sorted(bases):
                 raise ResponseNotRecognized("vast: rows are not ordered by GPU-only price, so paging would be wrong")
-            if base_cursor is not None and any(b < base_cursor for b in bases):  # type: ignore[operator]
+            if base_cursor is not None and any(b < base_cursor for b in bases):
                 raise FilterRejected("vast returned rows below the price the later page was asked to start at")
             return offers
 
