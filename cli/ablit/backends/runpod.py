@@ -490,6 +490,19 @@ class RunPodBackend(RentalBackend):
         row = self._one([r for r in rows if r["status"] != "TERMINATED"], "pod")
         if row is None:
             return self._absent()
+        # listPods omits the live direct SSH mapping. Read the running pod itself
+        # before treating a missing mapping as a pod that is still starting.
+        # https://api.runpod.io/v2/openapi.json (PodSsh.direct, checked 2026-11-20)
+        if row["status"] == "RUNNING" and self._ssh_endpoint(row, f"pod {row['id']}") == (None, None):
+            detail = self._request("GET", f"{PODS_PATH}/{self._pod_path(row['id'])}", creds, missing_ok=True)
+            if detail is None:
+                return self._absent()
+            detail = self._pod(detail)
+            if detail["id"] != row["id"]:
+                raise ResponseNotRecognized("runpod: the pod detail answer has a different pod ID")
+            row = detail
+            if row["status"] == "TERMINATED":
+                return self._absent()
         where = f"pod {row['id']}"
         status = row["status"]
         cost = fields.number(row, "cost", backend=self.name, where=where, nullable=True, minimum=0)

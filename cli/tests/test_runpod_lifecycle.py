@@ -256,6 +256,40 @@ def test_observe_reads_the_direct_ssh_endpoint_and_the_cost(driver):
     assert "ssh.example.invalid" != found.ssh_host  # the proxy cannot forward ports, so it is never used
 
 
+def test_observe_fetches_live_ssh_when_the_list_omits_it(driver):
+    with respx.mock as router:
+        router.get(PODS).mock(return_value=listing(pod(ssh={"proxy": None, "direct": None})))
+        detail = router.get(PODS + "/pod1").respond(200, json=pod(cost=0.60))
+        observation = driver.observe(ALLOC, KEY)
+        assert detail.call_count == 1
+    assert detail.calls[0].request.headers["Authorization"] == "Bearer invented-runpod-key"
+    assert observation.state == "running" and observation.hourly_rate == 0.60
+    assert (observation.allocation.ssh_host, observation.allocation.ssh_port) == ("203.0.113.7", 34446)
+
+
+@pytest.mark.parametrize("status,state", [
+    ("PROVISIONING", "starting"), ("STARTING", "starting"), ("RUNNING", "starting"),
+    ("EXITED", "exited"), ("ERROR", "exited"), ("TERMINATED", "absent"), (None, "absent"),
+])
+def test_observe_uses_the_state_from_the_live_pod_read(driver, status, state):
+    with respx.mock as router:
+        router.get(PODS).mock(return_value=listing(pod(ssh={"proxy": None, "direct": None})))
+        response = (httpx.Response(404) if status is None else
+                    httpx.Response(200, json=pod(status=status, ssh={"proxy": None, "direct": None})))
+        detail = router.get(PODS + "/pod1").mock(return_value=response)
+        assert driver.observe(ALLOC, KEY).state == state
+        assert detail.call_count == 1
+
+
+@pytest.mark.parametrize("payload", [pod("other-pod"), {"id": "pod1", "status": "unknown"}, []])
+def test_observe_refuses_a_mismatched_or_invalid_live_pod(driver, payload):
+    with respx.mock as router:
+        router.get(PODS).mock(return_value=listing(pod(ssh={"proxy": None, "direct": None})))
+        router.get(PODS + "/pod1").respond(200, json=payload)
+        with pytest.raises((ResponseNotRecognized, UnknownFieldType)):
+            driver.observe(ALLOC, KEY)
+
+
 @pytest.mark.parametrize("change", [
     {"status": "PROVISIONING", "ssh": {"proxy": None, "direct": None}},
     {"status": "RUNNING", "ssh": {"proxy": None, "direct": None}},
@@ -263,6 +297,8 @@ def test_observe_reads_the_direct_ssh_endpoint_and_the_cost(driver):
 def test_a_pod_with_no_direct_ssh_yet_is_starting(driver, change):
     with respx.mock as router:
         router.get(PODS).mock(return_value=listing(pod(**change)))
+        if change["status"] == "RUNNING":
+            router.get(PODS + "/pod1").respond(200, json=pod(**change))
         observation = driver.observe(ALLOC, KEY)
     assert observation.state == "starting" and observation.allocation.ssh_port is None
 
