@@ -69,7 +69,9 @@ def _add_selection_flags(parser: argparse.ArgumentParser) -> None:
                         help="required to run `up` on an unverified entry")
     parser.add_argument("--catalog", metavar="PATH",
                         help="local catalog for testing. A paid launch from it also needs --untested.")
-    parser.add_argument("--json", action="store_true", help="versioned machine-readable output")
+    parser.add_argument("--json", action="store_true",
+                        help="Print versioned JSON for plan. The up command prints text. "
+                             "Follow runs with `ablit status --json`.")
 
 
 def build_parser() -> argparse.ArgumentParser:

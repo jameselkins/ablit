@@ -79,7 +79,7 @@ In JSON plans, `request.cuda_architectures` lists the GPU generations supported 
 | `--endpoint tunnel\|public` | `tunnel` | A paid `up` accepts only `tunnel`. See "Endpoint" below. |
 | `--untested` | off | Required to run `up` on an `unverified` entry |
 | `--catalog PATH` | bundled catalog | Local catalog for testing. A new paid launch from it also needs `--untested`, even for an entry marked `boot-tested`. The same requirement applies to a catalog selected with `ABLIT_CATALOG`. |
-| `--json` | off | Versioned machine-readable output |
+| `--json` | off | `plan` prints versioned JSON. `up` prints text even with this flag. Follow the run with `ablit status --json`. |
 
 `--gpu` and `--exclude-gpu` also match Clore's joined PCIe names. For example, `V100 PCIe 32GB` matches `Tesla V100PCIE32GB`.
 
