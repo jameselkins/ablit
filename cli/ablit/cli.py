@@ -110,7 +110,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="approve the quote without typing rent, for agents and scripts. "
                          "The cap, the cap check and the price recheck still apply.")
     up.add_argument("--report", action="store_true",
-                    help="write a local boot-test log with secrets removed")
+                    help="Write a local JSON readiness report after health checks pass. "
+                         "Save logs with `ablit logs`.")
 
     status = sub.add_parser("status", help="run state, resource IDs, spend against the cap")
     status.add_argument("run", nargs="?", help=_RUN_HELP)

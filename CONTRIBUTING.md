@@ -63,7 +63,7 @@ A weekly job runs check 2 again on every entry, and it fails when an artifact ha
 | Status | Meaning |
 |---|---|
 | `unverified` | The entry passed the checks and a maintainer merged it. Nobody has booted it. `ablit up` needs `--untested` to launch it, and the quote says "Nobody has booted this entry yet. The engine may fail to start, and you pay for the time until ablit destroys the run." |
-| `boot-tested` | The `tests` list holds a record with a log from a real run of that exact profile. You write the record from the output of `ablit logs`, which removes secrets, and you decide whether to share it. The `--report` flag of `ablit up` is accepted but does not write a log yet. |
+| `boot-tested` | The `tests` list holds a record with a log from a real run of that exact profile. You write the record from the output of `ablit logs`, which removes secrets, and you decide whether to share it. The `--report` flag of `ablit up` writes a JSON readiness report, which does not include the logs needed for a boot test record. |
 | `removed` | An artifact has disappeared or the entry is withdrawn. ablit refuses to launch it. |
 
 Before it rents anything, ablit also checks that every artifact of the entry is still public at its pinned revision.
