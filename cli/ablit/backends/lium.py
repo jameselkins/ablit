@@ -470,6 +470,8 @@ class LiumBackend(RentalBackend):
         body: dict[str, Any] = {
             "pod_name": self.label(run_id), "template_id": template_id, "user_public_key": prepared["key"],
             "gpu_count": prepared["count"],
+            # Default backups can leave storage billing after the pod is deleted.
+            "enable_backups": False,
             # Lium refuses increases over $0.01 per GPU-hour at the rent call.
             # https://lium.io/api/openapi.json (RentExecutorRequest, checked 2026-11-20)
             "expected_price_per_gpu_hour": offer.hourly_all_in / prepared["count"],

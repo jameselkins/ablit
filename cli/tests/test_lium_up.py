@@ -60,6 +60,7 @@ def test_up_with_backends_lium_rents_a_pod_and_saves_only_nonsecret_records(monk
     body = json.loads(create.calls[0].request.content)
     assert body["pod_name"].startswith("ablit-") and body["template_id"] == TEMPLATE
     assert body["user_public_key"] == "ssh-ed25519 invented-public-content" and body["termination_hours"] == 12
+    assert body["enable_backups"] is False
     record = RunStore().all()[0]
     assert record["backend"] == "lium" and record["resource_ids"] == [POD] and record["offer"]["host_id"] == NODE
     assert record["offer"]["cuda_version_max"] == 12.8

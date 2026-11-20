@@ -99,6 +99,7 @@ def test_create_makes_a_one_time_template_then_rents_once_and_saves_the_id(drive
     assert json.loads(request.content) == {
         "pod_name": "ablit-" + RUN, "template_id": TEMPLATE, "user_public_key": SSH_KEY, "gpu_count": 1,
         "expected_price_per_gpu_hour": 0.40,
+        "enable_backups": False,
         "termination_hours": 12,  # a $5 cap at $0.40 an hour is 12 whole hours
     }
     assert request.headers["X-API-Key"] == "invented-lium-key" and request.headers["Idempotency-Key"] == "ablit-" + RUN
