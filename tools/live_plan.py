@@ -174,8 +174,13 @@ def cli(argv: list[str] | None = None) -> int:
     if not math.isfinite(args.hours) or not args.hours > 0:
         print("live_plan: --hours must be a finite number above zero", file=sys.stderr)
         return 2
-    if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
-        print("live_plan: choose a new or empty output directory", file=sys.stderr)
+    try:
+        if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
+            print("live_plan: choose a new or empty output directory", file=sys.stderr)
+            return 2
+        output_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        print(f"live_plan: cannot prepare output directory: {error}", file=sys.stderr)
         return 2
     return run(output_dir, args.hours)
 

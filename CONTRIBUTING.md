@@ -56,6 +56,8 @@ The live check exits 1 before marketplace searches when the catalog is empty or 
 
 Use a new or empty output directory for each live check. An existing file or a directory with any contents is refused with exit 2 before searches or file changes, so reports and request logs from different runs stay separate.
 
+Filesystem errors while listing or creating the output directory also exit 2 before searches. The script prints the error so you can choose a usable path.
+
 A weekly job runs check 2 again on every entry, and it fails when an artifact has disappeared. A maintainer then sets that entry to `removed`.
 
 ## Entry status

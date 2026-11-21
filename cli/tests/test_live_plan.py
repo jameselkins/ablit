@@ -73,6 +73,32 @@ def test_allows_new_or_empty_output_directories(tmp_path, monkeypatch, already_e
     assert calls == [(output, 1.0)]
 
 
+def test_a_file_parent_is_a_usage_error_before_searches(tmp_path, monkeypatch, capsys):
+    parent = tmp_path / "parent-file"
+    parent.write_bytes(b"keep this file\n")
+    monkeypatch.setattr(live_plan, "run", lambda *args: pytest.fail("unusable output path started searches"))
+    assert live_plan.cli([str(parent / "reports")]) == 2
+    assert parent.read_bytes() == b"keep this file\n"
+    assert "cannot prepare output directory" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("operation", ["iterdir", "mkdir"])
+def test_output_setup_errors_stop_before_searches(tmp_path, monkeypatch, capsys, operation):
+    output = tmp_path / "live"
+    output.mkdir()
+    original = getattr(Path, operation)
+
+    def fail_for_output(path, *args, **kwargs):
+        if path == output:
+            raise PermissionError("output access denied")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, operation, fail_for_output)
+    monkeypatch.setattr(live_plan, "run", lambda *args: pytest.fail("output setup failure started searches"))
+    assert live_plan.cli([str(output)]) == 2
+    assert "cannot prepare output directory" in capsys.readouterr().err
+
+
 def test_refuses_to_run_in_ci(monkeypatch, tmp_path: Path, capsys):
     monkeypatch.setenv("CI", "true")
     assert live_plan.cli([str(tmp_path / "out")]) == 2
