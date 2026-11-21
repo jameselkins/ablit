@@ -24,7 +24,6 @@ dependencies = [
     "pyyaml",
     "pydantic>=2",
     "keyring",
-    "huggingface_hub",
 ]
 
 [project.optional-dependencies]

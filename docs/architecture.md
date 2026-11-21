@@ -31,7 +31,7 @@ backends/         notes on each marketplace API, with sources
 tools/            verify_entry.py and build_catalog.py
 ```
 
-Python 3.11 or newer is required. Runtime dependencies are `httpx`, `pyyaml`, `pydantic`, `keyring` and `huggingface_hub`. Test dependencies are `pytest`, `hypothesis`, `respx` and `import-linter`.
+Python 3.11 or newer is required. Runtime dependencies are `httpx`, `pyyaml`, `pydantic` and `keyring`. Test dependencies are `pytest`, `hypothesis`, `respx` and `import-linter`.
 
 ## Run lifecycle
 
