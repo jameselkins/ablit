@@ -70,6 +70,10 @@ the A100 and H100 families and the RTX PRO 4000 Blackwell SFF Edition:
 
 - https://developer.nvidia.com/cuda/gpus
 
+The NVIDIA B300 SXM6 PC name was read from the feed on 2026-11-21.
+Its 10.3 value follows the B300 family in NVIDIA's current table above.
+Memory and other hardware limits still use the marketplace's advertised values.
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -136,6 +140,7 @@ _PASCAL = (
 )
 
 COMPUTE_CAPABILITY_BY_CLORE_NAME: dict[str, float] = {
+    "NVIDIA B300 SXM6 PC": 10.3,
     **dict.fromkeys(_BLACKWELL_DESKTOP, 12.0),
     **dict.fromkeys(_HOPPER, 9.0),
     **dict.fromkeys(_ADA, 8.9),
