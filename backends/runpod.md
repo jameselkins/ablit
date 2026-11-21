@@ -178,7 +178,7 @@ Inside a pod the container runs as root (SSH is `root@...`), and root can raise 
 
 - That `createPod` accepts the GraphQL GPU type IDs, the image digest form, a container disk with no volume, and the `entrypoint` and `cmd` fields as the driver sends them.
 - That the start script brings up sshd on the llama.cpp and Xolotl images, and that Community Cloud pods get a public SSH port.
-- That `cost` in the pod includes the disk, and what RunPod counts as a month.
+- RunPod's conversion from monthly storage prices to hourly charges remains unverified.
 - Whether `minMemoryInGb` is per GPU or for the pod.
 - Whether the pod's own `RUNPOD_API_KEY` can delete the pod, and whether the console can issue a key limited to `pods:write`.
 - The memory lock limit inside a pod.
