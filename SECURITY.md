@@ -13,7 +13,7 @@ No release exists yet. Until the first release, only the main branch is covered.
 ablit runs on your computer, and it handles three kinds of secret.
 
 1. Marketplace API keys. They are stored in the operating system keyring, or kept for the current session only. ablit never writes a plaintext key to disk without asking. A key that is given to the rented machine is limited, where the marketplace allows it, to destroying that one instance, and the machine never receives your full account key.
-2. Endpoint keys. Each run gets a random 32-byte key for the inference endpoint. It is passed to the engine through an environment variable, saved in the keyring under the run ID, and never placed on a command line. The engine listens on `127.0.0.1` on the rented machine, and requests with no key or a wrong key are refused.
+2. Endpoint keys. Each run gets a random 32-byte key for the inference endpoint. It is passed to the engine through an environment variable, saved in the keyring under the run ID, and never placed on a command line. The engine listens on `127.0.0.1` on the rented machine. Before declaring readiness, ablit checks that `GET /v1/models` refuses requests with no key or a wrong key.
 3. SSH access to rented machines. The tunnel to the engine checks the host key of the rented machine, and ablit uses a free local port.
 
 A redaction filter removes the endpoint key and the marketplace keys from logs, run files and the output of `ablit up --report`. Tests use fake secrets to check it.
@@ -33,4 +33,6 @@ If the rented machine freezes or loses its network while your computer is off or
 
 Engines and model files come from third parties. ablit pins revisions and checks hashes, and it cannot judge the code inside an engine or a model.
 
-None of the bootstrap scripts has run on a rented machine yet, so the behavior they describe is not tested.
+An engine's key may protect only some routes. In vLLM 0.31.0, key checks cover paths beginning with `/v1`, `/v2`, `/inference` or `/cohere`, while routes such as `/invocations` accept inference requests without a key. See the [vLLM authentication limits at the 0.31.0 commit](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/docs/usage/security.md#api-key-authentication-limitations). Ablit binds both ends of the SSH tunnel to `127.0.0.1`, but local processes can still call unauthenticated routes. The vLLM image digest remains null, so ablit refuses to rent vLLM entries.
+
+Each catalog entry's `status` and `tests` record whether its exact profile has a boot test. Synthetic tests do not establish that a profile has booted on a rented machine.
