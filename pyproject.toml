@@ -20,7 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "httpx",
+    # Backend requests use follow_redirects, which HTTPX added in 0.20.
+    "httpx>=0.20",
     "pyyaml",
     "pydantic>=2",
     "keyring",
