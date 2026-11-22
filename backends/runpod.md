@@ -167,7 +167,8 @@ Question: the Xolotl bootstrap needs `ulimit -l` of at least 62914560 KB, and Va
 
 Finding: no RunPod page says. The sources show no way to ask for it.
 
-- The v2 create schema (`CreatePodRequest`, `ContainerConfig`) has no field for ulimits, capabilities, privileged mode or shared memory, and it rejects unknown fields. A search of the whole schema for "ulimit", "memlock", "privileged", "capabilit", "shm" and "ipc" finds nothing.
+- The v2 pod and template creation schemas (`CreatePodRequest`, `CreateTemplateRequest` and the referenced container configuration) expose no dedicated fields for ulimits, Linux capabilities, privileged mode or shared memory (https://api.runpod.io/v2/openapi.json, checked 2026-11-22).
+- The schema's `capabilities` fields describe organization permissions for API operations.
 - The templates overview (https://docs.runpod.io/pods/templates/overview) lists only the image, disks, ports, environment variables and start commands.
 - https://docs.runpod.io/pods/overview says "Runpod runs Docker for you, so you cannot spin up your own Docker instance or use Docker Compose on Pods."
 - The documentation index has no page on memory limits or ulimits.
