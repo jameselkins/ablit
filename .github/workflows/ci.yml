@@ -93,3 +93,28 @@ jobs:
           python -m venv "$RUNNER_TEMP/ablit-install"
           "$RUNNER_TEMP/ablit-install/bin/python" -m pip install dist/*.whl
           ABLIT_CATALOG="$RUNNER_TEMP/unused-catalog" "$RUNNER_TEMP/ablit-install/bin/python" -I tools/check_install.py
+
+      - name: Run tests from the source archive
+        if: runner.os == 'Linux' && matrix.python-version == '3.12'
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
+          import tarfile
+          import tempfile
+          from pathlib import Path
+
+          archives = list(Path("dist").glob("*.tar.gz"))
+          assert len(archives) == 1, "Expected one source archive"
+          with tempfile.TemporaryDirectory(dir=os.environ["RUNNER_TEMP"]) as temporary:
+              with tarfile.open(archives[0]) as archive:
+                  archive.extractall(temporary, filter="data")
+              roots = list(Path(temporary).iterdir())
+              assert len(roots) == 1 and roots[0].is_dir(), "Expected one source directory"
+              env = {**os.environ, "PYTHONPATH": str(roots[0] / "cli")}
+              subprocess.run(
+                  [sys.executable, "-m", "pytest", "-q"],
+                  cwd=roots[0], env=env, check=True,
+              )
+          PY

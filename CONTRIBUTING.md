@@ -48,6 +48,8 @@ The catalog builder requires at least one entry file. It reports unreadable entr
 
 The shell tests need Bash 3.2 or newer, including the Bash that ships with macOS. CI runs the full test suite on Linux and macOS. It also builds the wheel and checks every launchable entry's bootstrap bundle from a clean installation with `python -I tools/check_install.py`. The installation check always uses the bundled catalog, including when `ABLIT_CATALOG` is set. It makes no network requests and rents nothing.
 
+The source archive includes the boot-test records referenced by catalog entries and the support files its tests need. CI runs the full test suite from an extracted archive as well.
+
 For a manual live search check, run `python3 tools/live_plan.py OUTPUT_DIR` with a directory outside this repository. It saves anonymous plans for every catalog entry across Vast, RunPod, Clore and Lium, plus a request log. The index records whether each comparison completed, and the tool exits 1 after saving all results if any comparison was incomplete or failed. A complete search with no qualifying offers is allowed. The tool permits only search requests, sends no marketplace keys, and refuses to run in CI. Keep its price data outside the repository.
 
 The live check's `--hours N` sets the session length and requires a finite number above zero. Invalid durations exit 2 before creating output files or starting searches.
