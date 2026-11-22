@@ -74,6 +74,12 @@ The NVIDIA B300 SXM6 PC name was read from the feed on 2026-11-21.
 Its 10.3 value follows the B300 family in NVIDIA's current table above.
 Memory and other hardware limits still use the marketplace's advertised values.
 
+The NVIDIA GeForce RTX 5050 Laptop GPU name was read from the feed on
+2026-11-22. NVIDIA's laptop comparison lists the exact model in the RTX 50
+series and gives that series a CUDA capability of 12.0:
+
+- https://www.nvidia.com/en-us/geforce/laptops/compare/
+
 Each key is a name exactly as Clore spells it. Clore cuts some long names short
 ("NVIDIA RTX PRO 6000 Blackwell Workstation") and removes spaces from others
 ("NVIDIA A100SXM440GB"), so the keys follow what the marketplace returns. A name
@@ -94,7 +100,8 @@ _BLACKWELL_DESKTOP = (
     "NVIDIA GeForce RTX 5050", "NVIDIA GeForce RTX 5060", "NVIDIA GeForce RTX 5060 Ti",
     "NVIDIA GeForce RTX 5070", "NVIDIA GeForce RTX 5070 Ti", "NVIDIA GeForce RTX 5080",
     "NVIDIA GeForce RTX 5090", "NVIDIA GeForce RTX 5090 D", "NVIDIA GeForce RTX 5090 D v2",
-    "NVIDIA GeForce RTX 5070 Laptop GPU", "NVIDIA GeForce RTX 5090 Laptop GPU",
+    "NVIDIA GeForce RTX 5050 Laptop GPU", "NVIDIA GeForce RTX 5070 Laptop GPU",
+    "NVIDIA GeForce RTX 5090 Laptop GPU",
     "NVIDIA RTX PRO 2000 Blackwell", "NVIDIA RTX PRO 4000 Blackwell",
     "NVIDIA RTX PRO 4000 Blackwell SFF Edition", "NVIDIA RTX PRO 4500 Blackwell",
     "NVIDIA RTX PRO 5000 Blackwell", "NVIDIA RTX PRO 5000 72GB Blackwell",
