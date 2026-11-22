@@ -18,6 +18,8 @@ This page lists every `ablit` command, its flags, the quote that `ablit up` show
 
 Setup tests the key before offering to save it, and failure messages redact the entered key. If the key is too short to redact safely, setup omits response details.
 
+If the existing setup `config.json` cannot be read or does not contain a JSON object, setup exits 2 before any account prompt or key test. The error names the file, and the file stays unchanged even with `--no-referral`.
+
 `catalog show` lists the full disk requirement used to filter offers, including the engine image and the engine lock's temporary disk allowances. The displayed minimum rounds up to the next tenth of a GB. It is unknown when artifact sizes are missing or the engine lock cannot be matched.
 
 `catalog show` removes terminal control characters from the entry text it displays, including names and notes. Tabs and newlines are preserved, and the catalog file is unchanged.

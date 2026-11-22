@@ -66,12 +66,17 @@ _SETUP = {
 
 def _setup(marketplace: str, driver, store, no_referral: bool, environ=None) -> int:
     from ablit.referral import load_ids, referral_enabled, setup_choices
-    from ablit.runs.store import atomic_json
+    from ablit.runs.store import RunError, atomic_json
 
     words = _SETUP[marketplace]
     config_path = store.root / "config.json"
     import json
-    config = json.loads(config_path.read_text()) if config_path.exists() else {}
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
+    except (OSError, ValueError) as error:
+        raise RunError(f"Ablit could not load the setup configuration at {config_path}. {error}") from None
+    if not isinstance(config, dict):
+        raise RunError(f"The setup configuration at {config_path} must contain a JSON object.")
     if no_referral or not referral_enabled(environ):
         config["referral"] = False
         atomic_json(config_path, config)

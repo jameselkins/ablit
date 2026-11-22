@@ -2,6 +2,7 @@
 
 import json
 import sys
+from pathlib import Path
 from urllib.parse import quote
 
 import httpx
@@ -51,6 +52,64 @@ def test_setup_session_choice_never_saves_the_key(monkeypatch):
         keys.setup_vast(VastBackend(httpx.Client()), RunStore(), False, {})
     assert keys.secret_get("accounts/vast") is None
     assert keys.SESSION["vast"] == "invented-session-key"
+
+
+@pytest.mark.parametrize("content", [b"{", b"[]", b"null", b"\xff"])
+@pytest.mark.parametrize("no_referral", [False, True])
+def test_setup_refuses_invalid_config_before_prompts_and_preserves_it(
+    monkeypatch, capsys, isolated_run_state, content, no_referral,
+):
+    config = RunStore().root / "config.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_bytes(content)
+    session_before = keys.SESSION.copy()
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("An invalid setup configuration must not prompt or test a key.")
+
+    class Driver:
+        test_credentials = staticmethod(unexpected)
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    monkeypatch.setattr("builtins.input", unexpected)
+    monkeypatch.setattr(keys.getpass, "getpass", unexpected)
+    args = ["setup", "vast"] + (["--no-referral"] if no_referral else [])
+    assert main(args, backends={"vast": Driver()}, environ={}) == 2
+    output = capsys.readouterr()
+    assert "setup configuration" in output.err and str(config) in output.err
+    assert output.out == ""
+    assert config.read_bytes() == content
+    assert keys.SESSION == session_before and isolated_run_state.values == {}
+
+
+@pytest.mark.parametrize("backend", ["vast", "runpod", "clore", "lium"])
+def test_setup_reports_unreadable_config_before_prompts(monkeypatch, capsys, backend):
+    config = RunStore().root / "config.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    content = b'{"referral": false}'
+    config.write_bytes(content)
+    read_text = Path.read_text
+
+    def denied(path, *args, **kwargs):
+        if path == config:
+            raise PermissionError("invented configuration read denial")
+        return read_text(path, *args, **kwargs)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("An unreadable setup configuration must not prompt or test a key.")
+
+    class Driver:
+        test_credentials = staticmethod(unexpected)
+
+    monkeypatch.setattr(Path, "read_text", denied)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    monkeypatch.setattr("builtins.input", unexpected)
+    monkeypatch.setattr(keys.getpass, "getpass", unexpected)
+    assert main(["setup", backend], backends={backend: Driver()}, environ={}) == 2
+    output = capsys.readouterr()
+    assert "setup configuration" in output.err and str(config) in output.err
+    assert "invented configuration read denial" in output.err and output.out == ""
+    assert config.read_bytes() == content
 
 
 @pytest.mark.parametrize("backend", ["vast", "runpod", "clore", "lium"])
