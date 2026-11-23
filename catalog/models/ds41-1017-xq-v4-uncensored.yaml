@@ -6,7 +6,7 @@ id: ds41-1017-xq-v4-uncensored
 display_name: DeepSeek-V4.1-Flash 1017, XQ V4 uncensored quant (Xolotl)
 source:
   repo: IndrasMirror/DeepSeek-V4.1-Flash-1017-XQ-Uncensored
-  revision: 19b895bbb41e2d9880ed5f10a6aa3bb19852fc39
+  revision: a607d33601e8293c74ab0accc239c587e5bbf628
   license: mit
   base_model: deepseek-ai/DeepSeek-V4.1-Flash-1017
   modification: abliterated
@@ -64,6 +64,7 @@ tests:
   - {backend: vast, date: "2026-10-26", log: boot-tests/ds41-1017-xq-v4-uncensored-2026-10-26.md}
 status: boot-tested
 notes:
+  - On 2026-11-23, the previous source revision (19b895bbb41e2d9880ed5f10a6aa3bb19852fc39) returned 404. This pin has the same artifact paths, sizes and hashes, with the same engine lock and profile. No new GPU boot was run.
   - The entry booted and served on Vast on 2026-10-26, on a 48 GB RTX PRO 5000 with 96 GB of RAM, with a context of 131072 tokens. The 24 GB GPU floor is not yet tested. The 24 GB GPU and 90 GB RAM floors come from the model card and the engine README, which report one machine with an RTX 4090 and 90 GB of RAM.
   - This is the V4 build, the one the author recommends. Its hottest 1,056 experts stay in DeepSeek's native FP4 (MXFP4), The expert map check in ds41_geometry.hpp at Xolotl 03be8a6 refuses that type, so the entry uses the 961d390 engine lock. The model card also says its speed figures need Xolotl from 2026-10-25 or newer.
   - The author reports higher agreement with the full model than V3 (86.9 percent top-1 and KL 0.306 through the engine, against 82.9 percent and 0.405 for V3), at the same file size.

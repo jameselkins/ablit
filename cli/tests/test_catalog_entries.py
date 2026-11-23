@@ -149,7 +149,7 @@ def test_the_1017_xq_entry_holds_only_the_v3_build():
         assert [a["path"] for a in shards] == ["model-00047-of-00048.safetensors", "model-00048-of-00048.safetensors"]
         assert all(a["repo"] == "deepseek-ai/DeepSeek-V4.1-Flash-1017" and
                    a["revision"] == "1bae0e1088993b9b82de08f59de5be5a34e42170" for a in shards)
-        assert data["source"]["revision"] == "9d3c01d86709261e51d566b02e1dda75f40d009a"
+        assert data["source"]["revision"] == "a607d33601e8293c74ab0accc239c587e5bbf628"
 
 
 def test_load_catalog_and_resolve_by_id_and_repo(repo_root: Path):

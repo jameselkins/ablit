@@ -6,7 +6,7 @@ id: ds41-september-gsq-uncensored
 display_name: DeepSeek-V4.1-Flash September, GSQ uncensored quant (Xolotl)
 source:
   repo: IndrasMirror/DeepSeek-V4.1-Flash-GSQ-Uncensored
-  revision: 0ae18f838e103fb03d952fa8ed73c7aa9c34002f
+  revision: 3018caf17f1a7d357e7dfa3bb1d11ae61fc92e0a
   license: mit
   base_model: dealignai/DeepSeek-V4.1-Flash-UNCENSORED-FP8
   modification: abliterated
@@ -65,6 +65,7 @@ tests:
   - {backend: vast, date: "2026-10-21", log: boot-tests/ds41-september-gsq-uncensored-2026-10-21.md}
 status: boot-tested
 notes:
+  - On 2026-11-23, the previous source revision (0ae18f838e103fb03d952fa8ed73c7aa9c34002f) returned 404. This pin has the same artifact paths, sizes and hashes, with the same engine lock and profile. No new GPU boot was run.
   - The entry booted and served on Vast on 2026-10-21, on a 98 GB GPU with 191 GB of RAM or more. The 24 GB GPU floor is not yet tested. It comes from the engine README, which reports one machine with a 24 GB GPU and 90 GB of RAM.
   - The README says 16 GB of VRAM should load but is untested, so the floor here stays at 24 GB.
   - Peak disk comes from the staging list. It assumes the weight parts are deleted as they are joined, and the join step says it streams, because the bootstrap appends one part at a time. The bootstrap adds a margin of one weight part (10.7 GB) to the disk it asks for, because the join appends a part before it deletes it.
