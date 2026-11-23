@@ -56,7 +56,7 @@ Xolotl fits when you want the large DeepSeek model and an 8-GPU node is too expe
 
 ## Quickstart
 
-ablit needs Python 3.11 or newer and OpenSSH.
+Use Linux or macOS with Python 3.11 or newer and OpenSSH.
 
 ```
 uv tool install ablit
