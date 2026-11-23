@@ -2,6 +2,10 @@
 
 This page lists every `ablit` command, its flags, the quote that `ablit up` shows, and the exit codes. For a short introduction, read the README. For using the commands from a script or an agent, read AGENTS.md. For how the commands work inside, read [architecture.md](architecture.md).
 
+## Help and version
+
+Run `ablit --help` for the command list, or `ablit <command> --help` for that command's flags. For a catalog subcommand, use `ablit catalog <subcommand> --help`. Run `ablit --version` to print the installed version.
+
 ## Commands
 
 | Command | Behavior |
