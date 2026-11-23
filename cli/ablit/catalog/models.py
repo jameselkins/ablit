@@ -10,13 +10,23 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 
 Status = Literal["unverified", "boot-tested", "removed"]
 
 
 class _Model(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _integer_value(cls, value: Any, info: ValidationInfo) -> Any:
+        field = cls.model_fields.get(info.field_name or "")
+        if (field is not None and field.annotation in (int, int | None)
+                and isinstance(value, float) and value.is_integer()):
+            # Convert before Pydantic applies its float-to-integer size limit.
+            return int(value)
+        return value
 
 
 class Source(_Model):

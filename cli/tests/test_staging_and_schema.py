@@ -92,6 +92,41 @@ def test_schema_constants_keep_equal_numbers_and_matching_booleans_valid(constan
     assert schema_check.validate(value, {"const": constant}) == []
 
 
+@pytest.mark.parametrize("value", [0, 1, -1, 0.0, 1.0, -1.0, 1e3, 2 ** 1000])
+def test_schema_integers_accept_numbers_with_no_fractional_part(value):
+    assert schema_check.validate(value, {"type": "integer"}) == []
+
+
+@pytest.mark.parametrize("value", [True, False, "1", 1.5, -1.5, float("nan"), float("inf"), -float("inf")])
+def test_schema_integers_reject_booleans_strings_fractions_and_nonfinite_numbers(value):
+    assert schema_check.validate(value, {"type": "integer"})
+
+
+@pytest.mark.parametrize("multiplier", [1.0, 1e20])
+def test_integral_float_fields_keep_integer_models_and_staging_arithmetic(multiplier):
+    data = base_entry()
+    for field in ("context_tokens", "concurrency", "port"):
+        data["profile"][field] = float(data["profile"][field])
+    data["profile"]["gpu"]["count"] = 1.0
+    for artifact in data["artifacts"]:
+        artifact["bytes"] = float(artifact["bytes"]) * multiplier
+    for step in data["staging"]:
+        if "output_bytes" in step:
+            step["output_bytes"] = float(step["output_bytes"]) * multiplier
+
+    assert check_entry(data) == []
+    entry = Entry.from_dict(data)
+    assert type(entry.profile.gpu.count) is int
+    assert all(type(artifact.bytes) is int for artifact in entry.artifacts)
+    integers = copy.deepcopy(data)
+    for artifact in integers["artifacts"]:
+        artifact["bytes"] = int(artifact["bytes"])
+    for step in integers["staging"]:
+        if "output_bytes" in step:
+            step["output_bytes"] = int(step["output_bytes"])
+    assert compute_staging(entry) == compute_staging(Entry.from_dict(integers))
+
+
 @pytest.mark.parametrize("source", [{}, {"repo": "other/model"}, {"revision": "d" * 40}])
 @pytest.mark.parametrize("path", ["part-1", "./part-1", ".//part-1"])
 @pytest.mark.parametrize("unfilled", [False, True])

@@ -62,6 +62,8 @@ A staging download step with `artifacts: all` selects every artifact. A list sel
 
 ## Rules for the schema
 
+Integer fields accept numbers with no fractional part, such as `1.0`, following [JSON Schema](https://json-schema.org/understanding-json-schema/reference/numeric). Booleans, fractions and quoted numbers are refused for those fields.
+
 1. `artifacts` lists every file the engine reads, including draft models and tokenizer files.
 2. Large files carry the Hugging Face LFS SHA-256. Small files without an LFS record carry the Git blob ID, and `tools/verify_entry.py` downloads them at the pinned revision to compute a SHA-256.
 3. Peak disk is computed from `staging` and is never written by hand. A `join` step with `keeps_inputs_until_done: false` deletes each input before it reads the next, so the peak is the whole download and not twice the weights. The engine lock adds a margin of one weight part on top of the peak (`disk_margin_gb`), and room for the fallback Engram extraction (`extract_disk_gb`) when the engine has one.

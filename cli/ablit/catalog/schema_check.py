@@ -19,7 +19,10 @@ _TYPE_CHECKS = {
     "string": lambda v: isinstance(v, str),
     "boolean": lambda v: isinstance(v, bool),
     "null": lambda v: v is None,
-    "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
+    # JSON Schema treats 1 and 1.0 as the same integer.
+    "integer": lambda v: (isinstance(v, int) and not isinstance(v, bool)) or (
+        isinstance(v, float) and v.is_integer()
+    ),
     "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
 }
 
