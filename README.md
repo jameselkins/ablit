@@ -166,7 +166,7 @@ Agents and scripts should read [AGENTS.md](AGENTS.md), which covers `--json` out
 
 ## The endpoint and your keys
 
-The engine on the rented machine listens on `127.0.0.1` only, and ablit reaches it through an SSH port forward that checks the host key. ablit prints a local URL and the name of the keyring entry that holds the endpoint key, which is a random 32-byte value. Paid launches accept only `--endpoint tunnel`. Closing the tunnel does not stop billing, so run `ablit down` to stop the run. Marketplace keys come from the OS keyring or from `VAST_API_KEY`, `RUNPOD_API_KEY` or `CLORE_API_KEY`, and an environment key takes priority.
+The engine on the rented machine listens on `127.0.0.1` only, and ablit reaches it through an SSH port forward that checks the host key. ablit prints a local URL and the name of the keyring entry that holds the endpoint key, which is a random 32-byte value. Paid launches accept only `--endpoint tunnel`. Closing the tunnel does not stop billing, so run `ablit down` to stop the run. Marketplace keys come from the OS keyring or from `VAST_API_KEY`, `RUNPOD_API_KEY`, `CLORE_API_KEY` or `LIUM_API_KEY`, and an environment key takes priority.
 
 ## Using the endpoint with Claude Code
 
