@@ -6,8 +6,10 @@ read on 2026-10-23. The driver is written from those pages only. backends/lium.m
 lists each fact with its source and marks what is UNVERIFIED. Four facts shape the code.
 
 1. The public nodes feed lists every rentable node with no key, so `plan` searches
-   Lium keyless. Prices are US dollars per GPU per hour, billed per second, and the
-   documentation names no other fee. A node rents by whole GPUs, from
+   Lium keyless. Prices are US dollars per GPU per hour, billed per second. The
+   current driver attaches no separate `/mnt` volume and disables backups, so the
+   plan does not include separate volume or backup storage charges. A node rents
+   by whole GPUs, from
    `min_rentable_gpu_count` up to the node's GPU count, so the driver builds one
    offer for the GPU count the request needs.
 2. A rental needs a template, which holds the image, so each run first creates a
@@ -237,7 +239,7 @@ def offer_from_node(row: Any, gpu_count: int, *, cuda_min: float | None = None) 
         gpu_model=model,
         gpu_count=gpu_count,
         gpu_vram_gb_each=vram,
-        # The listed price is the whole price. Lium documents no separate fee, so the price is also the sticker price.
+        # This is the pod price. The driver does not add storage or backup charges.
         hourly_all_in=price,
         host_ram_gb=ram * share,
         disk_gb=free_disk * share,
@@ -374,7 +376,11 @@ class LiumBackend(RentalBackend):
                 skipped["nodes on the local deny list"] += 1
                 continue
             offers.append(offer)
-        parts = ["prices are USD per hour for the pod, billed per second, and Lium documents no other fee"]
+        parts = [
+            "Prices are USD per GPU-hour for the pod and billed per second. "
+            "This plan excludes Lium's separate volume and backup storage because "
+            "ablit does not attach a separate /mnt volume and disables backups."
+        ]
         if skipped:
             parts.append("left out before the filters: " + ", ".join(f"{n} {r}" for r, n in sorted(skipped.items())))
         # The feed lists every rentable node in one answer, so the search sees all of the marketplace.

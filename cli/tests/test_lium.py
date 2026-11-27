@@ -255,6 +255,7 @@ def test_search_needs_no_key_and_never_sends_one(driver):
         route = router.get(FEED).mock(return_value=feed(node()))
         found = driver.search(REQ, KEY, OPTS)
     assert [o.host_id for o in found.offers] == [NODE] and found.complete and found.backend == "lium"
+    assert "does not attach a separate /mnt volume and disables backups" in found.note
     assert "x-api-key" not in route.calls[0].request.headers
     assert route.calls[0].request.headers["user-agent"].startswith("ablit/")
 
