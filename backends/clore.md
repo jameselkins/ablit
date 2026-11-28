@@ -20,7 +20,7 @@ Base URL `https://api.clore.ai/v1`. The key goes in a header named `auth` (not `
 
 | Call | Used for | Documentation |
 |---|---|---|
-| `GET /marketplace` | Search and requote. Returns every listed server. The documentation says it needs a key, but it answered with no key on 2026-10-20 and 2026-10-21, so `plan` works without one. If Clore refuses a keyless call, the search reports that the anonymous request was refused and no API key was sent. The comparison is incomplete, and the other backends carry on. A supplied key being refused remains a credential error. | https://docs.clore.ai/for-hosts/api |
+| `GET /marketplace` | Search and requote. Returns every listed server. The documentation shows an API key on this request. It answered without one on 2026-10-20 and 2026-10-21, but a model query got HTTP 401 in a live audit on 2026-11-28. Anonymous access is best-effort. If Clore refuses a keyless call, the search reports that the anonymous request was refused and no API key was sent. The comparison is incomplete, and the other backends carry on. A supplied key being refused remains a credential error. | https://docs.clore.ai/for-hosts/api |
 | `GET /wallets` | The one read-only call in `ablit setup clore`. Needs a key. | https://docs.clore.ai/for-hosts/api |
 | `GET /renter_fees` | Requote only. Reads the account's base fee and order fee for `USD-Blockchain`. | https://docs.clore.ai/for-hosts/api |
 | `POST /create_order` | Rents one whole server. The body is `currency`, `image`, `renting_server`, `type` ("on-demand"), `ports` ({"22": "tcp"}), `ssh_key`, `autossh_entrypoint` (true), `command` and `required_price`. | https://docs.clore.ai/for-hosts/api |

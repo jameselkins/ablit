@@ -11,7 +11,7 @@ These commands spend nothing:
 3. `ablit plan <model> --json` searches the marketplaces and prints the chosen offer, the next four and their full cost. Add `--gpu <name>` to keep only offers with that GPU model.
 4. `ablit status --all --json` prints every local run and its state.
 
-`plan` reads public offer lists from Vast, RunPod, Clore and Lium, and needs no key.
+`plan` can search Vast, RunPod and Lium without API keys. Clore's marketplace endpoint has also answered anonymously, but may refuse a keyless request and leave the comparison incomplete. Set `CLORE_API_KEY` to authenticate Clore searches.
 
 ## Renting
 

@@ -1,9 +1,10 @@
 """Clore driver. See backends/clore.md at the top of the repository.
 
 Every request, field and unit below comes from Clore's own documentation. The
-call that reads the marketplace is documented to need an API key, but live checks
-on 2026-10-20 and 2026-10-21 showed that it also answers with no key, so a search
-works without one. Four facts shape the code.
+call that reads the marketplace is documented to use an API key. Anonymous
+checks worked on 2026-10-20 and 2026-10-21, but one model query got HTTP 401 in
+an audit on 2026-11-28. Anonymous access is best-effort; a refusal leaves the
+comparison incomplete. Four facts shape the code.
 
 1. Clore returns every listed server in one answer and has no server-side filter.
    The driver turns each server into an offer and leaves the filtering to the
