@@ -236,6 +236,7 @@ def test_a_full_run_writes_one_file_per_entry_and_a_request_log(tmp_path: Path, 
     log = [json.loads(line) for line in (out / "requests.log").read_text().splitlines()]
     assert {entry["host"] for entry in log} == {"console.vast.ai", "api.runpod.io", "api.clore.ai", "lium.io"}
     assert {entry["method"] for entry in log} == {"GET", "POST"}
+    assert {entry["model"] for entry in log} == set(index)
     assert not any(key in headers for headers in seen_headers for key in ("authorization", "auth", "x-api-key"))
 
 

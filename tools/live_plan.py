@@ -16,10 +16,10 @@ requests and nothing else:
 
 OUTPUT_DIR receives one JSON file per entry (the raw output of `ablit plan
 --json`), `index.json` with the exit code of each plan, and `requests.log` with
-one line per request (method, host, path, status, time and size, with no
-bodies). The script requires a new or empty directory, so results and request
-logs from different runs cannot be mixed. It refuses to write inside this
-repository, because marketplace price data must not be published.
+one line per request (model ID, method, host, path, status, time and size,
+with no bodies). The script requires a new or empty directory, so results and
+request logs from different runs cannot be mixed. It refuses to write inside
+this repository, because marketplace price data must not be published.
 
 The index also records whether each comparison completed. The tool saves every
 result, then exits 1 if any comparison was incomplete or failed to produce a
@@ -66,6 +66,7 @@ class ReadOnlyTransport(httpx.BaseTransport):
         self._inner = httpx.HTTPTransport()
         self._log = log_path
         self._last = 0.0
+        self._model: str | None = None
         self.count = 0
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
@@ -89,6 +90,7 @@ class ReadOnlyTransport(httpx.BaseTransport):
         self.count += 1
         line = {
             "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "model": self._model,
             "method": request.method,
             "host": host,
             "path": path,
@@ -139,6 +141,7 @@ def run(output_dir: Path, hours: float) -> int:
             return 1
         index: dict[str, Any] = {}
         for entry in entries:
+            transport._model = entry.id
             buffer = io.StringIO()
             with contextlib.redirect_stdout(buffer):
                 # An empty environment means no API key is sent, whatever the shell holds.
